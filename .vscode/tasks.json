@@ -1,0 +1,27 @@
+{
+    // See https://code.visualstudio.com/docs/editor/tasks for details
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Publish .NET (linux-arm64)",
+            "type": "shell",
+            "command": "dotnet",
+            "args": [
+                "publish",
+                "-c",
+                "Release",
+                "-r",
+                "linux-arm64",
+                "--self-contained",
+                "true",
+                "/p:PublishSingleFile=true",
+                "-o",
+                "${workspaceFolder}/publish"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}/src/GaugeDotnet"
+            },
+            "problemMatcher": []
+        }
+    ]
+}
