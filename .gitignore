@@ -56,3 +56,9 @@ nunit-*.xml
 publish/
 
 .vs/
+
+# Visual Studio user-specific files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates

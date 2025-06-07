@@ -7,6 +7,8 @@ using RG35XX.Libraries;
 using RG35XX.Core.Interfaces;
 using RG35XX.Core.GamePads;
 
+BLE ble = new BLE();
+await ble.Start();
 int screenWidth = 640;
 int screenHeight = 480;
 IGamePadReader gamePadReader = new GamePadReader();
