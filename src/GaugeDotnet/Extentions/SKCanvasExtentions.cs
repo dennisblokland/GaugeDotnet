@@ -17,7 +17,7 @@ namespace GaugeDotnet.Extentions
 
         public static void DrawTextWithBlur(this SKCanvas canvas, string text, float x, float y, SKTextAlign textAlign, SKFont font, SKPaint paint, SKMaskFilter maskFilter)
         {
-            var originalMaskFilter = paint.MaskFilter;
+            SKMaskFilter originalMaskFilter = paint.MaskFilter;
 
             // Draw the shadow first
             paint.MaskFilter = maskFilter;

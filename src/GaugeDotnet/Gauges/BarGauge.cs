@@ -2,7 +2,6 @@
 using GaugeDotnet.Gauges.Componets;
 using GaugeDotnet.Gauges.Models;
 using SkiaSharp;
-using System;
 
 namespace GaugeDotnet.Gauges
 {

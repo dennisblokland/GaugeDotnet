@@ -1,14 +1,13 @@
 namespace GaugeDotnet
 {
-    using RG35XX.Core.GamePads;
     using System;
     using System.Buffers.Binary;
     using System.Collections.Generic;
-    using System.Linq;
-    using System.Text;
     using System.Threading.Tasks;
+    using ME1_4Net;
+    using ME1_4Net.Frames;
+    using ME1_4NET;
     using VaettirNet.Btleplug;
-    using VaettirNet.Btleplug.Interop;
 
     public class BLE
     {
@@ -21,7 +20,7 @@ namespace GaugeDotnet
         private static readonly Guid CanBusCharacteristicUuid =
             new Guid("00000001-0000-1000-8000-00805F9B34FB");
 
-        private static readonly byte[] MagicAllPidPackage = 
+        private static readonly byte[] MagicAllPidPackage =
                             [
                                 0x01,
                                 (50 >> 8),
@@ -29,22 +28,29 @@ namespace GaugeDotnet
                             ];
 
         public bool IsRunning { get; private set; } = false;
+        public MEData MeData { get; }
 
-        public BLE()
+        private readonly List<BtlePeripheral.PeripheralNotifyDataReceivedCallback>
+                _notificationCallbacks = [];
+
+        private readonly List<BtlePeripheral> all = [];
+
+        public BLE(MEData meData)
         {
+            MeData = meData;
 
         }
 
         public async Task Start()
         {
-            BtleManager.SetLogLevel(BtleLogLevel.Debug);
-            var manager = BtleManager.Create();
-            List<BtlePeripheral> all = [];
+            BtleManager.SetLogLevel(BtleLogLevel.Error);
+            BtleManager manager = BtleManager.Create();
+            all.Clear();
             CancellationTokenSource src = new();
             src.CancelAfter(TimeSpan.FromSeconds(60));
             try
             {
-                ScanPeripherals(manager, src, all);
+                ScanPeripherals(manager, src);
             }
             catch (OperationCanceledException)
             {
@@ -63,10 +69,10 @@ namespace GaugeDotnet
                 p.Dispose();
             }
         }
-        private void ScanPeripherals(BtleManager manager, CancellationTokenSource src, List<BtlePeripheral> all)
+        private void ScanPeripherals(BtleManager manager, CancellationTokenSource src)
         {
 
-            var _keyThread = new Thread(async () =>
+            Thread _keyThread = new Thread(async () =>
             {
                 do
                 {
@@ -85,15 +91,15 @@ namespace GaugeDotnet
                                 Console.WriteLine($"Characteristic: {c.Uuid}");
                                 if (c.Uuid == PidCharacteristicUuid)
                                 {
-                                    ushort interval = 50;
-
-
-                                    p.Write(service.Uuid, c.Uuid, MagicAllPidPackage, false).Wait();
+                                    await p.Write(service.Uuid, c.Uuid, MagicAllPidPackage, false);
 
                                 }
                                 if (c.Uuid == CanBusCharacteristicUuid)
                                 {
-                                    await p.RegisterNotificationCallback(service.Uuid, c.Uuid, NotifyFound);
+                                    BtlePeripheral.PeripheralNotifyDataReceivedCallback callback = new(NotifyFound);
+                                    _notificationCallbacks.Add(callback);
+
+                                    await p.RegisterNotificationCallback(service.Uuid, c.Uuid, callback);
                                 }
                             }
                         }
@@ -116,24 +122,57 @@ namespace GaugeDotnet
             {
                 return;
             }
-            ushort canId = BinaryPrimitives.ReadUInt16BigEndian(data);
-            ReadOnlySpan<byte> dataPacket = data.Slice(2);
 
-            if (canId == 3)
+            ushort canId = BitConverter.ToUInt16(data.ToArray(), 0);
+            ReadOnlySpan<byte> dataPacket = data[4..];
+
+            Pid pid = (Pid)(canId & 0x0FFF); // Assuming the PID is in the lower 12 bits of the CAN ID
+            if (!Enum.IsDefined(pid))
             {
-                var result = Me1_4Me1_4Parser.Unpack(dataPacket);
-                if (result == null)
-                {
-                    Console.WriteLine("Failed to unpack Me1_4Me1_4 data.");
-                    return;
-                }
-
+                //    Console.WriteLine($"Unknown PID: {pid}");
                 return;
+            }
+
+            ICanFrame frame = CanDecoder.Decode(pid, dataPacket.ToArray());
+            if (frame is ME1_1 me1_1)
+            {
+                // Console.WriteLine($"RPM: {me1_1.Rpm}");
+                // Console.WriteLine($"Throttle: {me1_1.ThrottlePosition}");
+                // Console.WriteLine($"MAP: {me1_1.Map}");
+                // Console.WriteLine($"IAT: {me1_1.Iat}");
+            }
+            if (frame is ME1_2 me1_2)
+            {
+                //afr
+                Console.WriteLine($"AFR: {me1_2.AfrCurr1}");
+                MeData.AfrCurr1 = me1_2.AfrCurr1;
 
             }
-            
-            Console.WriteLine($"Received CAN ID: {canId:X4} from {peripheral.GetId()}");
-           
+
+            // else if (frame is ME1_6 me1_6)
+            // // {
+            // //     Console.WriteLine($"Gear pos: {me1_6.GearPos}");
+            // //     Console.WriteLine($"Map target: {me1_6.MapTarget}");
+            // //     Console.WriteLine($"Vehicle speed: {me1_6.VehicleSpeed}");
+            // //     Console.WriteLine($"EPS EV Mask: {me1_6.EpsEvMsk}");
+            // }
+
+
+
+
         }
+
+        public void Stop()
+        {
+            IsRunning = false;
+            foreach (BtlePeripheral p in all)
+            {
+                p.Dispose();
+            }
+            all.Clear();
+            _notificationCallbacks.Clear();
+        }
+
+
     }
 }

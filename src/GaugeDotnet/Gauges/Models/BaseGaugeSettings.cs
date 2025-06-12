@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace GaugeDotnet.Gauges.Models
+﻿namespace GaugeDotnet.Gauges.Models
 {
     public class BaseGaugeSettings
     {

@@ -6,8 +6,11 @@ using static SDL2.SDL;
 using RG35XX.Libraries;
 using RG35XX.Core.Interfaces;
 using RG35XX.Core.GamePads;
+using ME1_4NET;
 
-BLE ble = new BLE();
+MEData meData = new();
+
+BLE ble = new(meData);
 await ble.Start();
 int screenWidth = 640;
 int screenHeight = 480;
@@ -31,8 +34,6 @@ GRBackendRenderTarget backendRenderTarget = new(
     glFramebufferInfo
 );
 
-
-Random rand = new();
 // Prepare settings:
 BarGaugeSettings settings = new()
 {
@@ -112,11 +113,6 @@ while (running)
     {
         running = false;
     }
-    if (key == GamepadKey.LEFT)
-    {
-        //set gauge color to random color
-        gauge.SetColorHex($"#{rand.Next(0x1000000):X6}");
-    }
 
     SKCanvas canvas = gaugeSDL.GetCanvas();
 
@@ -128,7 +124,7 @@ while (running)
     double now = stopwatch.Elapsed.TotalSeconds;
     if (now - lastUpdate >= 0.05)
     {
-        gauge.SetValue((decimal)rand.Next(80, 180) / 10);
+        gauge.SetValue((decimal)meData.AfrCurr1);
         lastUpdate = now;
     }
 
