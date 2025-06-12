@@ -6,7 +6,6 @@ namespace GaugeDotnet
     using System.Threading.Tasks;
     using ME1_4NET;
     using ME1_4NET.Frames;
-    using ME1_4NET;
     using VaettirNet.Btleplug;
 
     public class BLE
