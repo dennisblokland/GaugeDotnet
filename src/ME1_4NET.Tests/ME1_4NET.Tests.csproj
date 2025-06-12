@@ -15,6 +15,6 @@
     </PackageReference>
   </ItemGroup>
  <ItemGroup>
-   <ProjectReference Include="..\ME1_4Net\ME1_4Net.csproj" />
+   <ProjectReference Include="..\ME1_4NET\ME1_4NET.csproj" />
  </ItemGroup>
 </Project>

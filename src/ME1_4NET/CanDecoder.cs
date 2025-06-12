@@ -1,6 +1,6 @@
-using ME1_4Net.Frames;
+using ME1_4NET.Frames;
 
-namespace ME1_4Net
+namespace ME1_4NET
 {
     /// <summary>
     /// Dispatches raw CAN payloads to their strongly-typed frame structs.

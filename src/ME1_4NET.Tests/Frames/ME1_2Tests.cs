@@ -1,6 +1,6 @@
 using Xunit;
 
-namespace ME1_4Net.Frames.Tests
+namespace ME1_4NET.Frames.Tests
 {
     public class ME1_2Test
     {

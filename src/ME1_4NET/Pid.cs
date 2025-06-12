@@ -1,4 +1,4 @@
-namespace ME1_4Net
+namespace ME1_4NET
 {
     /// <summary>
     /// Supported PIDs (CAN frame identifiers)

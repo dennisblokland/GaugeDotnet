@@ -4,8 +4,8 @@ namespace GaugeDotnet
     using System.Buffers.Binary;
     using System.Collections.Generic;
     using System.Threading.Tasks;
-    using ME1_4Net;
-    using ME1_4Net.Frames;
+    using ME1_4NET;
+    using ME1_4NET.Frames;
     using ME1_4NET;
     using VaettirNet.Btleplug;
 

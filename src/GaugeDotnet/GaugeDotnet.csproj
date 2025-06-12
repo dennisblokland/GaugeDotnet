@@ -22,6 +22,6 @@
 <ItemGroup>
   <ProjectReference Include="..\RG35XX.Core\RG35XX.Core.csproj" />
   <ProjectReference Include="..\RG35XX.Libraries\RG35XX.Libraries.csproj" />
-  <ProjectReference Include="..\ME1_4Net\ME1_4Net.csproj" />
+  <ProjectReference Include="..\ME1_4NET\ME1_4NET.csproj" />
 </ItemGroup>
 </Project>

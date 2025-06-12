@@ -1,7 +1,7 @@
-using ME1_4Net.Frames;
+using ME1_4NET.Frames;
 using Xunit;
 
-namespace ME1_4Net.Tests.Frames
+namespace ME1_4NET.Tests.Frames
 {
     public class ME1_7Test
     {
