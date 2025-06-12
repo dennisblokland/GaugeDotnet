@@ -1,10 +1,8 @@
 # This workflow will build a .NET project
 # For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-net
-permissions:
-  contents: read        # so you can checkout your code
-  packages: read        # so you can restore from GitHub Packages
-  
 name: CI
+
+env:
 
 on:
   push:
@@ -24,7 +22,7 @@ jobs:
       with:
         dotnet-version: 9.0.x
     - name: Add GitHub NuGet source
-      run: dotnet nuget add source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" --name github --username ${{ github.repository_owner }} --password ${{ secrets.GITHUB_TOKEN }} --store-password-in-clear-text
+      run: dotnet nuget add source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" --name github --username ${{ github.repository_owner }} --password ${{ secrets.PAT_READ_PACKAGES }} --store-password-in-clear-text
     - name: Restore dependencies
       run: dotnet restore
     - name: Build
