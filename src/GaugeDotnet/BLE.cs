@@ -1,177 +1,92 @@
+using System;
+using System.Buffers.Binary;
+using System.Collections.Generic;
+using System.Globalization;
+using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
+using ME1_4NET;
+using ME1_4NET.Frames;
+using VaettirNet.Btleplug;
+
 namespace GaugeDotnet
 {
-    using System;
-    using System.Buffers.Binary;
-    using System.Collections.Generic;
-    using System.Threading.Tasks;
-    using ME1_4NET;
-    using ME1_4NET.Frames;
-    using VaettirNet.Btleplug;
-
-    public class BLE
+    /// class created from <see cref="CreateAsync"/>. Dice can be found and connected using
+    /// <see cref="StartScan"/>
+    /// </summary>
+    public sealed class BleManager : IDisposable
     {
-        static readonly Guid ServiceUuid =
-        new Guid("0000FFF0-0000-1000-8000-00805F9B34FB");
+        private readonly BtleManager _ble;
 
-        private static readonly Guid PidCharacteristicUuid =
-         new Guid("00000002-0000-1000-8000-00805F9B34FB");
-
-        private static readonly Guid CanBusCharacteristicUuid =
-            new Guid("00000001-0000-1000-8000-00805F9B34FB");
-
-        private static readonly byte[] MagicAllPidPackage =
-                            [
-                                0x01,
-                                (50 >> 8),
-                                (50 & 0xFF)
-                            ];
-
-        public bool IsRunning { get; private set; } = false;
-        public MEData MeData { get; }
-
-        private readonly List<BtlePeripheral.PeripheralNotifyDataReceivedCallback>
-                _notificationCallbacks = [];
-
-        private readonly List<BtlePeripheral> all = [];
-
-        public BLE(MEData meData)
+        private BleManager(BtleManager ble)
         {
-            MeData = meData;
-
+            _ble = ble;
         }
 
-        public async Task Start()
+        public static Task<BleManager> CreateAsync()
         {
-            BtleManager.SetLogLevel(BtleLogLevel.Error);
             BtleManager manager = BtleManager.Create();
-            all.Clear();
-            CancellationTokenSource src = new();
-            src.CancelAfter(TimeSpan.FromSeconds(60));
-            try
-            {
-                ScanPeripherals(manager, src);
-            }
-            catch (OperationCanceledException)
-            {
-                Console.WriteLine("Scan cancelled or timed out.");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error during scan: {ex.Message}");
-            }
-
-            Console.WriteLine("Shutting down");
-
-            foreach (BtlePeripheral p in all)
-            {
-                await p.DisconnectAsync();
-                p.Dispose();
-            }
+            return Task.FromResult(new BleManager(manager));
         }
-        private void ScanPeripherals(BtleManager manager, CancellationTokenSource src)
-        {
 
-            Thread _keyThread = new Thread(async () =>
+        /// <summary>
+        /// Scan for pixels devices. When a die is found, it will be returned as part of the enumerable. The scan will
+        /// continue until the cancellationToken is cancelled
+        /// </summary>
+        /// <param name="findAll">True to find and return all devices, false to only find devices in savedIdentifiers list</param>
+        /// <param name="savedIdentifiers">List of devices to return and connect be default (even if findAll is false)</param>
+        /// <param name="cancellationToken">CancellationToken to stop scanning</param>
+        /// <returns>Enumerable of all devices found.</returns>
+        public async IAsyncEnumerable<MeDevice> ScanAsync(
+            bool findAll,
+            IEnumerable<string> savedIdentifiers = null,
+            [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            if (!findAll && savedIdentifiers == null)
+                throw new ArgumentException($"One of {nameof(findAll)} or {nameof(savedIdentifiers)} must be set");
+
+            HashSet<ulong> idSet = savedIdentifiers?.Select(s => ulong.Parse(s, NumberStyles.AllowHexSpecifier)).ToHashSet();
+
+            await foreach (BtlePeripheral peripheral in _ble.GetPeripherals([RaceChronoIds.ServiceUuid], false, cancellationToken))
             {
-                do
+                if (!findAll && !idSet.Contains(peripheral.Address))
                 {
-                    await foreach (BtlePeripheral p in manager.GetPeripherals([ServiceUuid], includeServices: false, src.Token))
-                    {
-                        all.Add(p);
-                        Console.WriteLine($"Found device: {p.GetId()}");
-                        await p.ConnectAsync();
-                        bool isConnected = await p.IsConnectedAsync();
-                        Console.WriteLine($"Connected ({isConnected})");
-                        foreach (BtleService service in await p.GetServicesAsync())
-                        {
-                            Console.WriteLine($"  S: {service.Uuid}");
-                            foreach (BtleCharacteristic c in service.Characteristics)
-                            {
-                                Console.WriteLine($"Characteristic: {c.Uuid}");
-                                if (c.Uuid == PidCharacteristicUuid)
-                                {
-                                    await p.Write(service.Uuid, c.Uuid, MagicAllPidPackage, false);
+                    peripheral.Dispose();
+                    continue;
+                }
 
-                                }
-                                if (c.Uuid == CanBusCharacteristicUuid)
-                                {
-                                    BtlePeripheral.PeripheralNotifyDataReceivedCallback callback = new(NotifyFound);
-                                    _notificationCallbacks.Add(callback);
-
-                                    await p.RegisterNotificationCallback(service.Uuid, c.Uuid, callback);
-                                }
-                            }
-                        }
-                    }
-                } while (true);
-            })
-            {
-                Priority = ThreadPriority.AboveNormal
-            };
-
-            _keyThread.Start();
-
+                yield return MeDevice.Create(peripheral);
+            }
         }
 
-        private void NotifyFound(BtlePeripheral peripheral, Guid service, Guid characteristic, Span<byte> data)
+        public async IAsyncEnumerable<MeDevice> ReattachAsync(
+            IEnumerable<string> savedIdentifiers,
+            TimeSpan? timeout = null,
+            [EnumeratorCancellation] CancellationToken cancellationToken = default
+        )
         {
-            IsRunning = true;
-            // get can id form the first two bytes of data
-            if (data.Length < 2)
+            timeout ??= TimeSpan.FromSeconds(30);
+            List<string> items = savedIdentifiers.ToList();
+            int count = 0;
+            var src = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            src.CancelAfter(timeout.Value);
+
+            await foreach (MeDevice me in ScanAsync(false, items, src.Token))
             {
-                return;
+                count++;
+                await me.ConnectAsync();
+                yield return me;
+                if (count >= items.Count)
+                {
+                    src.Cancel();
+                    yield break;
+                }
             }
-
-            ushort canId = BitConverter.ToUInt16(data.ToArray(), 0);
-            ReadOnlySpan<byte> dataPacket = data[4..];
-
-            Pid pid = (Pid)(canId & 0x0FFF); // Assuming the PID is in the lower 12 bits of the CAN ID
-            if (!Enum.IsDefined(pid))
-            {
-                //    Console.WriteLine($"Unknown PID: {pid}");
-                return;
-            }
-
-            ICanFrame frame = CanDecoder.Decode(pid, dataPacket.ToArray());
-            if (frame is ME1_1 me1_1)
-            {
-                // Console.WriteLine($"RPM: {me1_1.Rpm}");
-                // Console.WriteLine($"Throttle: {me1_1.ThrottlePosition}");
-                // Console.WriteLine($"MAP: {me1_1.Map}");
-                // Console.WriteLine($"IAT: {me1_1.Iat}");
-            }
-            if (frame is ME1_2 me1_2)
-            {
-                //afr
-                Console.WriteLine($"AFR: {me1_2.AfrCurr1}");
-                MeData.AfrCurr1 = me1_2.AfrCurr1;
-
-            }
-
-            // else if (frame is ME1_6 me1_6)
-            // // {
-            // //     Console.WriteLine($"Gear pos: {me1_6.GearPos}");
-            // //     Console.WriteLine($"Map target: {me1_6.MapTarget}");
-            // //     Console.WriteLine($"Vehicle speed: {me1_6.VehicleSpeed}");
-            // //     Console.WriteLine($"EPS EV Mask: {me1_6.EpsEvMsk}");
-            // }
-
-
-
-
         }
 
-        public void Stop()
+        public void Dispose()
         {
-            IsRunning = false;
-            foreach (BtlePeripheral p in all)
-            {
-                p.Dispose();
-            }
-            all.Clear();
-            _notificationCallbacks.Clear();
+            _ble.Dispose();
         }
-
-
     }
+
 }
