@@ -36,10 +36,10 @@ namespace GaugeDotnet
         /// <param name="savedIdentifiers">List of devices to return and connect be default (even if findAll is false)</param>
         /// <param name="cancellationToken">CancellationToken to stop scanning</param>
         /// <returns>Enumerable of all devices found.</returns>
-        public async IAsyncEnumerable<MeDevice> ScanAsync(
+        public async Task<MeDevice?> ScanAsync(
             bool findAll,
             IEnumerable<string> savedIdentifiers = null,
-            [EnumeratorCancellation] CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default)
         {
             if (!findAll && savedIdentifiers == null)
                 throw new ArgumentException($"One of {nameof(findAll)} or {nameof(savedIdentifiers)} must be set");
@@ -54,33 +54,31 @@ namespace GaugeDotnet
                     continue;
                 }
 
-                yield return MeDevice.Create(peripheral);
+                return MeDevice.Create(peripheral);
             }
+
+            return null;
         }
 
-        public async IAsyncEnumerable<MeDevice> ReattachAsync(
+        public async Task<MeDevice?> ReattachAsync(
             IEnumerable<string> savedIdentifiers,
             TimeSpan? timeout = null,
-            [EnumeratorCancellation] CancellationToken cancellationToken = default
+            CancellationToken cancellationToken = default
         )
         {
             timeout ??= TimeSpan.FromSeconds(30);
             List<string> items = savedIdentifiers.ToList();
-            int count = 0;
             var src = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             src.CancelAfter(timeout.Value);
 
-            await foreach (MeDevice me in ScanAsync(false, items, src.Token))
+            MeDevice? me = await ScanAsync(false, items, src.Token);
+            if (me != null)
             {
-                count++;
                 await me.ConnectAsync();
-                yield return me;
-                if (count >= items.Count)
-                {
-                    src.Cancel();
-                    yield break;
-                }
+                return me;
             }
+            return me;
+
         }
 
         public void Dispose()

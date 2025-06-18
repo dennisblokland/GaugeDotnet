@@ -98,8 +98,8 @@ namespace GaugeDotnet
         {
             _shouldTryReconnect = true;
             await _ble.ConnectAsync().ConfigureAwait(false);
-            // If we don't scan for services, the registration will fail, claiming it's not a valid registration
-            var services = await _ble.GetServicesAsync();
+            // Retrieve the list of services to ensure the device is fully initialized before proceeding
+            await _ble.GetServicesAsync();
             await _ble.RegisterNotificationCallback(RaceChronoIds.ServiceUuid, RaceChronoIds.CanBusCharacteristicUuid, DataReceived);
             await SendMessage(MagicAllPidPackage).ConfigureAwait(false);
         }
@@ -115,35 +115,42 @@ namespace GaugeDotnet
 
         private void DataReceived(BtlePeripheral peripheral, Guid service, Guid characteristic, Span<byte> data)
         {
-            // get can id form the first two bytes of data
-            if (data.Length < 2)
+            try
             {
-                return;
-            }
+                // get can id form the first two bytes of data
+                if (data.Length < 2)
+                {
+                    return;
+                }
 
-            ushort canId = BitConverter.ToUInt16(data.ToArray(), 0);
-            ReadOnlySpan<byte> dataPacket = data[4..];
+                ushort canId = BitConverter.ToUInt16(data.ToArray(), 0);
+                ReadOnlySpan<byte> dataPacket = data[4..];
 
-            Pid pid = (Pid)(canId & 0x0FFF); // Assuming the PID is in the lower 12 bits of the CAN ID
-            if (!Enum.IsDefined(pid))
-            {
-                //    Console.WriteLine($"Unknown PID: {pid}");
-                return;
-            }
+                Pid pid = (Pid)(canId & 0x0FFF); // Assuming the PID is in the lower 12 bits of the CAN ID
+                if (!Enum.IsDefined(pid))
+                {
+                    //    Console.WriteLine($"Unknown PID: {pid}");
+                    return;
+                }
 
-            ICanFrame frame = CanDecoder.Decode(pid, dataPacket.ToArray());
-            if (frame is ME1_1 me1_1)
-            {
-                // Console.WriteLine($"RPM: {me1_1.Rpm}");
-                // Console.WriteLine($"Throttle: {me1_1.ThrottlePosition}");
-                // Console.WriteLine($"MAP: {me1_1.Map}");
-                // Console.WriteLine($"IAT: {me1_1.Iat}");
+                ICanFrame frame = CanDecoder.Decode(pid, dataPacket.ToArray());
+                if (frame is ME1_1 me1_1)
+                {
+                    // Console.WriteLine($"RPM: {me1_1.Rpm}");
+                    // Console.WriteLine($"Throttle: {me1_1.ThrottlePosition}");
+                    // Console.WriteLine($"MAP: {me1_1.Map}");
+                    // Console.WriteLine($"IAT: {me1_1.Iat}");
+                }
+                if (frame is ME1_2 me1_2)
+                {
+                    //afr
+                    Console.WriteLine($"AFR: {me1_2.AfrCurr1}");
+                    afr = me1_2.AfrCurr1;
+                }
             }
-            if (frame is ME1_2 me1_2)
+            catch (Exception ex)
             {
-                //afr
-                Console.WriteLine($"AFR: {me1_2.AfrCurr1}");
-                this.afr = me1_2.AfrCurr1;
+                Console.WriteLine($"Exception in DataReceived: {ex}");
             }
         }
 
