@@ -6,7 +6,6 @@ using static SDL2.SDL;
 using RG35XX.Libraries;
 using RG35XX.Core.Interfaces;
 using RG35XX.Core.GamePads;
-using ME1_4NET;
 
 internal class Program
 {
