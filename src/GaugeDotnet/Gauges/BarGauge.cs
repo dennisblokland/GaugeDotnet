@@ -19,6 +19,11 @@ namespace GaugeDotnet.Gauges
 
         private readonly SegmentDisplay _valueDisplay;
         private readonly SKMaskFilter _blur;
+        private readonly SKTypeface _fontFace;
+        private readonly SKPaint _inactiveSegmentPaint;
+        private readonly SKPaint _activeSegmentPaint;
+        private readonly SKPaint _borderPaint;
+        private readonly SKPaint _labelPaint;
 
         // Instructions:
         // - staticBitmap/staticCanvas: draw the “inactive bar + border + text”
@@ -30,6 +35,8 @@ namespace GaugeDotnet.Gauges
         private readonly float _height;
         private readonly float _x;
         private readonly float _y;
+        private SKColor _cachedActiveColor;
+        private SKColor _cachedInactiveColor;
 
         private const float SHADOW_BLUR = 15f;
 
@@ -66,7 +73,16 @@ namespace GaugeDotnet.Gauges
                 shadowBlur: SHADOW_BLUR,
                 decimals: settings.Decimals
             );
+
+            _cachedActiveColor = activeCol;
+            _cachedInactiveColor = inactiveCol;
+
             _blur = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, SHADOW_BLUR);
+            _fontFace = FontHelper.GetFont("Race Sport");
+            _inactiveSegmentPaint = new SKPaint { Style = SKPaintStyle.Fill, Color = inactiveCol, IsAntialias = true };
+            _activeSegmentPaint = new SKPaint { Style = SKPaintStyle.Fill, Color = activeCol, IsAntialias = true };
+            _borderPaint = new SKPaint { Style = SKPaintStyle.Stroke, Color = activeCol, StrokeWidth = 4f, IsAntialias = true };
+            _labelPaint = new SKPaint { Color = activeCol, IsAntialias = true };
         }
 
         /// <summary>
@@ -78,60 +94,39 @@ namespace GaugeDotnet.Gauges
 
             // Draw inactive segments:
             (SKColor activeCol, SKColor inactiveCol) = Colors;
-            using (SKPaint paint = new()
+            _inactiveSegmentPaint.Color = inactiveCol;
+            for (int i = 0; i < _segmentCount; i++)
             {
-                Style = SKPaintStyle.Fill,
-                Color = inactiveCol,
-                IsAntialias = true
-            })
-            {
-                for (int i = 0; i < _segmentCount; i++)
-                {
-                    float segX = _x + i * _segmentWidth;
-                    SKRect rect = new(segX + 2f, _y, segX + _segmentWidth - 2f, _y + _height);
-                    _staticCanvas.DrawRect(rect, paint);
-                }
+                float segX = _x + i * _segmentWidth;
+                SKRect rect = new(segX + 2f, _y, segX + _segmentWidth - 2f, _y + _height);
+                _staticCanvas.DrawRect(rect, _inactiveSegmentPaint);
             }
 
             // Draw border around the bar:
-            using (SKPaint paint = new()
-            {
-                Style = SKPaintStyle.Stroke,
-                Color = activeCol,
-                StrokeWidth = 4f,
-                IsAntialias = true
-            })
-            {
-                SKRect borderRect = new(
-                    _x - 4f,
-                    _y - 4f,
-                    _x + _width + 4f,
-                    _y + _height + 4f
-                );
-                _staticCanvas.DrawRectWithBlur(borderRect, paint, _blur);
+            _borderPaint.Color = activeCol;
+            SKRect borderRect = new(
+                _x - 4f,
+                _y - 4f,
+                _x + _width + 4f,
+                _y + _height + 4f
+            );
+            _staticCanvas.DrawRectWithBlur(borderRect, _borderPaint, _blur);
 
-                paint.MaskFilter = null; // reset
-            }
-            SKTypeface fontFace = FontHelper.GetFont("Race Sport");
             // Draw unit (centered at x=320, y=_y+_height+40)
-            using (SKPaint paint = new()
-            {
-                Color = activeCol,
-                IsAntialias = true,
-            })
-            {
-                using SKFont font = new(fontFace, 30f);
+            _labelPaint.Color = activeCol;
+            using SKFont font = new(_fontFace, 30f);
 
+            float unitY = _y + _height + 80f;
+            _staticCanvas.DrawTextWithBlur(Unit, 320f, unitY, SKTextAlign.Center, font, _labelPaint, _blur);
 
-                float unitY = _y + _height + 80f;
-                _staticCanvas.DrawTextWithBlur(Unit, 320f, unitY, SKTextAlign.Center, font, paint, _blur);
-        
-                // Draw title (italic) below unit
-                font.Size = 20f;
-                font.Typeface = fontFace;
-                float titleY = unitY + 40f;
-                _staticCanvas.DrawTextWithBlur(Title, 320f, titleY, SKTextAlign.Center, font, paint, _blur);
-            }
+            // Draw title (italic) below unit
+            font.Size = 20f;
+            float titleY = unitY + 40f;
+            _staticCanvas.DrawTextWithBlur(Title, 320f, titleY, SKTextAlign.Center, font, _labelPaint, _blur);
+
+            _valueDisplay.SetColors(inactiveCol, activeCol);
+            _cachedActiveColor = activeCol;
+            _cachedInactiveColor = inactiveCol;
 
             StaticCacheValid = true;
 
@@ -169,32 +164,26 @@ namespace GaugeDotnet.Gauges
             canvas.DrawBitmap(_staticBitmap, 0, 0);
 
             // 4) Draw active segments
-            using (SKPaint paint = new()
-            {
-                Style = SKPaintStyle.Fill,
-                Color = activeCol,
-                IsAntialias = true
-            })
-            {
-                float pct = (float)((_currentValue - MinValue) / (MaxValue - MinValue));
-                pct = SKRectExtensions.Clamp(pct, 0f, 1f);
-                int activeSegs = (int)Math.Round(pct * _segmentCount);
+            _activeSegmentPaint.Color = activeCol;
+            float pct = (float)((_currentValue - MinValue) / (MaxValue - MinValue));
+            pct = SKRectExtensions.Clamp(pct, 0f, 1f);
+            int activeSegs = (int)Math.Round(pct * _segmentCount);
 
-                for (int i = 0; i < activeSegs; i++)
-                {
-                    float segX = _x + i * _segmentWidth;
-                    SKRect rect = new(segX + 2f, _y, segX + _segmentWidth - 2f, _y + _height);
-                    canvas.DrawRectWithBlur(rect, paint, _blur);
-                }
-                paint.MaskFilter = null;
+            for (int i = 0; i < activeSegs; i++)
+            {
+                float segX = _x + i * _segmentWidth;
+                SKRect rect = new(segX + 2f, _y, segX + _segmentWidth - 2f, _y + _height);
+                canvas.DrawRectWithBlur(rect, _activeSegmentPaint, _blur);
             }
 
             // 5) Draw the numeric value:
             _valueDisplay.SetValue(Value);
-            _valueDisplay.SetColors(
-                $"#{inactiveCol.Red:X2}{inactiveCol.Green:X2}{inactiveCol.Blue:X2}",
-                $"#{activeCol.Red:X2}{activeCol.Green:X2}{activeCol.Blue:X2}"
-            );
+            if (activeCol != _cachedActiveColor || inactiveCol != _cachedInactiveColor)
+            {
+                _valueDisplay.SetColors(inactiveCol, activeCol);
+                _cachedActiveColor = activeCol;
+                _cachedInactiveColor = inactiveCol;
+            }
             _valueDisplay.DrawOnCanvas(canvas);
         }
     }

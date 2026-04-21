@@ -4,19 +4,19 @@ using VaettirNet.Btleplug;
 
 namespace GaugeDotnet
 {
-    public class MeDevice : IDisposable
+    public class MeDevice : IDisposable, IMeDevice
     {
         private readonly BtlePeripheral _ble;
         private bool _shouldTryReconnect;
         public ConnectionState ConnectionState { get; private set; }
         public bool IsConnected => ConnectionState == ConnectionState.Connected;
 
-        public event Action<MeDevice, ConnectionState> ConnectionStateChanged;
-        public event Action<MeDevice, ushort> RemoteAction;
+        public event Action<IMeDevice, ConnectionState>? ConnectionStateChanged;
+        public event Action<MeDevice, ushort>? RemoteAction;
         private readonly object _disconnectLock = new();
-        private Task _reconnectTask;
-        private CancellationTokenSource _reconnectCancel;
-        public decimal afr;
+        private Task? _reconnectTask;
+        private CancellationTokenSource? _reconnectCancel;
+        public decimal afr { get; private set; }
         private static readonly byte[] MagicAllPidPackage =
                         [
                             0x01,

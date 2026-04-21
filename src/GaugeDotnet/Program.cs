@@ -9,13 +9,21 @@ using RG35XX.Core.GamePads;
 
 internal class Program
 {
-    private static MeDevice? meDevice; // Make it static or keep it referenced globally
+    private static IMeDevice? meDevice;
 
     private static async Task Main(string[] args)
     {
         // Define a CancellationTokenSource for cancellation support
         using var exit = new CancellationTokenSource();
-        exit.CancelAfter(TimeSpan.FromSeconds(60)); // Auto-cancel after 30 seconds if no device is found
+
+#if DEBUG
+        // In debug mode bypass BLE entirely and use a simulated device
+        Console.WriteLine("[DEBUG] Using SimulatedMeDevice - no BLE required");
+        var simulatedDevice = new SimulatedMeDevice();
+        meDevice = simulatedDevice;
+        await meDevice.ConnectAsync();
+#else
+        exit.CancelAfter(TimeSpan.FromSeconds(60)); // Auto-cancel after 60 seconds if no device is found
 
         BleManager bleManager = await BleManager.CreateAsync();
         meDevice = await bleManager.ScanAsync(findAll: true, cancellationToken: exit.Token);
@@ -24,8 +32,9 @@ internal class Program
             Console.WriteLine("No ME device found. Exiting...");
             return;
         }
-       
+
         await meDevice.ConnectAsync();
+#endif
 
 
 
@@ -36,19 +45,6 @@ internal class Program
         GaugeSDL gaugeSDL = new(
             screenWidth: screenWidth,
             screenHeight: screenHeight
-        );
-
-        GRGlFramebufferInfo glFramebufferInfo = new(
-            /*fboId=*/   0u,
-            /*format=*/  SKColorType.Rgba8888.ToGlSizedFormat()
-        );
-
-        GRBackendRenderTarget backendRenderTarget = new(
-            screenWidth,
-            screenHeight,
-            /*sampleCount=*/    0,
-            /*stencilBits=*/    8,
-            glFramebufferInfo
         );
 
         // Prepare settings:
@@ -79,6 +75,7 @@ internal class Program
         int frameCount = 0;
         double lastReport = 0.0;
         double currentFps = 0.0;
+        string fpsText = "FPS: 0.00";
         double GetFps()
         {
             frameCount++;
@@ -88,9 +85,17 @@ internal class Program
                 currentFps = frameCount / (elapsed - lastReport);
                 lastReport = elapsed;
                 frameCount = 0;
+                fpsText = $"FPS: {currentFps:F2}";
             }
             return currentFps;
         }
+
+        using SKPaint fpsPaint = new()
+        {
+            Color = SKColors.White,
+            IsAntialias = true
+        };
+        using SKFont fpsFont = new() { Size = 20 };
 
         double lastUpdate = 0;
         while (running)
@@ -140,29 +145,27 @@ internal class Program
             double now = stopwatch.Elapsed.TotalSeconds;
             if (now - lastUpdate >= 0.05)
             {
+              if(meDevice != null && meDevice.IsConnected){
                 gauge.SetValue(meDevice.afr);
+              }
+
                 lastUpdate = now;
             }
 
             gauge.Draw(canvas);
 
-            //  (Optional) Draw an FPS counter in the top‐left corner
-            using SKPaint textPaint = new();
-            using SKFont font = new();
-
-            textPaint.Color = SKColors.White;
-            textPaint.IsAntialias = true;
-            font.Size = 20;
-
-            // Measure “FPS: XXX” for width (if needed)
-            string fpsText = $"FPS: {GetFps():F2}";
-            canvas.DrawText(fpsText, 10, 25, font, textPaint);
+            // Draw an FPS counter in the top-left corner.
+            GetFps();
+            canvas.DrawText(fpsText, 10, 25, fpsFont, fpsPaint);
 
             gaugeSDL.FlushAndSwap();
         }
 
-        exit.Cancel();
+       exit.Cancel();
         SDL_Quit();
+#if DEBUG
+        (meDevice as IDisposable)?.Dispose();
+#endif
         Console.WriteLine("Exiting program...");
         Environment.Exit(0);
     }

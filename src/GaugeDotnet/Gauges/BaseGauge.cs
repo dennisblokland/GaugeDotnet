@@ -9,7 +9,8 @@ namespace GaugeDotnet.Gauges
         private readonly decimal _minValue;
         private readonly decimal _maxValue;
         private string _colorHex = "#00FFFF";          // active color
-        private string _inactiveColorHex = "#001919";  // computed dark variant
+        private SKColor _activeColor = SKColor.Parse("#00FFFF");
+        private SKColor _inactiveColor = SKColor.Parse("#001919");
         private readonly string _unit;
         private readonly string _title;
 
@@ -40,7 +41,17 @@ namespace GaugeDotnet.Gauges
 
         public void SetColorHex(string hex)
         {
-            _colorHex = hex;
+            if (!SKColor.TryParse(hex, out SKColor parsed))
+            {
+                parsed = SKColors.Black;
+                _colorHex = "#000000";
+            }
+            else
+            {
+                _colorHex = hex;
+            }
+
+            _activeColor = parsed;
             ComputeInactiveColor();
             StaticCacheValid = false;
         }
@@ -49,9 +60,7 @@ namespace GaugeDotnet.Gauges
         {
             get
             {
-                SKColor active = SKColor.Parse(_colorHex);
-                SKColor inactive = SKColor.Parse(_inactiveColorHex);
-                return (active, inactive);
+                return (_activeColor, _inactiveColor);
             }
         }
 
@@ -60,7 +69,7 @@ namespace GaugeDotnet.Gauges
         /// </summary>
         protected void DrawBackground(SKCanvas canvas, int screenWidth, int screenHeight)
         {
-            SKPaint paint = new()
+            using SKPaint paint = new()
             {
                 Style = SKPaintStyle.Fill,
                 Color = SKColors.Black
@@ -73,24 +82,12 @@ namespace GaugeDotnet.Gauges
         /// </summary>
         private void ComputeInactiveColor()
         {
-            // Strip “#” if present:
-            string h = _colorHex.Replace("#", "");
-            if (h.Length != 6)
-            {
-                _inactiveColorHex = "#000000";
-                return;
-            }
-
-            if (!int.TryParse(h.Substring(0, 2), System.Globalization.NumberStyles.HexNumber, null, out int r)) r = 0;
-            if (!int.TryParse(h.Substring(2, 2), System.Globalization.NumberStyles.HexNumber, null, out int g)) g = 0;
-            if (!int.TryParse(h.Substring(4, 2), System.Globalization.NumberStyles.HexNumber, null, out int b)) b = 0;
-
             // Reduce to 10%
-            r = (int)System.Math.Round(r * 0.1f);
-            g = (int)System.Math.Round(g * 0.1f);
-            b = (int)System.Math.Round(b * 0.1f);
+            int r = (int)System.Math.Round(_activeColor.Red * 0.1f);
+            int g = (int)System.Math.Round(_activeColor.Green * 0.1f);
+            int b = (int)System.Math.Round(_activeColor.Blue * 0.1f);
 
-            _inactiveColorHex = $"#{r:X2}{g:X2}{b:X2}";
+            _inactiveColor = new SKColor((byte)r, (byte)g, (byte)b, _activeColor.Alpha);
         }
     }
 }
