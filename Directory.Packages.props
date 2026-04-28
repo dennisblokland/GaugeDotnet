@@ -7,7 +7,7 @@
     <PackageVersion Include="ppy.SDL2-CS" Version="1.0.741-alpha" />
     <PackageVersion Include="SkiaSharp" Version="3.119.1" />
     <PackageVersion Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="3.119.1" />
-    <PackageVersion Include="VaettirNet.Btleplug" Version="0.1.4" />
+    <PackageVersion Include="VaettirNet.Btleplug" Version="0.1.8" />
     <PackageVersion Include="xunit" Version="2.9.3" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
   </ItemGroup>

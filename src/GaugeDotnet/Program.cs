@@ -11,6 +11,63 @@ internal class Program
 {
     private static IMeDevice? meDevice;
 
+    private static void ShowErrorScreen(string message)
+    {
+        int w = 640, h = 480;
+        GaugeSDL sdl = new(screenWidth: w, screenHeight: h);
+        IGamePadReader gp = new GamePadReader();
+        gp.Initialize();
+
+        // Render text to a CPU bitmap, then blit to GPU canvas
+        using var bitmap = new SKBitmap(w, h);
+        using var bmpCanvas = new SKCanvas(bitmap);
+        bmpCanvas.Clear(SKColors.Black);
+
+        using SKPaint paint = new() { Color = SKColors.Red, IsAntialias = true };
+        SKTypeface typeface = FontHelper.GetFont("Race Sport");
+        using SKFont font = new(typeface, 24);
+
+        float y = 200;
+        foreach (string line in message.Split('\n'))
+        {
+            float lw = font.MeasureText(line);
+            bmpCanvas.DrawText(line, (w - lw) / 2, y, font, paint);
+            y += 34;
+        }
+
+        // "Press any button to exit" in white
+        paint.Color = SKColors.White;
+        const string exitMsg = "Press any button to exit";
+        float ew = font.MeasureText(exitMsg);
+        bmpCanvas.DrawText(exitMsg, (w - ew) / 2, y + 20, font, paint);
+
+        SKCanvas canvas = sdl.GetCanvas();
+        canvas.Clear(SKColors.Black);
+        using var image = SKImage.FromBitmap(bitmap);
+        canvas.DrawImage(image, 0, 0);
+        sdl.FlushAndSwap();
+
+        // Wait for button/key press
+        while (true)
+        {
+            while (SDL_PollEvent(out SDL_Event e) == 1)
+            {
+                if (e.type == SDL_EventType.SDL_QUIT || e.type == SDL_EventType.SDL_KEYDOWN)
+                {
+                    SDL_Quit();
+                    return;
+                }
+            }
+            GamepadKey key = gp.ReadInput();
+            if (key != GamepadKey.None)
+            {
+                SDL_Quit();
+                return;
+            }
+            Thread.Sleep(50);
+        }
+    }
+
     private static async Task Main(string[] args)
     {
         // Define a CancellationTokenSource for cancellation support
@@ -25,18 +82,44 @@ internal class Program
 #else
         exit.CancelAfter(TimeSpan.FromSeconds(60)); // Auto-cancel after 60 seconds if no device is found
 
-        BleManager bleManager = await BleManager.CreateAsync();
-        meDevice = await bleManager.ScanAsync(findAll: true, cancellationToken: exit.Token);
-        if (meDevice == null)
+        Console.WriteLine("Searching for Bluetooth adapter...");
+
+        try
         {
-            Console.WriteLine("No ME device found. Exiting...");
+            BleManager bleManager = await BleManager.CreateAsync();
+
+            Console.WriteLine("Scanning for ME device...");
+
+            meDevice = await bleManager.ScanAsync(findAll: true, cancellationToken: exit.Token);
+            if (meDevice == null)
+            {
+                Console.WriteLine("No ME device found.");
+                ShowErrorScreen("No ME device found.");
+                return;
+            }
+
+            await meDevice.ConnectAsync();
+            Console.WriteLine("ME device connected.");
+        }
+        catch (DllNotFoundException ex)
+        {
+            Console.WriteLine($"BLE native library missing: {ex.Message}");
+            ShowErrorScreen("BLE library not available\nfor this platform.");
             return;
         }
-
-        await meDevice.ConnectAsync();
+        catch (BadImageFormatException ex)
+        {
+            Console.WriteLine($"BLE library architecture mismatch: {ex.Message}");
+            ShowErrorScreen("BLE library architecture\nmismatch.");
+            return;
+        }
+        catch (Exception ex) when (ex.GetType().Name.Contains("Btle"))
+        {
+            Console.WriteLine($"Bluetooth error: {ex.Message}");
+            ShowErrorScreen($"Bluetooth error:\n{ex.Message}");
+            return;
+        }
 #endif
-
-
 
         int screenWidth = 640;
         int screenHeight = 480;
