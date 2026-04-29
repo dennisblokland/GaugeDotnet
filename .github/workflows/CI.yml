@@ -20,9 +20,11 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: 9.0.x
+        dotnet-version: 10.0.x
+    - name: Remove GitHub NuGet source
+      run: dotnet nuget remove source github-dennisblokland
     - name: Add GitHub NuGet source
-      run: dotnet nuget add source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" --name github --username ${{ github.repository_owner }} --password ${{ secrets.PAT_READ_PACKAGES }} --store-password-in-clear-text
+      run: dotnet nuget add source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" --name github-dennisblokland --username ${{ github.repository_owner }} --password ${{ secrets.PAT_READ_PACKAGES }} --store-password-in-clear-text
     - name: Restore dependencies
       run: dotnet restore
     - name: Build
