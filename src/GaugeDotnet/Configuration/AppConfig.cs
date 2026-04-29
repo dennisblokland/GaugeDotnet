@@ -7,6 +7,8 @@ namespace GaugeDotnet.Configuration
     {
         public const int MaxScreens = 10;
 
+        public bool DemoMode { get; set; } = false;
+
         [MaxLength(MaxScreens)]
         public List<ScreenConfig> Screens { get; set; } = new();
     }

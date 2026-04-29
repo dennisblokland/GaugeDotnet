@@ -73,53 +73,59 @@ internal class Program
         // Define a CancellationTokenSource for cancellation support
         using var exit = new CancellationTokenSource();
 
-#if DEBUG
-        // In debug mode bypass BLE entirely and use a simulated device
-        Console.WriteLine("[DEBUG] Using SimulatedMeDevice - no BLE required");
-        var simulatedDevice = new SimulatedMeDevice();
-        meDevice = simulatedDevice;
-        await meDevice.ConnectAsync();
-#else
-        exit.CancelAfter(TimeSpan.FromSeconds(60)); // Auto-cancel after 60 seconds if no device is found
+        // Load configuration (creates default gauges.json if missing)
+        AppConfig appConfig = ConfigService.Load();
+        Console.WriteLine($"Loaded {appConfig.Screens.Count} screen(s) from config");
 
-        Console.WriteLine("Searching for Bluetooth adapter...");
-
-        try
+        if (appConfig.DemoMode)
         {
-            BleManager bleManager = await BleManager.CreateAsync();
+            Console.WriteLine("[DemoMode] Using SimulatedMeDevice - no BLE required");
+            SimulatedMeDevice simulatedDevice = new();
+            meDevice = simulatedDevice;
+            await meDevice.ConnectAsync();
+        }
+        else
+        {
+            exit.CancelAfter(TimeSpan.FromSeconds(60));
 
-            Console.WriteLine("Scanning for ME device...");
+            Console.WriteLine("Searching for Bluetooth adapter...");
 
-            meDevice = await bleManager.ScanAsync(findAll: true, cancellationToken: exit.Token);
-            if (meDevice == null)
+            try
             {
-                Console.WriteLine("No ME device found.");
-                ShowErrorScreen("No ME device found.");
+                BleManager bleManager = await BleManager.CreateAsync();
+
+                Console.WriteLine("Scanning for ME device...");
+
+                meDevice = await bleManager.ScanAsync(findAll: true, cancellationToken: exit.Token);
+                if (meDevice == null)
+                {
+                    Console.WriteLine("No ME device found.");
+                    ShowErrorScreen("No ME device found.");
+                    return;
+                }
+
+                await meDevice.ConnectAsync();
+                Console.WriteLine("ME device connected.");
+            }
+            catch (DllNotFoundException ex)
+            {
+                Console.WriteLine($"BLE native library missing: {ex.Message}");
+                ShowErrorScreen("BLE library not available\nfor this platform.");
                 return;
             }
-
-            await meDevice.ConnectAsync();
-            Console.WriteLine("ME device connected.");
+            catch (BadImageFormatException ex)
+            {
+                Console.WriteLine($"BLE library architecture mismatch: {ex.Message}");
+                ShowErrorScreen("BLE library architecture\nmismatch.");
+                return;
+            }
+            catch (Exception ex) when (ex.GetType().Name.Contains("Btle"))
+            {
+                Console.WriteLine($"Bluetooth error: {ex.Message}");
+                ShowErrorScreen($"Bluetooth error:\n{ex.Message}");
+                return;
+            }
         }
-        catch (DllNotFoundException ex)
-        {
-            Console.WriteLine($"BLE native library missing: {ex.Message}");
-            ShowErrorScreen("BLE library not available\nfor this platform.");
-            return;
-        }
-        catch (BadImageFormatException ex)
-        {
-            Console.WriteLine($"BLE library architecture mismatch: {ex.Message}");
-            ShowErrorScreen("BLE library architecture\nmismatch.");
-            return;
-        }
-        catch (Exception ex) when (ex.GetType().Name.Contains("Btle"))
-        {
-            Console.WriteLine($"Bluetooth error: {ex.Message}");
-            ShowErrorScreen($"Bluetooth error:\n{ex.Message}");
-            return;
-        }
-#endif
 
         int screenWidth = 640;
         int screenHeight = 480;
@@ -129,10 +135,6 @@ internal class Program
             screenWidth: screenWidth,
             screenHeight: screenHeight
         );
-
-        // Load configuration (creates default gauges.json if missing)
-        AppConfig appConfig = ConfigService.Load();
-        Console.WriteLine($"Loaded {appConfig.Screens.Count} screen(s) from config");
 
         // Build gauge instances per screen
         List<(BaseGauge Gauge, string DataSource)> screens = GaugeFactory.BuildScreens(appConfig, screenWidth, screenHeight);
@@ -283,9 +285,10 @@ internal class Program
 
         exit.Cancel();
         SDL_Quit();
-#if DEBUG
-        (meDevice as IDisposable)?.Dispose();
-#endif
+        if (meDevice is IDisposable disposable)
+        {
+            disposable.Dispose();
+        }
         Console.WriteLine("Exiting program...");
         Environment.Exit(0);
     }
