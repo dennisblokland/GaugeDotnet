@@ -1,5 +1,4 @@
 ﻿using GaugeDotnet.Configuration;
-using GaugeDotnet.Gauges.Models;
 using GaugeDotnet.Gauges;
 using SkiaSharp;
 using GaugeDotnet;
@@ -11,172 +10,6 @@ using RG35XX.Core.GamePads;
 internal class Program
 {
     private static IMeDevice? meDevice;
-
-    private static List<(BaseGauge Gauge, string DataSource)> BuildScreens(AppConfig config, int screenWidth, int screenHeight)
-    {
-        List<(BaseGauge Gauge, string DataSource)> screens = new();
-        foreach (ScreenConfig screenConfig in config.Screens)
-        {
-            GaugeConfig gaugeConfig = screenConfig.Gauge;
-            BaseGauge gauge;
-            switch (gaugeConfig.Type)
-            {
-                case GaugeType.Circular:
-                    CircularGaugeSettings circularSettings = new()
-                    {
-                        InitialValue = gaugeConfig.InitialValue,
-                        MinValue = gaugeConfig.MinValue,
-                        MaxValue = gaugeConfig.MaxValue,
-                        Unit = gaugeConfig.Unit,
-                        Title = gaugeConfig.Title,
-                        Decimals = gaugeConfig.Decimals,
-                        SegmentCount = gaugeConfig.SegmentCount,
-                        Smoothing = gaugeConfig.Smoothing,
-                    };
-                    gauge = new CircularGauge(
-                        settings: circularSettings,
-                        screenWidth: screenWidth,
-                        screenHeight: screenHeight
-                    );
-                    break;
-
-                case GaugeType.Histogram:
-                    HistogramGaugeSettings histogramSettings = new()
-                    {
-                        InitialValue = gaugeConfig.InitialValue,
-                        MinValue = gaugeConfig.MinValue,
-                        MaxValue = gaugeConfig.MaxValue,
-                        Unit = gaugeConfig.Unit,
-                        Title = gaugeConfig.Title,
-                        Decimals = gaugeConfig.Decimals,
-                        MaxDataPoints = gaugeConfig.MaxDataPoints,
-                        IntervalMs = gaugeConfig.IntervalMs,
-                    };
-                    gauge = new HistogramGauge(
-                        settings: histogramSettings,
-                        screenWidth: screenWidth,
-                        screenHeight: screenHeight
-                    );
-                    break;
-
-                case GaugeType.Needle:
-                    NeedleGaugeSettings needleSettings = new()
-                    {
-                        InitialValue = gaugeConfig.InitialValue,
-                        MinValue = gaugeConfig.MinValue,
-                        MaxValue = gaugeConfig.MaxValue,
-                        Unit = gaugeConfig.Unit,
-                        Title = gaugeConfig.Title,
-                        Decimals = gaugeConfig.Decimals,
-                        Smoothing = gaugeConfig.Smoothing,
-                    };
-                    gauge = new NeedleGauge(
-                        settings: needleSettings,
-                        screenWidth: screenWidth,
-                        screenHeight: screenHeight
-                    );
-                    break;
-
-                case GaugeType.Digital:
-                    DigitalGaugeSettings digitalSettings = new()
-                    {
-                        InitialValue = gaugeConfig.InitialValue,
-                        MinValue = gaugeConfig.MinValue,
-                        MaxValue = gaugeConfig.MaxValue,
-                        Unit = gaugeConfig.Unit,
-                        Title = gaugeConfig.Title,
-                        Decimals = gaugeConfig.Decimals,
-                    };
-                    gauge = new DigitalGauge(
-                        settings: digitalSettings,
-                        screenWidth: screenWidth,
-                        screenHeight: screenHeight
-                    );
-                    break;
-
-                case GaugeType.Sweep:
-                    SweepGaugeSettings sweepSettings = new()
-                    {
-                        InitialValue = gaugeConfig.InitialValue,
-                        MinValue = gaugeConfig.MinValue,
-                        MaxValue = gaugeConfig.MaxValue,
-                        Unit = gaugeConfig.Unit,
-                        Title = gaugeConfig.Title,
-                        Decimals = gaugeConfig.Decimals,
-                        Smoothing = gaugeConfig.Smoothing,
-                    };
-                    gauge = new SweepGauge(
-                        settings: sweepSettings,
-                        screenWidth: screenWidth,
-                        screenHeight: screenHeight
-                    );
-                    break;
-
-                case GaugeType.MinMax:
-                    MinMaxGaugeSettings minMaxSettings = new()
-                    {
-                        InitialValue = gaugeConfig.InitialValue,
-                        MinValue = gaugeConfig.MinValue,
-                        MaxValue = gaugeConfig.MaxValue,
-                        Unit = gaugeConfig.Unit,
-                        Title = gaugeConfig.Title,
-                        Decimals = gaugeConfig.Decimals,
-                        SegmentCount = gaugeConfig.SegmentCount,
-                        Smoothing = gaugeConfig.Smoothing,
-                    };
-                    gauge = new MinMaxGauge(
-                        settings: minMaxSettings,
-                        screenWidth: screenWidth,
-                        screenHeight: screenHeight
-                    );
-                    break;
-
-                case GaugeType.Grid:
-                    GridGaugeSettings gridSettings = new()
-                    {
-                        InitialValue = gaugeConfig.InitialValue,
-                        MinValue = gaugeConfig.MinValue,
-                        MaxValue = gaugeConfig.MaxValue,
-                        Unit = gaugeConfig.Unit,
-                        Title = gaugeConfig.Title,
-                        Cells = gaugeConfig.Cells,
-                    };
-                    gauge = new GridGauge(
-                        settings: gridSettings,
-                        screenWidth: screenWidth,
-                        screenHeight: screenHeight
-                    );
-                    break;
-
-                case GaugeType.Bar:
-                default:
-                    BarGaugeSettings barSettings = new()
-                    {
-                        InitialValue = gaugeConfig.InitialValue,
-                        MinValue = gaugeConfig.MinValue,
-                        MaxValue = gaugeConfig.MaxValue,
-                        Unit = gaugeConfig.Unit,
-                        Title = gaugeConfig.Title,
-                        Decimals = gaugeConfig.Decimals,
-                        SegmentCount = gaugeConfig.SegmentCount,
-                        Smoothing = gaugeConfig.Smoothing,
-                    };
-                    gauge = new BarGauge(
-                        settings: barSettings,
-                        screenWidth: screenWidth,
-                        screenHeight: screenHeight
-                    );
-                    break;
-            }
-
-            if (gaugeConfig.Type != GaugeType.Grid)
-            {
-                gauge.SetColorHex(gaugeConfig.ColorHex);
-            }
-            screens.Add((gauge, gaugeConfig.DataSource));
-        }
-        return screens;
-    }
 
     private static void ShowErrorScreen(string message)
     {
@@ -302,7 +135,7 @@ internal class Program
         Console.WriteLine($"Loaded {appConfig.Screens.Count} screen(s) from config");
 
         // Build gauge instances per screen
-        List<(BaseGauge Gauge, string DataSource)> screens = BuildScreens(appConfig, screenWidth, screenHeight);
+        List<(BaseGauge Gauge, string DataSource)> screens = GaugeFactory.BuildScreens(appConfig, screenWidth, screenHeight);
 
         int currentScreen = 0;
         ConfigEditor? configEditor = null;
@@ -384,7 +217,7 @@ internal class Program
                     // Exiting editor - rebuild gauges if config changed
                     if (configEditor.ConfigChanged)
                     {
-                        screens = BuildScreens(appConfig, screenWidth, screenHeight);
+                        screens = GaugeFactory.BuildScreens(appConfig, screenWidth, screenHeight);
                         if (currentScreen >= screens.Count)
                         {
                             currentScreen = Math.Max(0, screens.Count - 1);
@@ -430,20 +263,7 @@ internal class Program
                 if (meDevice != null && meDevice.IsConnected && screens.Count > 0)
                 {
                     (BaseGauge g, string dataSource) = screens[currentScreen];
-                    if (g is GridGauge gridGauge)
-                    {
-                        for (int i = 0; i < gridGauge.CellCount; i++)
-                        {
-                            GridCellConfig cell = gridGauge.GetCellConfig(i);
-                            decimal cellValue = DataSourceMapper.ReadValue(meDevice.Data, cell.DataSource);
-                            gridGauge.SetCellValue(i, cellValue);
-                        }
-                    }
-                    else
-                    {
-                        decimal value = DataSourceMapper.ReadValue(meDevice.Data, dataSource);
-                        g.SetValue(value);
-                    }
+                    GaugeFactory.UpdateGaugeValues(g, dataSource, meDevice);
                 }
 
                 lastUpdate = now;
