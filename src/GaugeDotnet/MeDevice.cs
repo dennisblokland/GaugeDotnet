@@ -1,5 +1,4 @@
 using ME1_4NET;
-using ME1_4NET.Frames;
 using VaettirNet.Btleplug;
 
 namespace GaugeDotnet

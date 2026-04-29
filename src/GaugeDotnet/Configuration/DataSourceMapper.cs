@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using ME1_4NET;
 
 namespace GaugeDotnet.Configuration

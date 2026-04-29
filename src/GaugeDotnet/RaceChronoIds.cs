@@ -1,5 +1,3 @@
-using System;
-
 namespace GaugeDotnet
 {
     internal static class RaceChronoIds

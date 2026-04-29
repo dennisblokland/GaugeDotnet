@@ -1,11 +1,4 @@
-using System;
-using System.Buffers.Binary;
-using System.Collections.Generic;
 using System.Globalization;
-using System.Runtime.CompilerServices;
-using System.Threading.Tasks;
-using ME1_4NET;
-using ME1_4NET.Frames;
 using VaettirNet.Btleplug;
 
 namespace GaugeDotnet

@@ -1,5 +1,4 @@
 ﻿using GaugeDotnet.Configuration;
-using GaugeDotnet.Gauges;
 using SkiaSharp;
 using GaugeDotnet;
 using static SDL2.SDL;
