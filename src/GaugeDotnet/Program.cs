@@ -12,6 +12,80 @@ internal class Program
 {
     private static IMeDevice? meDevice;
 
+    private static List<(BaseGauge Gauge, string DataSource)> BuildScreens(AppConfig config, int screenWidth, int screenHeight)
+    {
+        List<(BaseGauge Gauge, string DataSource)> screens = new();
+        foreach (ScreenConfig screenConfig in config.Screens)
+        {
+            GaugeConfig gaugeConfig = screenConfig.Gauge;
+            BaseGauge gauge;
+            switch (gaugeConfig.Type)
+            {
+                case GaugeType.Circular:
+                    CircularGaugeSettings circularSettings = new()
+                    {
+                        InitialValue = gaugeConfig.InitialValue,
+                        MinValue = gaugeConfig.MinValue,
+                        MaxValue = gaugeConfig.MaxValue,
+                        Unit = gaugeConfig.Unit,
+                        Title = gaugeConfig.Title,
+                        Decimals = gaugeConfig.Decimals,
+                        SegmentCount = gaugeConfig.SegmentCount,
+                        Smoothing = gaugeConfig.Smoothing,
+                    };
+                    gauge = new CircularGauge(
+                        settings: circularSettings,
+                        screenWidth: screenWidth,
+                        screenHeight: screenHeight
+                    );
+                    break;
+
+                case GaugeType.Histogram:
+                    HistogramGaugeSettings histogramSettings = new()
+                    {
+                        InitialValue = gaugeConfig.InitialValue,
+                        MinValue = gaugeConfig.MinValue,
+                        MaxValue = gaugeConfig.MaxValue,
+                        Unit = gaugeConfig.Unit,
+                        Title = gaugeConfig.Title,
+                        Decimals = gaugeConfig.Decimals,
+                        MaxDataPoints = gaugeConfig.MaxDataPoints,
+                        IntervalMs = gaugeConfig.IntervalMs,
+                    };
+                    gauge = new HistogramGauge(
+                        settings: histogramSettings,
+                        screenWidth: screenWidth,
+                        screenHeight: screenHeight
+                    );
+                    break;
+
+                case GaugeType.Bar:
+                default:
+                    BarGaugeSettings barSettings = new()
+                    {
+                        InitialValue = gaugeConfig.InitialValue,
+                        MinValue = gaugeConfig.MinValue,
+                        MaxValue = gaugeConfig.MaxValue,
+                        Unit = gaugeConfig.Unit,
+                        Title = gaugeConfig.Title,
+                        Decimals = gaugeConfig.Decimals,
+                        SegmentCount = gaugeConfig.SegmentCount,
+                        Smoothing = gaugeConfig.Smoothing,
+                    };
+                    gauge = new BarGauge(
+                        settings: barSettings,
+                        screenWidth: screenWidth,
+                        screenHeight: screenHeight
+                    );
+                    break;
+            }
+
+            gauge.SetColorHex(gaugeConfig.ColorHex);
+            screens.Add((gauge, gaugeConfig.DataSource));
+        }
+        return screens;
+    }
+
     private static void ShowErrorScreen(string message)
     {
         int w = 640, h = 480;
@@ -136,43 +210,10 @@ internal class Program
         Console.WriteLine($"Loaded {appConfig.Screens.Count} screen(s) from config");
 
         // Build gauge instances per screen
-        List<List<(BaseGauge Gauge, string DataSource)>> screens = new();
-        foreach (ScreenConfig screenConfig in appConfig.Screens)
-        {
-            List<(BaseGauge Gauge, string DataSource)> screenGauges = new();
-            foreach (GaugeConfig gaugeConfig in screenConfig.Gauges)
-            {
-                BaseGauge gauge;
-                switch (gaugeConfig.Type)
-                {
-                    case GaugeType.Bar:
-                    default:
-                        BarGaugeSettings barSettings = new()
-                        {
-                            InitialValue = gaugeConfig.InitialValue,
-                            MinValue = gaugeConfig.MinValue,
-                            MaxValue = gaugeConfig.MaxValue,
-                            Unit = gaugeConfig.Unit,
-                            Title = gaugeConfig.Title,
-                            Decimals = gaugeConfig.Decimals,
-                            SegmentCount = gaugeConfig.SegmentCount,
-                            Smoothing = gaugeConfig.Smoothing,
-                        };
-                        gauge = new BarGauge(
-                            settings: barSettings,
-                            screenWidth: screenWidth,
-                            screenHeight: screenHeight
-                        );
-                        break;
-                }
-
-                gauge.SetColorHex(gaugeConfig.ColorHex);
-                screenGauges.Add((gauge, gaugeConfig.DataSource));
-            }
-            screens.Add(screenGauges);
-        }
+        List<(BaseGauge Gauge, string DataSource)> screens = BuildScreens(appConfig, screenWidth, screenHeight);
 
         int currentScreen = 0;
+        ConfigEditor? configEditor = null;
 
         bool running = true;
         SDL_Event e;
@@ -204,10 +245,12 @@ internal class Program
         using SKFont fpsFont = new() { Size = 20 };
 
         double lastUpdate = 0;
+        SDL2.SDL.SDL_Keycode? lastSdlKey = null;
         while (running)
         {
+            lastSdlKey = null;
 
-            // ‣ Poll SDL events
+            // Poll SDL events
             while (SDL_PollEvent(out e) == 1)
             {
                 switch (e.type)
@@ -217,17 +260,19 @@ internal class Program
                         break;
                     case SDL_EventType.SDL_KEYDOWN:
                         {
-                            // Key was pressed
                             SDL_KeyboardEvent keyEvent = e.key;
                             SDL_Keycode keycode = keyEvent.keysym.sym;
-                            byte repeat = keyEvent.repeat; // 0 if not a repeat
+                            byte repeat = keyEvent.repeat;
+                            if (repeat == 0)
+                            {
+                                lastSdlKey = keycode;
+                            }
                             KeyBus.OnKeyDown(keycode);
                         }
                         break;
 
                     case SDL_EventType.SDL_KEYUP:
                         {
-                            // Key was released
                             SDL_KeyboardEvent keyEvent = e.key;
                             SDL_Keycode keycode = keyEvent.keysym.sym;
                             KeyBus.OnKeyUp(keycode);
@@ -236,9 +281,42 @@ internal class Program
                 }
             }
             GamepadKey key = gamePadReader.ReadInput();
+
+            // Config editor mode
+            if (configEditor != null)
+            {
+                configEditor.HandleInput(key, lastSdlKey);
+
+                if (!configEditor.IsActive)
+                {
+                    // Exiting editor - rebuild gauges if config changed
+                    if (configEditor.ConfigChanged)
+                    {
+                        screens = BuildScreens(appConfig, screenWidth, screenHeight);
+                        if (currentScreen >= screens.Count)
+                        {
+                            currentScreen = Math.Max(0, screens.Count - 1);
+                        }
+                    }
+                    configEditor = null;
+                }
+                else
+                {
+                    SKCanvas canvas = gaugeSDL.GetCanvas();
+                    configEditor.Draw(canvas);
+                    gaugeSDL.FlushAndSwap();
+                    continue;
+                }
+            }
+
             if (key == GamepadKey.MENU_DOWN)
             {
                 running = false;
+            }
+            else if (key == GamepadKey.SELECT_DOWN || lastSdlKey == SDL_Keycode.SDLK_TAB)
+            {
+                configEditor = new ConfigEditor(appConfig, screenWidth, screenHeight);
+                continue;
             }
             else if (key == GamepadKey.RIGHT && screens.Count > 1)
             {
@@ -249,34 +327,32 @@ internal class Program
                 currentScreen = (currentScreen - 1 + screens.Count) % screens.Count;
             }
 
-            SKCanvas canvas = gaugeSDL.GetCanvas();
+            SKCanvas canvas2 = gaugeSDL.GetCanvas();
 
             // Clear to black
-            canvas.Clear(new SKColor(0, 0, 0));
+            canvas2.Clear(new SKColor(0, 0, 0));
 
             double now = stopwatch.Elapsed.TotalSeconds;
             if (now - lastUpdate >= 0.05)
             {
-                if (meDevice != null && meDevice.IsConnected)
+                if (meDevice != null && meDevice.IsConnected && screens.Count > 0)
                 {
-                    foreach ((BaseGauge g, string dataSource) in screens[currentScreen])
-                    {
-                        decimal value = DataSourceMapper.ReadValue(meDevice.Data, dataSource);
-                        g.SetValue(value);
-                    }
+                    (BaseGauge g, string dataSource) = screens[currentScreen];
+                    decimal value = DataSourceMapper.ReadValue(meDevice.Data, dataSource);
+                    g.SetValue(value);
                 }
 
                 lastUpdate = now;
             }
 
-            foreach ((BaseGauge g, string _) in screens[currentScreen])
+            if (screens.Count > 0 && currentScreen < screens.Count)
             {
-                g.Draw(canvas);
+                screens[currentScreen].Gauge.Draw(canvas2);
             }
 
             // Draw an FPS counter in the top-left corner.
             GetFps();
-            canvas.DrawText(fpsText, 10, 25, fpsFont, fpsPaint);
+            canvas2.DrawText(fpsText, 10, 25, fpsFont, fpsPaint);
 
             gaugeSDL.FlushAndSwap();
         }

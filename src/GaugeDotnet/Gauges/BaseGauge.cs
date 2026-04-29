@@ -28,7 +28,7 @@ namespace GaugeDotnet.Gauges
 
         public abstract void Draw(SKCanvas canvas);
 
-        public void SetValue(decimal v)
+        public virtual void SetValue(decimal v)
         {
             _value = v;
         }

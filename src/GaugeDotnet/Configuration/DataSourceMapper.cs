@@ -39,6 +39,8 @@ namespace GaugeDotnet.Configuration
             ["Baro"] = d => d.Baro,
         };
 
+        public static List<string> DataSourceNames { get; } = new(Mappings.Keys);
+
         public static decimal ReadValue(MEData data, string dataSource)
         {
             if (Mappings.TryGetValue(dataSource, out Func<MEData, decimal>? getter))

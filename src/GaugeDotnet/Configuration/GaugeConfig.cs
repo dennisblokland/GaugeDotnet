@@ -15,5 +15,9 @@ namespace GaugeDotnet.Configuration
         public int SegmentCount { get; set; } = 32;
         public bool Smoothing { get; set; } = true;
         public int Decimals { get; set; } = 0;
+
+        // Histogram gauge specific
+        public int MaxDataPoints { get; set; } = 50;
+        public int IntervalMs { get; set; } = 1000;
     }
 }

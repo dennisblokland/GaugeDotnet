@@ -2,6 +2,8 @@ namespace GaugeDotnet.Configuration
 {
     public enum GaugeType
     {
-        Bar
+        Bar,
+        Circular,
+        Histogram
     }
 }

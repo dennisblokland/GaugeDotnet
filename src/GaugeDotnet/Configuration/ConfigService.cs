@@ -60,23 +60,20 @@ namespace GaugeDotnet.Configuration
                 [
                     new ScreenConfig
                     {
-                        Gauges =
-                        [
-                            new GaugeConfig
-                            {
-                                Type = GaugeType.Bar,
-                                DataSource = "AfrCurr1",
-                                ColorHex = "#00FFFF",
-                                Title = "AFR",
-                                Unit = "",
-                                MinValue = 8,
-                                MaxValue = 18,
-                                InitialValue = 14.7M,
-                                Decimals = 2,
-                                SegmentCount = 32,
-                                Smoothing = true
-                            }
-                        ]
+                        Gauge = new GaugeConfig
+                        {
+                            Type = GaugeType.Bar,
+                            DataSource = "AfrCurr1",
+                            ColorHex = "#00FFFF",
+                            Title = "AFR",
+                            Unit = "",
+                            MinValue = 8,
+                            MaxValue = 18,
+                            InitialValue = 14.7M,
+                            Decimals = 2,
+                            SegmentCount = 32,
+                            Smoothing = true
+                        }
                     }
                 ]
             };
