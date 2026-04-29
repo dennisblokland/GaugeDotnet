@@ -281,7 +281,7 @@ internal class Program
             gaugeSDL.FlushAndSwap();
         }
 
-       exit.Cancel();
+        exit.Cancel();
         SDL_Quit();
 #if DEBUG
         (meDevice as IDisposable)?.Dispose();
