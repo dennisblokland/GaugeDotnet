@@ -9,8 +9,6 @@ using RG35XX.Core.GamePads;
 
 internal class Program
 {
-    private static IMeDevice? meDevice;
-
     private static void ShowErrorScreen(string message)
     {
         int w = 640, h = 480;
@@ -18,7 +16,6 @@ internal class Program
         IGamePadReader gp = new GamePadReader();
         gp.Initialize();
 
-        // Render text to a CPU bitmap, then blit to GPU canvas
         using var bitmap = new SKBitmap(w, h);
         using var bmpCanvas = new SKCanvas(bitmap);
         bmpCanvas.Clear(SKColors.Black);
@@ -35,7 +32,6 @@ internal class Program
             y += 34;
         }
 
-        // "Press any button to exit" in white
         paint.Color = SKColors.White;
         const string exitMsg = "Press any button to exit";
         float ew = font.MeasureText(exitMsg);
@@ -47,7 +43,6 @@ internal class Program
         canvas.DrawImage(image, 0, 0);
         sdl.FlushAndSwap();
 
-        // Wait for button/key press
         while (true)
         {
             while (SDL_PollEvent(out SDL_Event e) == 1)
@@ -68,220 +63,71 @@ internal class Program
         }
     }
 
-    private static async Task Main(string[] args)
+    private static async Task<IMeDevice?> ConnectDeviceAsync(AppConfig appConfig, CancellationTokenSource exit)
     {
-        // Define a CancellationTokenSource for cancellation support
-        using var exit = new CancellationTokenSource();
-
-        // Load configuration (creates default gauges.json if missing)
-        AppConfig appConfig = ConfigService.Load();
-        Console.WriteLine($"Loaded {appConfig.Screens.Count} screen(s) from config");
-
         if (appConfig.DemoMode)
         {
             Console.WriteLine("[DemoMode] Using SimulatedMeDevice - no BLE required");
             SimulatedMeDevice simulatedDevice = new();
-            meDevice = simulatedDevice;
-            await meDevice.ConnectAsync();
-        }
-        else
-        {
-            exit.CancelAfter(TimeSpan.FromSeconds(60));
-
-            Console.WriteLine("Searching for Bluetooth adapter...");
-
-            try
-            {
-                BleManager bleManager = await BleManager.CreateAsync();
-
-                Console.WriteLine("Scanning for ME device...");
-
-                meDevice = await bleManager.ScanAsync(findAll: true, cancellationToken: exit.Token);
-                if (meDevice == null)
-                {
-                    Console.WriteLine("No ME device found.");
-                    ShowErrorScreen("No ME device found.");
-                    return;
-                }
-
-                await meDevice.ConnectAsync();
-                Console.WriteLine("ME device connected.");
-            }
-            catch (DllNotFoundException ex)
-            {
-                Console.WriteLine($"BLE native library missing: {ex.Message}");
-                ShowErrorScreen("BLE library not available\nfor this platform.");
-                return;
-            }
-            catch (BadImageFormatException ex)
-            {
-                Console.WriteLine($"BLE library architecture mismatch: {ex.Message}");
-                ShowErrorScreen("BLE library architecture\nmismatch.");
-                return;
-            }
-            catch (Exception ex) when (ex.GetType().Name.Contains("Btle"))
-            {
-                Console.WriteLine($"Bluetooth error: {ex.Message}");
-                ShowErrorScreen($"Bluetooth error:\n{ex.Message}");
-                return;
-            }
+            await simulatedDevice.ConnectAsync();
+            return simulatedDevice;
         }
 
-        int screenWidth = 640;
-        int screenHeight = 480;
-        IGamePadReader gamePadReader = new GamePadReader();
-        gamePadReader.Initialize();
-        GaugeSDL gaugeSDL = new(
-            screenWidth: screenWidth,
-            screenHeight: screenHeight
-        );
+        exit.CancelAfter(TimeSpan.FromSeconds(60));
+        Console.WriteLine("Searching for Bluetooth adapter...");
 
-        // Build gauge instances per screen
-        List<(BaseGauge Gauge, string DataSource)> screens = GaugeFactory.BuildScreens(appConfig, screenWidth, screenHeight);
-
-        int currentScreen = 0;
-        ConfigEditor? configEditor = null;
-
-        bool running = true;
-        SDL_Event e;
-
-        System.Diagnostics.Stopwatch stopwatch = System.Diagnostics.Stopwatch.StartNew();
-        int frameCount = 0;
-        double lastReport = 0.0;
-        double currentFps = 0.0;
-        string fpsText = "FPS: 0.00";
-        double GetFps()
+        try
         {
-            frameCount++;
-            double elapsed = stopwatch.Elapsed.TotalSeconds;
-            if (elapsed - lastReport >= 1.0)
+            BleManager bleManager = await BleManager.CreateAsync();
+            Console.WriteLine("Scanning for ME device...");
+
+            IMeDevice? device = await bleManager.ScanAsync(findAll: true, cancellationToken: exit.Token);
+            if (device == null)
             {
-                currentFps = frameCount / (elapsed - lastReport);
-                lastReport = elapsed;
-                frameCount = 0;
-                fpsText = $"FPS: {currentFps:F2}";
+                Console.WriteLine("No ME device found.");
+                ShowErrorScreen("No ME device found.");
+                return null;
             }
-            return currentFps;
+
+            await device.ConnectAsync();
+            Console.WriteLine("ME device connected.");
+            return device;
+        }
+        catch (DllNotFoundException ex)
+        {
+            Console.WriteLine($"BLE native library missing: {ex.Message}");
+            ShowErrorScreen("BLE library not available\nfor this platform.");
+            return null;
+        }
+        catch (BadImageFormatException ex)
+        {
+            Console.WriteLine($"BLE library architecture mismatch: {ex.Message}");
+            ShowErrorScreen("BLE library architecture\nmismatch.");
+            return null;
+        }
+        catch (Exception ex) when (ex.GetType().Name.Contains("Btle"))
+        {
+            Console.WriteLine($"Bluetooth error: {ex.Message}");
+            ShowErrorScreen($"Bluetooth error:\n{ex.Message}");
+            return null;
+        }
+    }
+
+    private static async Task Main(string[] args)
+    {
+        using CancellationTokenSource exit = new();
+
+        AppConfig appConfig = ConfigService.Load();
+        Console.WriteLine($"Loaded {appConfig.Screens.Count} screen(s) from config");
+
+        IMeDevice? meDevice = await ConnectDeviceAsync(appConfig, exit);
+        if (meDevice == null && !appConfig.DemoMode)
+        {
+            return;
         }
 
-        using SKPaint fpsPaint = new()
-        {
-            Color = SKColors.White,
-            IsAntialias = true
-        };
-        using SKFont fpsFont = new() { Size = 20 };
-
-        double lastUpdate = 0;
-        SDL2.SDL.SDL_Keycode? lastSdlKey = null;
-        while (running)
-        {
-            lastSdlKey = null;
-
-            // Poll SDL events
-            while (SDL_PollEvent(out e) == 1)
-            {
-                switch (e.type)
-                {
-                    case SDL_EventType.SDL_QUIT:
-                        running = false;
-                        break;
-                    case SDL_EventType.SDL_KEYDOWN:
-                        {
-                            SDL_KeyboardEvent keyEvent = e.key;
-                            SDL_Keycode keycode = keyEvent.keysym.sym;
-                            byte repeat = keyEvent.repeat;
-                            if (repeat == 0)
-                            {
-                                lastSdlKey = keycode;
-                            }
-                            KeyBus.OnKeyDown(keycode);
-                        }
-                        break;
-
-                    case SDL_EventType.SDL_KEYUP:
-                        {
-                            SDL_KeyboardEvent keyEvent = e.key;
-                            SDL_Keycode keycode = keyEvent.keysym.sym;
-                            KeyBus.OnKeyUp(keycode);
-                        }
-                        break;
-                }
-            }
-            GamepadKey key = gamePadReader.ReadInput();
-
-            // Config editor mode
-            if (configEditor != null)
-            {
-                configEditor.HandleInput(key, lastSdlKey);
-
-                if (!configEditor.IsActive)
-                {
-                    // Exiting editor - rebuild gauges if config changed
-                    if (configEditor.ConfigChanged)
-                    {
-                        screens = GaugeFactory.BuildScreens(appConfig, screenWidth, screenHeight);
-                        if (currentScreen >= screens.Count)
-                        {
-                            currentScreen = Math.Max(0, screens.Count - 1);
-                        }
-                    }
-                    configEditor = null;
-                }
-                else
-                {
-                    SKCanvas canvas = gaugeSDL.GetCanvas();
-                    configEditor.Draw(canvas);
-                    gaugeSDL.FlushAndSwap();
-                    continue;
-                }
-            }
-
-            if (key == GamepadKey.MENU_DOWN)
-            {
-                running = false;
-            }
-            else if (key == GamepadKey.SELECT_DOWN || lastSdlKey == SDL_Keycode.SDLK_TAB)
-            {
-                configEditor = new ConfigEditor(appConfig, screenWidth, screenHeight);
-                continue;
-            }
-            else if (key == GamepadKey.RIGHT && screens.Count > 1)
-            {
-                currentScreen = (currentScreen + 1) % screens.Count;
-            }
-            else if (key == GamepadKey.LEFT && screens.Count > 1)
-            {
-                currentScreen = (currentScreen - 1 + screens.Count) % screens.Count;
-            }
-
-            SKCanvas canvas2 = gaugeSDL.GetCanvas();
-
-            // Clear to black
-            canvas2.Clear(new SKColor(0, 0, 0));
-
-            double now = stopwatch.Elapsed.TotalSeconds;
-            if (now - lastUpdate >= 0.05)
-            {
-                if (meDevice != null && meDevice.IsConnected && screens.Count > 0)
-                {
-                    (BaseGauge g, string dataSource) = screens[currentScreen];
-                    GaugeFactory.UpdateGaugeValues(g, dataSource, meDevice);
-                }
-
-                lastUpdate = now;
-            }
-
-            if (screens.Count > 0 && currentScreen < screens.Count)
-            {
-                screens[currentScreen].Gauge.Draw(canvas2);
-            }
-
-            // Draw an FPS counter in the top-left corner.
-            GetFps();
-            canvas2.DrawText(fpsText, 10, 25, fpsFont, fpsPaint);
-
-            gaugeSDL.FlushAndSwap();
-        }
+        GameLoop gameLoop = new(appConfig, meDevice, screenWidth: 640, screenHeight: 480);
+        gameLoop.Run();
 
         exit.Cancel();
         SDL_Quit();
