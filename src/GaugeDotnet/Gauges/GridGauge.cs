@@ -21,6 +21,8 @@ namespace GaugeDotnet.Gauges
 
 		private readonly SKBitmap _staticBitmap;
 		private readonly SKCanvas _staticCanvas;
+		private readonly SKPaint _valuePaint;
+		private readonly SKFont _valueFont;
 
 		public GridGauge(
 			GridGaugeSettings settings,
@@ -36,6 +38,15 @@ namespace GaugeDotnet.Gauges
 
 			_staticBitmap = new SKBitmap(screenWidth, screenHeight, SKColorType.Rgba8888, SKAlphaType.Premul);
 			_staticCanvas = new SKCanvas(_staticBitmap);
+
+			float cellHeight = screenHeight / (float)Rows;
+			float valueSize = cellHeight * 0.35f;
+			_valuePaint = new SKPaint
+			{
+				Color = ValueColor,
+				IsAntialias = true,
+			};
+			_valueFont = new SKFont(_raceFont, valueSize);
 		}
 
 		public int CellCount => _cells.Count;
@@ -119,15 +130,7 @@ namespace GaugeDotnet.Gauges
 		{
 			float cellWidth = _screenWidth / (float)Columns;
 			float cellHeight = _screenHeight / (float)Rows;
-			float valueSize = cellHeight * 0.35f;
-
-			using SKPaint valuePaint = new()
-			{
-				Color = ValueColor,
-				IsAntialias = true,
-			};
-
-			using SKFont valueFont = new(_raceFont, valueSize);
+			float valueSize = _valueFont.Size;
 
 			for (int i = 0; i < _cells.Count && i < Columns * Rows; i++)
 			{
@@ -138,7 +141,7 @@ namespace GaugeDotnet.Gauges
 
 				string text = _cellValues[i].ToString($"F{_cells[i].Decimals}");
 
-				canvas.DrawText(text, cx, cy, SKTextAlign.Center, valueFont, valuePaint);
+				canvas.DrawText(text, cx, cy, SKTextAlign.Center, _valueFont, _valuePaint);
 			}
 		}
 	}
