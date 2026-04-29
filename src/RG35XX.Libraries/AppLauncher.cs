@@ -109,20 +109,19 @@ namespace RG35XX.Libraries
         {
 #if DEBUG
             return true;
-#endif
+#else
             string contents = File.ReadAllText("/mnt/vendor/ctrl/dmenu_ln");
 
             return contents.Contains("#PATCHED NEXT EXECUTION");
+#endif
         }
 
         public void LaunchAndExit(string command)
         {
 #if DEBUG
             return;
-#endif
-#pragma warning disable CS0162 // Unreachable code detected
+#else
             PatchDmenuLn();
-#pragma warning restore CS0162 // Unreachable code detected
 
             int index = 1;
 
@@ -143,6 +142,7 @@ namespace RG35XX.Libraries
 
             //Exit the current process
             Environment.Exit(0);
+#endif
         }
     }
 }

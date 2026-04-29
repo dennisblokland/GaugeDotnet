@@ -11,7 +11,6 @@ namespace GaugeDotnet
         public bool IsConnected => ConnectionState == ConnectionState.Connected;
 
         public event Action<IMeDevice, ConnectionState>? ConnectionStateChanged;
-        public event Action<MeDevice, ushort>? RemoteAction;
         private readonly object _disconnectLock = new();
         private Task? _reconnectTask;
         private CancellationTokenSource? _reconnectCancel;

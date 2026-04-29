@@ -32,7 +32,11 @@ namespace RG35XX.Libraries
             // Copy existing environment variables
             foreach (DictionaryEntry env in Environment.GetEnvironmentVariables())
             {
-                startInfo.Environment[env.Key.ToString()] = env.Value.ToString();
+                string? key = env.Key?.ToString();
+                if (key != null)
+                {
+                    startInfo.Environment[key] = env.Value?.ToString();
+                }
             }
 
             using Process process = new()
@@ -56,8 +60,7 @@ namespace RG35XX.Libraries
         {
 #if DEBUG
             return false;
-#endif
-
+#else
             int maxRetries = 3;
             int currentRetry = 0;
             int backoffMs = 1000; // Start with 1 second
@@ -91,7 +94,7 @@ namespace RG35XX.Libraries
                         return false; // No date header - exit method
                     }
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
                     currentRetry++;
                     if (currentRetry < maxRetries)
@@ -107,6 +110,7 @@ namespace RG35XX.Libraries
             }
 
             return false;
+#endif
         }
     }
 }

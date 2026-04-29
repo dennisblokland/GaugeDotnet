@@ -31,17 +31,17 @@ namespace GaugeDotnet
         /// <returns>Enumerable of all devices found.</returns>
         public async Task<MeDevice?> ScanAsync(
             bool findAll,
-            IEnumerable<string> savedIdentifiers = null,
+            IEnumerable<string>? savedIdentifiers = null,
             CancellationToken cancellationToken = default)
         {
             if (!findAll && savedIdentifiers == null)
                 throw new ArgumentException($"One of {nameof(findAll)} or {nameof(savedIdentifiers)} must be set");
 
-            HashSet<ulong> idSet = savedIdentifiers?.Select(s => ulong.Parse(s, NumberStyles.AllowHexSpecifier)).ToHashSet();
+            HashSet<ulong>? idSet = savedIdentifiers?.Select(s => ulong.Parse(s, NumberStyles.AllowHexSpecifier)).ToHashSet();
 
             await foreach (BtlePeripheral peripheral in _ble.GetPeripherals([RaceChronoIds.ServiceUuid], false, cancellationToken))
             {
-                if (!findAll && !idSet.Contains(peripheral.Address))
+                if (!findAll && idSet != null && !idSet.Contains(peripheral.Address))
                 {
                     peripheral.Dispose();
                     continue;
