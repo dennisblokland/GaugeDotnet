@@ -16,7 +16,7 @@ namespace GaugeDotnet
         private readonly object _disconnectLock = new();
         private Task? _reconnectTask;
         private CancellationTokenSource? _reconnectCancel;
-        public decimal afr { get; private set; }
+        public MEData Data { get; } = new();
         private static readonly byte[] MagicAllPidPackage =
                         [
                             0x01,
@@ -134,19 +134,7 @@ namespace GaugeDotnet
                 }
 
                 ICanFrame frame = CanDecoder.Decode(pid, dataPacket.ToArray());
-                if (frame is ME1_1 me1_1)
-                {
-                    // Console.WriteLine($"RPM: {me1_1.Rpm}");
-                    // Console.WriteLine($"Throttle: {me1_1.ThrottlePosition}");
-                    // Console.WriteLine($"MAP: {me1_1.Map}");
-                    // Console.WriteLine($"IAT: {me1_1.Iat}");
-                }
-                if (frame is ME1_2 me1_2)
-                {
-                    //afr
-                    Console.WriteLine($"AFR: {me1_2.AfrCurr1}");
-                    afr = me1_2.AfrCurr1;
-                }
+                Data.Apply(frame);
             }
             catch (Exception ex)
             {
