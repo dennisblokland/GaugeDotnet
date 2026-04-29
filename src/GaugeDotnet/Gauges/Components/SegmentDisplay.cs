@@ -1,7 +1,7 @@
-﻿using GaugeDotnet.Extentions;
+﻿using GaugeDotnet.Extensions;
 using SkiaSharp;
 
-namespace GaugeDotnet.Gauges.Componets
+namespace GaugeDotnet.Gauges.Components
 {
     /// <summary>
     /// Displays a segmented numeric readout (e.g. “1234” style), with a static

@@ -52,7 +52,7 @@ namespace GaugeDotnet
             }
             SDL.SDL_GL_MakeCurrent(_window, _glContext);
 
-            // Disable v-sync so rendering is not capped by the display refresh rate.
+            // Enable v-sync so rendering is capped by the display refresh rate.
             SDL.SDL_GL_SetSwapInterval(1);
 
             try

@@ -1,17 +1,19 @@
 using SkiaSharp;
 
-namespace GaugeDotnet.Extentions
+namespace GaugeDotnet.Extensions
 {
-    public static class SKCanvasExtentions
+    public static class SKCanvasExtensions
     {
         public static void DrawRectWithBlur(this SKCanvas canvas, SKRect rect, SKPaint paint, SKMaskFilter maskFilter)
         {
+            SKMaskFilter originalMaskFilter = paint.MaskFilter;
+
             // Draw the shadow first
             paint.MaskFilter = maskFilter;
             canvas.DrawRect(rect, paint);
 
-            // Reset the mask filter for the actual rectangle
-            paint.MaskFilter = null;
+            // Restore the original mask filter and draw the actual rectangle
+            paint.MaskFilter = originalMaskFilter;
             canvas.DrawRect(rect, paint);
         }
 

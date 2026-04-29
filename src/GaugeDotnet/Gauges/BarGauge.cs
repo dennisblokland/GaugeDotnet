@@ -1,5 +1,5 @@
-﻿using GaugeDotnet.Extentions;
-using GaugeDotnet.Gauges.Componets;
+﻿using GaugeDotnet.Extensions;
+using GaugeDotnet.Gauges.Components;
 using GaugeDotnet.Gauges.Models;
 using SkiaSharp;
 

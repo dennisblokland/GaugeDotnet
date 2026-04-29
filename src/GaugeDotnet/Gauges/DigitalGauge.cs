@@ -1,4 +1,4 @@
-using GaugeDotnet.Gauges.Componets;
+using GaugeDotnet.Gauges.Components;
 using GaugeDotnet.Gauges.Models;
 using SkiaSharp;
 
