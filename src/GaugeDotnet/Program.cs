@@ -1,4 +1,5 @@
-﻿using GaugeDotnet.Gauges.Models;
+﻿using GaugeDotnet.Configuration;
+using GaugeDotnet.Gauges.Models;
 using GaugeDotnet.Gauges;
 using SkiaSharp;
 using GaugeDotnet;
@@ -130,29 +131,51 @@ internal class Program
             screenHeight: screenHeight
         );
 
-        // Prepare settings:
-        BarGaugeSettings settings = new()
+        // Load configuration (creates default gauges.json if missing)
+        AppConfig appConfig = ConfigService.Load();
+        Console.WriteLine($"Loaded {appConfig.Screens.Count} screen(s) from config");
+
+        // Build gauge instances per screen
+        List<List<(BaseGauge Gauge, string DataSource)>> screens = new();
+        foreach (ScreenConfig screenConfig in appConfig.Screens)
         {
-            InitialValue = 14.7M,
-            MinValue = 8,
-            MaxValue = 18,
-            Unit = "",
-            Title = "AFR",
-            Decimals = 2,
+            List<(BaseGauge Gauge, string DataSource)> screenGauges = new();
+            foreach (GaugeConfig gaugeConfig in screenConfig.Gauges)
+            {
+                BaseGauge gauge;
+                switch (gaugeConfig.Type)
+                {
+                    case GaugeType.Bar:
+                    default:
+                        BarGaugeSettings barSettings = new()
+                        {
+                            InitialValue = gaugeConfig.InitialValue,
+                            MinValue = gaugeConfig.MinValue,
+                            MaxValue = gaugeConfig.MaxValue,
+                            Unit = gaugeConfig.Unit,
+                            Title = gaugeConfig.Title,
+                            Decimals = gaugeConfig.Decimals,
+                            SegmentCount = gaugeConfig.SegmentCount,
+                            Smoothing = gaugeConfig.Smoothing,
+                        };
+                        gauge = new BarGauge(
+                            settings: barSettings,
+                            screenWidth: screenWidth,
+                            screenHeight: screenHeight
+                        );
+                        break;
+                }
 
-        };
+                gauge.SetColorHex(gaugeConfig.ColorHex);
+                screenGauges.Add((gauge, gaugeConfig.DataSource));
+            }
+            screens.Add(screenGauges);
+        }
 
-        // Instantiate the BarGauge:
-        BarGauge gauge = new(
-            settings: settings,
-            screenWidth: screenWidth,
-            screenHeight: screenHeight
-        );
+        int currentScreen = 0;
 
         bool running = true;
         SDL_Event e;
-
-        gauge.SetColorHex("#00FFFF"); // active segments in bright green
 
         System.Diagnostics.Stopwatch stopwatch = System.Diagnostics.Stopwatch.StartNew();
         int frameCount = 0;
@@ -217,25 +240,39 @@ internal class Program
             {
                 running = false;
             }
+            else if (key == GamepadKey.RIGHT && screens.Count > 1)
+            {
+                currentScreen = (currentScreen + 1) % screens.Count;
+            }
+            else if (key == GamepadKey.LEFT && screens.Count > 1)
+            {
+                currentScreen = (currentScreen - 1 + screens.Count) % screens.Count;
+            }
 
             SKCanvas canvas = gaugeSDL.GetCanvas();
 
-            // Clear to dark gray
+            // Clear to black
             canvas.Clear(new SKColor(0, 0, 0));
-
-            // // Update the gauge value every second
 
             double now = stopwatch.Elapsed.TotalSeconds;
             if (now - lastUpdate >= 0.05)
             {
-              if(meDevice != null && meDevice.IsConnected){
-                gauge.SetValue(meDevice.Data.AfrCurr1);
-              }
+                if (meDevice != null && meDevice.IsConnected)
+                {
+                    foreach ((BaseGauge g, string dataSource) in screens[currentScreen])
+                    {
+                        decimal value = DataSourceMapper.ReadValue(meDevice.Data, dataSource);
+                        g.SetValue(value);
+                    }
+                }
 
                 lastUpdate = now;
             }
 
-            gauge.Draw(canvas);
+            foreach ((BaseGauge g, string _) in screens[currentScreen])
+            {
+                g.Draw(canvas);
+            }
 
             // Draw an FPS counter in the top-left corner.
             GetFps();
