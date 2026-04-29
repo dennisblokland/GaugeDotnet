@@ -139,7 +139,7 @@ namespace GaugeDotnet.Gauges
 			// 3. Draw tick labels
 			_tickPaint.Color = activeCol;
 			_tickPaint.MaskFilter = _blur;
-			using SKFont tickFont = new(_raceFont, 18f);
+			using SKFont tickFont = new(_raceFont, 14f);
 			float step = (float)(MaxValue - MinValue) / 10f;
 			for (int i = 0; i <= 10; i++)
 			{
@@ -152,6 +152,16 @@ namespace GaugeDotnet.Gauges
 				_staticCanvas.DrawText(text, tickX, tickY + 6f, SKTextAlign.Center, tickFont, _tickPaint);
 			}
 			_tickPaint.MaskFilter = null;
+			for (int i = 0; i <= 10; i++)
+			{
+				decimal tickValue = MinValue + (decimal)(i * step);
+				float angle = StartAngleRad + ((float)i / 10f) * RangeAngleRad;
+				string text = $"{Math.Round(tickValue)}";
+				float textWidth = tickFont.MeasureText(text);
+				float tickX = CENTER_X + MathF.Cos(angle) * (RADIUS - (LINE_WIDTH + textWidth / 4f));
+				float tickY = CENTER_Y + MathF.Sin(angle) * (RADIUS - (LINE_WIDTH + 18f / 4f));
+				_staticCanvas.DrawText(text, tickX, tickY + 6f, SKTextAlign.Center, tickFont, _tickPaint);
+			}
 
 			// 4. Draw unit label
 			using SKFont unitFont = new(_dseg14Font, 25f);

@@ -48,7 +48,8 @@ namespace GaugeDotnet.Gauges.Componets
             string inactiveHex,
             string activeHex,
             float shadowBlur = 15f,
-            int decimals = 0)
+            int decimals = 0,
+            float fontSize = 70f)
         {
             _centerX = centerX;
             _centerY = centerY;
@@ -61,7 +62,7 @@ namespace GaugeDotnet.Gauges.Componets
             _staticBitmap = new SKBitmap(screenWidth, screenHeight, SKColorType.Rgba8888, SKAlphaType.Premul);
             _staticCanvas = new SKCanvas(_staticBitmap);
 
-            _fontFace = new SKFont(FontHelper.GetFont("DSEG14 Classic"), 70f);
+            _fontFace = new SKFont(FontHelper.GetFont("DSEG14 Classic"), fontSize);
 
             // Text paint (we’ll mutate color + blur per draw)
             _textPaint = new SKPaint

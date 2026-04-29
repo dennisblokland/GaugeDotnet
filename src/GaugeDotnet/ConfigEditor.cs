@@ -64,6 +64,10 @@ namespace GaugeDotnet
                 GaugeType.Bar => ["Type", "DataSource", "Title", "ColorHex", "MinValue", "MaxValue", "InitialValue", "Decimals", "SegmentCount", "Smoothing"],
                 GaugeType.Circular => ["Type", "DataSource", "Title", "ColorHex", "MinValue", "MaxValue", "InitialValue", "Decimals", "SegmentCount", "Smoothing"],
                 GaugeType.Histogram => ["Type", "DataSource", "Title", "ColorHex", "MinValue", "MaxValue", "InitialValue", "Decimals", "MaxDataPoints", "IntervalMs"],
+                GaugeType.Needle => ["Type", "DataSource", "Title", "ColorHex", "MinValue", "MaxValue", "InitialValue", "Decimals", "Smoothing"],
+                GaugeType.Digital => ["Type", "DataSource", "Title", "ColorHex", "MinValue", "MaxValue", "InitialValue", "Decimals"],
+                GaugeType.Sweep => ["Type", "DataSource", "Title", "ColorHex", "MinValue", "MaxValue", "InitialValue", "Decimals", "Smoothing"],
+                GaugeType.MinMax => ["Type", "DataSource", "Title", "ColorHex", "MinValue", "MaxValue", "InitialValue", "Decimals", "SegmentCount", "Smoothing"],
                 _ => ["Type", "DataSource", "Title", "ColorHex", "MinValue", "MaxValue", "InitialValue", "Decimals"],
             };
         }
@@ -254,7 +258,7 @@ namespace GaugeDotnet
                     gauge.MinValue += direction * 1;
                     break;
                 case "MaxValue":
-                    gauge.MaxValue += direction * 10;
+                    gauge.MaxValue += direction * 1;
                     break;
                 case "InitialValue":
                     gauge.InitialValue += direction * 0.1M;

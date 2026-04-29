@@ -59,6 +59,78 @@ internal class Program
                     );
                     break;
 
+                case GaugeType.Needle:
+                    NeedleGaugeSettings needleSettings = new()
+                    {
+                        InitialValue = gaugeConfig.InitialValue,
+                        MinValue = gaugeConfig.MinValue,
+                        MaxValue = gaugeConfig.MaxValue,
+                        Unit = gaugeConfig.Unit,
+                        Title = gaugeConfig.Title,
+                        Decimals = gaugeConfig.Decimals,
+                        Smoothing = gaugeConfig.Smoothing,
+                    };
+                    gauge = new NeedleGauge(
+                        settings: needleSettings,
+                        screenWidth: screenWidth,
+                        screenHeight: screenHeight
+                    );
+                    break;
+
+                case GaugeType.Digital:
+                    DigitalGaugeSettings digitalSettings = new()
+                    {
+                        InitialValue = gaugeConfig.InitialValue,
+                        MinValue = gaugeConfig.MinValue,
+                        MaxValue = gaugeConfig.MaxValue,
+                        Unit = gaugeConfig.Unit,
+                        Title = gaugeConfig.Title,
+                        Decimals = gaugeConfig.Decimals,
+                    };
+                    gauge = new DigitalGauge(
+                        settings: digitalSettings,
+                        screenWidth: screenWidth,
+                        screenHeight: screenHeight
+                    );
+                    break;
+
+                case GaugeType.Sweep:
+                    SweepGaugeSettings sweepSettings = new()
+                    {
+                        InitialValue = gaugeConfig.InitialValue,
+                        MinValue = gaugeConfig.MinValue,
+                        MaxValue = gaugeConfig.MaxValue,
+                        Unit = gaugeConfig.Unit,
+                        Title = gaugeConfig.Title,
+                        Decimals = gaugeConfig.Decimals,
+                        Smoothing = gaugeConfig.Smoothing,
+                    };
+                    gauge = new SweepGauge(
+                        settings: sweepSettings,
+                        screenWidth: screenWidth,
+                        screenHeight: screenHeight
+                    );
+                    break;
+
+                case GaugeType.MinMax:
+                    MinMaxGaugeSettings minMaxSettings = new()
+                    {
+                        InitialValue = gaugeConfig.InitialValue,
+                        MinValue = gaugeConfig.MinValue,
+                        MaxValue = gaugeConfig.MaxValue,
+                        Unit = gaugeConfig.Unit,
+                        Title = gaugeConfig.Title,
+                        Decimals = gaugeConfig.Decimals,
+                        SegmentCount = gaugeConfig.SegmentCount,
+                        Smoothing = gaugeConfig.Smoothing,
+                    };
+                    gauge = new MinMaxGauge(
+                        settings: minMaxSettings,
+                        screenWidth: screenWidth,
+                        screenHeight: screenHeight
+                    );
+                    break;
+
                 case GaugeType.Bar:
                 default:
                     BarGaugeSettings barSettings = new()

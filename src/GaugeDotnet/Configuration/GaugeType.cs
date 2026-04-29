@@ -4,6 +4,10 @@ namespace GaugeDotnet.Configuration
     {
         Bar,
         Circular,
-        Histogram
+        Histogram,
+        Needle,
+        Digital,
+        Sweep,
+        MinMax
     }
 }

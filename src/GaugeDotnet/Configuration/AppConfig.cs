@@ -5,7 +5,7 @@ namespace GaugeDotnet.Configuration
 {
     public class AppConfig
     {
-        public const int MaxScreens = 5;
+        public const int MaxScreens = 10;
 
         [MaxLength(MaxScreens)]
         public List<ScreenConfig> Screens { get; set; } = new();
