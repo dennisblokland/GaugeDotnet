@@ -6,7 +6,7 @@ namespace GaugeDotnet.Gauges
 {
 	public class CircularGauge : BaseGauge
 	{
-		private decimal _currentValue;
+		private float _currentValue;
 		private readonly bool _smoothing;
 		private readonly int _segmentCount;
 
@@ -142,7 +142,7 @@ namespace GaugeDotnet.Gauges
 			float step = (float)(MaxValue - MinValue) / 10f;
 			for (int i = 0; i <= 10; i++)
 			{
-				decimal tickValue = MinValue + (decimal)(i * step);
+				float tickValue = MinValue + i * step;
 				float angle = StartAngleRad + ((float)i / 10f) * RangeAngleRad;
 				string text = $"{Math.Round(tickValue)}";
 				float textWidth = tickFont.MeasureText(text);
@@ -153,7 +153,7 @@ namespace GaugeDotnet.Gauges
 			_tickPaint.MaskFilter = null;
 			for (int i = 0; i <= 10; i++)
 			{
-				decimal tickValue = MinValue + (decimal)(i * step);
+				float tickValue = MinValue + i * step;
 				float angle = StartAngleRad + ((float)i / 10f) * RangeAngleRad;
 				string text = $"{Math.Round(tickValue)}";
 				float textWidth = tickFont.MeasureText(text);
@@ -198,7 +198,7 @@ namespace GaugeDotnet.Gauges
 			// Smooth value
 			if (_smoothing)
 			{
-				_currentValue += (Value - _currentValue) * 0.1m;
+				_currentValue += (Value - _currentValue) * 0.1f;
 			}
 			else
 			{

@@ -134,13 +134,13 @@ namespace GaugeDotnet.Gauges
                 for (int i = 0; i < gridGauge.CellCount; i++)
                 {
                     GridCellConfig cell = gridGauge.GetCellConfig(i);
-                    decimal cellValue = DataSourceMapper.ReadValue(device.Data, cell.DataSource);
+                    float cellValue = DataSourceMapper.ReadValue(device.Data, cell.DataSource);
                     gridGauge.SetCellValue(i, cellValue);
                 }
             }
             else
             {
-                decimal value = DataSourceMapper.ReadValue(device.Data, dataSource);
+                float value = DataSourceMapper.ReadValue(device.Data, dataSource);
                 gauge.SetValue(value);
             }
         }

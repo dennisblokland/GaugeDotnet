@@ -364,7 +364,7 @@ namespace GaugeDotnet
                     gauge.MaxValue += direction * 1;
                     break;
                 case "InitialValue":
-                    gauge.InitialValue += direction * 0.1M;
+                    gauge.InitialValue += direction * 0.1f;
                     break;
                 case "Decimals":
                     gauge.Decimals = Math.Clamp(gauge.Decimals + direction, 0, 4);

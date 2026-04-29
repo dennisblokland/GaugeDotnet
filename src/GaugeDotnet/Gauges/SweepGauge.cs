@@ -10,7 +10,7 @@ namespace GaugeDotnet.Gauges
     /// </summary>
     public class SweepGauge : BaseGauge
     {
-        private decimal _currentValue;
+        private float _currentValue;
         private readonly bool _smoothing;
 
         private readonly SegmentDisplay _valueDisplay;
@@ -142,7 +142,7 @@ namespace GaugeDotnet.Gauges
             float labelRadius = OUTER_RADIUS - ARC_WIDTH / 2f - 20f;
             for (int i = 0; i <= 10; i += 2)
             {
-                decimal tickValue = MinValue + ((decimal)i / 10m) * (MaxValue - MinValue);
+                float tickValue = MinValue + ((float)i / 10f) * (MaxValue - MinValue);
                 float angle = StartAngleRad + ((float)i / 10f) * RangeAngleRad;
                 float lx = CENTER_X + MathF.Cos(angle) * labelRadius;
                 float ly = CENTER_Y + MathF.Sin(angle) * labelRadius + 5f;
@@ -181,7 +181,7 @@ namespace GaugeDotnet.Gauges
 
             if (_smoothing)
             {
-                _currentValue += (Value - _currentValue) * 0.1m;
+                _currentValue += (Value - _currentValue) * 0.1f;
             }
             else
             {

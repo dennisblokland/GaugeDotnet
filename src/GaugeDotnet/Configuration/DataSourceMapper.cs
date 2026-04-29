@@ -4,12 +4,12 @@ namespace GaugeDotnet.Configuration
 {
     public static class DataSourceMapper
     {
-        private static readonly Dictionary<string, Func<MEData, decimal>> Mappings = new(StringComparer.OrdinalIgnoreCase)
+        private static readonly Dictionary<string, Func<MEData, float>> Mappings = new(StringComparer.OrdinalIgnoreCase)
         {
             ["Rpm"] = d => d.Rpm,
-            ["ThrottlePosition"] = d => (decimal)d.ThrottlePosition,
-            ["Map"] = d => (decimal)d.Map,
-            ["Iat"] = d => (decimal)d.Iat,
+            ["ThrottlePosition"] = d => d.ThrottlePosition,
+            ["Map"] = d => d.Map,
+            ["Iat"] = d => d.Iat,
             ["RpmHardLimit"] = d => d.RpmHardLimit,
             ["AfrCurr1"] = d => d.AfrCurr1,
             ["AfrCurr2"] = d => d.AfrCurr2,
@@ -39,9 +39,9 @@ namespace GaugeDotnet.Configuration
 
         public static List<string> DataSourceNames { get; } = new(Mappings.Keys);
 
-        public static decimal ReadValue(MEData data, string dataSource)
+        public static float ReadValue(MEData data, string dataSource)
         {
-            if (Mappings.TryGetValue(dataSource, out Func<MEData, decimal>? getter))
+            if (Mappings.TryGetValue(dataSource, out Func<MEData, float>? getter))
             {
                 return getter(data);
             }

@@ -16,7 +16,7 @@ namespace GaugeDotnet.Gauges
 		private readonly int _screenWidth;
 		private readonly int _screenHeight;
 		private readonly List<GridCellConfig> _cells;
-		private readonly decimal[] _cellValues;
+		private readonly float[] _cellValues;
 		private readonly SKTypeface _raceFont;
 
 		private readonly SKBitmap _staticBitmap;
@@ -31,7 +31,7 @@ namespace GaugeDotnet.Gauges
 			_screenWidth = screenWidth;
 			_screenHeight = screenHeight;
 			_cells = settings.Cells;
-			_cellValues = new decimal[_cells.Count];
+			_cellValues = new float[_cells.Count];
 			_raceFont = FontHelper.GetFont("Race Sport");
 
 			_staticBitmap = new SKBitmap(screenWidth, screenHeight, SKColorType.Rgba8888, SKAlphaType.Premul);
@@ -42,7 +42,7 @@ namespace GaugeDotnet.Gauges
 
 		public GridCellConfig GetCellConfig(int index) => _cells[index];
 
-		public void SetCellValue(int index, decimal value)
+		public void SetCellValue(int index, float value)
 		{
 			if (index >= 0 && index < _cellValues.Length)
 			{

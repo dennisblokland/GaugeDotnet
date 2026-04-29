@@ -5,9 +5,9 @@ namespace GaugeDotnet.Gauges
 {
     public abstract class BaseGauge
     {
-        private decimal _value;
-        private readonly decimal _minValue;
-        private readonly decimal _maxValue;
+        private float _value;
+        private readonly float _minValue;
+        private readonly float _maxValue;
         private string _colorHex = "#00FFFF";          // active color
         private SKColor _activeColor = SKColor.Parse("#00FFFF");
         private SKColor _inactiveColor = SKColor.Parse("#001919");
@@ -28,14 +28,14 @@ namespace GaugeDotnet.Gauges
 
         public abstract void Draw(SKCanvas canvas);
 
-        public virtual void SetValue(decimal v)
+        public virtual void SetValue(float v)
         {
             _value = v;
         }
 
-        public decimal Value => _value;
-        public decimal MinValue => _minValue;
-        public decimal MaxValue => _maxValue;
+        public float Value => _value;
+        public float MinValue => _minValue;
+        public float MaxValue => _maxValue;
         public string Unit => _unit;
         public string Title => _title;
 
