@@ -6,6 +6,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <PublishTrimmed>true</PublishTrimmed>
+    <TrimMode>link</TrimMode>
   </PropertyGroup>
 
   <ItemGroup>

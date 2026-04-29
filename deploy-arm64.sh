@@ -25,7 +25,7 @@ dotnet publish "$PROJECT" \
   -r linux-arm64 \
   --self-contained true \
   -o "$PUBLISH_DIR" \
-  /p:PublishSingleFile=false
+  /p:PublishSingleFile=true
 
 if [ ! -f "$RUN_SCRIPT" ]; then
   echo "Run script not found: $RUN_SCRIPT"
