@@ -229,7 +229,7 @@ internal class Program
             if (now - lastUpdate >= 0.05)
             {
               if(meDevice != null && meDevice.IsConnected){
-                gauge.SetValue(meDevice.afr);
+                gauge.SetValue(meDevice.Data.AfrCurr1);
               }
 
                 lastUpdate = now;
