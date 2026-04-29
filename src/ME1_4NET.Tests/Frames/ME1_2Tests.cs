@@ -14,7 +14,7 @@ namespace ME1_4NET.Tests.Frames
             byte[] payload =
             [
                 0xA0, 0x0F, // rpm_hard_limit = 4000
-                0x78,       // afr_curr_1 = 13.5 
+                0x78,       // afr_curr_1 = 13.5
                 0x82,       // afr_curr_2 = 14
                 0xC4, 0x09, // lambda_trim = 2500
                 0x0E,       // afr_target = 14
@@ -26,7 +26,7 @@ namespace ME1_4NET.Tests.Frames
 
             // Assert
             Assert.Equal(4000, frame.RpmHardLimit);
-            Assert.Equal(13.5m, frame.AfrCurr1);
+            Assert.Equal(13.5f, frame.AfrCurr1);
             Assert.Equal(14, frame.AfrCurr2);
             Assert.Equal(2500, frame.LambdaTrim);
             Assert.Equal(14, frame.AfrTarget);
@@ -63,8 +63,8 @@ namespace ME1_4NET.Tests.Frames
 
             // Assert
             Assert.Equal(ushort.MaxValue, frame.RpmHardLimit);
-            Assert.Equal(20.25m, frame.AfrCurr1); //TODO: Check if this is correct
-            Assert.Equal(7.5m, frame.AfrCurr2);
+            Assert.Equal(20.25f, frame.AfrCurr1); //TODO: Check if this is correct
+            Assert.Equal(7.5f, frame.AfrCurr2);
             Assert.Equal(0, frame.LambdaTrim);
             Assert.Equal(byte.MaxValue, frame.AfrTarget);
             Assert.Equal(0, frame.FuelEthPerc);

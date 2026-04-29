@@ -12,7 +12,7 @@ namespace GaugeDotnet.Gauges
     /// </summary>
     public class BarGauge : BaseGauge
     {
-        private decimal _currentValue;     // for smoothing
+        private float _currentValue;     // for smoothing
         private readonly bool _smoothing;
         private readonly int _segmentCount;
         private readonly float _segmentWidth;
@@ -147,7 +147,7 @@ namespace GaugeDotnet.Gauges
             // 1) Smooth:
             if (_smoothing)
             {
-                _currentValue += (Value - _currentValue) * 0.1m;
+                _currentValue += (Value - _currentValue) * 0.1f;
             }
             else
             {

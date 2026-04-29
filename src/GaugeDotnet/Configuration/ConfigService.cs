@@ -3,13 +3,15 @@ using System.Text.Json.Serialization;
 
 namespace GaugeDotnet.Configuration
 {
+    [JsonSourceGenerationOptions(WriteIndented = true, UseStringEnumConverter = true)]
+    [JsonSerializable(typeof(AppConfig))]
+    internal partial class AppConfigJsonContext : JsonSerializerContext
+    {
+    }
+
     public static class ConfigService
     {
-        private static readonly JsonSerializerOptions JsonOptions = new()
-        {
-            WriteIndented = true,
-            Converters = { new JsonStringEnumConverter() }
-        };
+        private static readonly JsonSerializerOptions JsonOptions = AppConfigJsonContext.Default.Options;
 
         public static string DefaultPath =>
             Path.Combine(AppContext.BaseDirectory, "gauges.json");
@@ -26,7 +28,7 @@ namespace GaugeDotnet.Configuration
             }
 
             string json = File.ReadAllText(filePath);
-            AppConfig? config = JsonSerializer.Deserialize<AppConfig>(json, JsonOptions);
+            AppConfig? config = JsonSerializer.Deserialize(json, AppConfigJsonContext.Default.AppConfig);
 
             if (config is null || config.Screens.Count == 0)
             {
@@ -46,7 +48,7 @@ namespace GaugeDotnet.Configuration
         public static void Save(AppConfig config, string? path = null)
         {
             string filePath = path ?? DefaultPath;
-            string json = JsonSerializer.Serialize(config, JsonOptions);
+            string json = JsonSerializer.Serialize(config, AppConfigJsonContext.Default.AppConfig);
             File.WriteAllText(filePath, json);
         }
 
@@ -67,7 +69,7 @@ namespace GaugeDotnet.Configuration
                             Unit = "",
                             MinValue = 8,
                             MaxValue = 18,
-                            InitialValue = 14.7M,
+                            InitialValue = 14.7f,
                             Decimals = 2,
                             SegmentCount = 32,
                             Smoothing = true

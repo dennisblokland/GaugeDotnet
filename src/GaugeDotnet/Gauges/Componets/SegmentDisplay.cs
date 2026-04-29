@@ -18,7 +18,7 @@ namespace GaugeDotnet.Gauges.Componets
         private SKColor _activeColor;
         private readonly float _shadowBlur;      // e.g. 15
         private readonly int _decimals;          // how many decimals
-        private decimal _currentValue = 0;
+        private float _currentValue = 0;
         private string _formattedValue = "0";
 
         private float? _textWidthCache = null;
@@ -103,9 +103,9 @@ namespace GaugeDotnet.Gauges.Componets
         /// <summary>
         /// Update the numeric value (trigger a redraw next time).
         /// </summary>
-        public void SetValue(decimal v)
+        public void SetValue(float v)
         {
-            const decimal epsilon = 0.00001M;
+            const float epsilon = 0.00001f;
             if (Math.Abs(v - _currentValue) < epsilon) return;
             _currentValue = v;
             _formattedValue = FormatDisplayValue(_currentValue);
@@ -173,7 +173,7 @@ namespace GaugeDotnet.Gauges.Componets
             _textPaint.MaskFilter = null;
         }
 
-        private string FormatDisplayValue(decimal value)
+        private string FormatDisplayValue(float value)
         {
             string s = value.ToString($"F{_decimals}", System.Globalization.CultureInfo.InvariantCulture);
             int dotIndex = s.IndexOf('.');

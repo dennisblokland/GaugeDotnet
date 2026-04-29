@@ -9,7 +9,7 @@ namespace GaugeDotnet.Gauges
     /// </summary>
     public class NeedleGauge : BaseGauge
     {
-        private decimal _currentValue;
+        private float _currentValue;
         private readonly bool _smoothing;
 
         private readonly SegmentDisplay _valueDisplay;
@@ -154,7 +154,7 @@ namespace GaugeDotnet.Gauges
                 _staticCanvas.DrawLine(outerX, outerY, tickInnerX, tickInnerY, _tickPaint);
 
                 // Tick label
-                decimal tickValue = MinValue + ((decimal)i / 10m) * (MaxValue - MinValue);
+                float tickValue = MinValue + ((float)i / 10f) * (MaxValue - MinValue);
                 string text = $"{Math.Round(tickValue)}";
                 float labelR = RADIUS + 18f;
                 float labelX = CENTER_X + cos * labelR;
@@ -214,7 +214,7 @@ namespace GaugeDotnet.Gauges
 
             if (_smoothing)
             {
-                _currentValue += (Value - _currentValue) * 0.1m;
+                _currentValue += (Value - _currentValue) * 0.1f;
             }
             else
             {

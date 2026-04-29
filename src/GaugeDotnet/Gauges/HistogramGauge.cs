@@ -8,7 +8,7 @@ namespace GaugeDotnet.Gauges
 	{
 		private readonly int _maxDataPoints;
 		private readonly int _intervalMs;
-		private readonly decimal[] _dataPoints;
+		private readonly float[] _dataPoints;
 		private int _dataCount;
 		private int _dataHead;
 		private long _lastUpdateTicks;
@@ -41,7 +41,7 @@ namespace GaugeDotnet.Gauges
 		{
 			_maxDataPoints = settings.MaxDataPoints;
 			_intervalMs = settings.IntervalMs;
-			_dataPoints = new decimal[_maxDataPoints];
+			_dataPoints = new float[_maxDataPoints];
 			Array.Fill(_dataPoints, Value);
 			_dataCount = _maxDataPoints;
 			_dataHead = 0;
@@ -84,7 +84,7 @@ namespace GaugeDotnet.Gauges
 			_labelPaint = new SKPaint { IsAntialias = true };
 		}
 
-		public override void SetValue(decimal v)
+		public override void SetValue(float v)
 		{
 			base.SetValue(v);
 

@@ -7,9 +7,9 @@ namespace GaugeDotnet.Configuration
         public string ColorHex { get; set; } = "#00FFFF";
         public string Title { get; set; } = "";
         public string Unit { get; set; } = "";
-        public decimal MinValue { get; set; } = 0;
-        public decimal MaxValue { get; set; } = 100;
-        public decimal InitialValue { get; set; } = 0;
+        public float MinValue { get; set; } = 0;
+        public float MaxValue { get; set; } = 100;
+        public float InitialValue { get; set; } = 0;
 
         // Bar gauge specific
         public int SegmentCount { get; set; } = 32;

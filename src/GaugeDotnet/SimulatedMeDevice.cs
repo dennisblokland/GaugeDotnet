@@ -45,9 +45,9 @@ namespace GaugeDotnet
                 Data.Iat = (float)(35 + fast * 10);
 
                 // ME1_2
-                Data.AfrCurr1 = (decimal)Math.Round(14.5 + sine * 2.5, 2);
-                Data.AfrCurr2 = (decimal)Math.Round(14.5 + sine * 2.3, 2);
-                Data.AfrTarget = (decimal)Math.Round(14.7 + fast * 0.5, 2);
+                Data.AfrCurr1 = (float)Math.Round(14.5 + sine * 2.5, 2);
+                Data.AfrCurr2 = (float)Math.Round(14.5 + sine * 2.3, 2);
+                Data.AfrTarget = (float)Math.Round(14.7 + fast * 0.5, 2);
                 Data.FuelEthPerc = 0;
 
                 // ME1_3

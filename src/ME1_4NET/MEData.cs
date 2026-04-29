@@ -12,11 +12,11 @@ namespace ME1_4NET
 
         // ME1_2
         public int RpmHardLimit { get; set; }
-        public decimal AfrCurr1 { get; set; }
-        public decimal AfrCurr2 { get; set; }
+        public float AfrCurr1 { get; set; }
+        public float AfrCurr2 { get; set; }
         public int LambdaTrim { get; set; }
-        public decimal AfrTarget { get; set; }
-        public decimal FuelEthPerc { get; set; }
+        public float AfrTarget { get; set; }
+        public float FuelEthPerc { get; set; }
 
         // ME1_3
         public short IgnAdvAngle { get; set; }

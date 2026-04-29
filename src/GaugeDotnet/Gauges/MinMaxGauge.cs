@@ -11,9 +11,9 @@ namespace GaugeDotnet.Gauges
     /// </summary>
     public class MinMaxGauge : BaseGauge
     {
-        private decimal _currentValue;
-        private decimal _minTracked;
-        private decimal _maxTracked;
+        private float _currentValue;
+        private float _minTracked;
+        private float _maxTracked;
         private bool _peaksInitialized;
         private readonly bool _smoothing;
         private readonly int _segmentCount;
@@ -85,7 +85,7 @@ namespace GaugeDotnet.Gauges
             _peakLabelPaint = new SKPaint { IsAntialias = true };
         }
 
-        public override void SetValue(decimal v)
+        public override void SetValue(float v)
         {
             base.SetValue(v);
 
@@ -146,7 +146,7 @@ namespace GaugeDotnet.Gauges
 
             if (_smoothing)
             {
-                _currentValue += (Value - _currentValue) * 0.1m;
+                _currentValue += (Value - _currentValue) * 0.1f;
             }
             else
             {

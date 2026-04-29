@@ -12,13 +12,13 @@ namespace ME1_4NET.Frames
     public struct ME1_2 : ICanFrame
     {
         public int RpmHardLimit { get; }
-        public decimal AfrCurr1 { get; }
-        public decimal AfrCurr2 { get; }
+        public float AfrCurr1 { get; }
+        public float AfrCurr2 { get; }
         public int LambdaTrim { get; }
-        public decimal AfrTarget { get; }
-        public decimal FuelEthPerc { get; }
+        public float AfrTarget { get; }
+        public float FuelEthPerc { get; }
 
-        private ME1_2(int rpmHardLimit, decimal afr1, decimal afr2, int lambdaTrim, decimal afrTarget, decimal fuelEthPerc)
+        private ME1_2(int rpmHardLimit, float afr1, float afr2, int lambdaTrim, float afrTarget, float fuelEthPerc)
         {
             RpmHardLimit = rpmHardLimit;
             AfrCurr1 = afr1;
@@ -34,11 +34,11 @@ namespace ME1_4NET.Frames
                 throw new ArgumentException("Payload too short for Frame2");
 
             int rpmHard = (payload[1] << 8) | payload[0];
-            decimal afr1 = (decimal)(payload[2] * 0.05 + 7.5);
-            decimal afr2 = (decimal)(payload[3] * 0.05 + 7.5);
+            float afr1 = (float)(payload[2] * 0.05 + 7.5);
+            float afr2 = (float)(payload[3] * 0.05 + 7.5);
             int lambda = (payload[5] << 8) | payload[4];
-            decimal afrTarget = payload[6];
-            decimal fuelEth = payload[7];
+            float afrTarget = payload[6];
+            float fuelEth = payload[7];
 
             return new ME1_2(rpmHard, afr1, afr2, lambda, afrTarget, fuelEth);
         }
