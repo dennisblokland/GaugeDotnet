@@ -131,6 +131,23 @@ internal class Program
                     );
                     break;
 
+                case GaugeType.Grid:
+                    GridGaugeSettings gridSettings = new()
+                    {
+                        InitialValue = gaugeConfig.InitialValue,
+                        MinValue = gaugeConfig.MinValue,
+                        MaxValue = gaugeConfig.MaxValue,
+                        Unit = gaugeConfig.Unit,
+                        Title = gaugeConfig.Title,
+                        Cells = gaugeConfig.Cells,
+                    };
+                    gauge = new GridGauge(
+                        settings: gridSettings,
+                        screenWidth: screenWidth,
+                        screenHeight: screenHeight
+                    );
+                    break;
+
                 case GaugeType.Bar:
                 default:
                     BarGaugeSettings barSettings = new()
@@ -152,7 +169,10 @@ internal class Program
                     break;
             }
 
-            gauge.SetColorHex(gaugeConfig.ColorHex);
+            if (gaugeConfig.Type != GaugeType.Grid)
+            {
+                gauge.SetColorHex(gaugeConfig.ColorHex);
+            }
             screens.Add((gauge, gaugeConfig.DataSource));
         }
         return screens;
@@ -410,8 +430,20 @@ internal class Program
                 if (meDevice != null && meDevice.IsConnected && screens.Count > 0)
                 {
                     (BaseGauge g, string dataSource) = screens[currentScreen];
-                    decimal value = DataSourceMapper.ReadValue(meDevice.Data, dataSource);
-                    g.SetValue(value);
+                    if (g is GridGauge gridGauge)
+                    {
+                        for (int i = 0; i < gridGauge.CellCount; i++)
+                        {
+                            GridCellConfig cell = gridGauge.GetCellConfig(i);
+                            decimal cellValue = DataSourceMapper.ReadValue(meDevice.Data, cell.DataSource);
+                            gridGauge.SetCellValue(i, cellValue);
+                        }
+                    }
+                    else
+                    {
+                        decimal value = DataSourceMapper.ReadValue(meDevice.Data, dataSource);
+                        g.SetValue(value);
+                    }
                 }
 
                 lastUpdate = now;

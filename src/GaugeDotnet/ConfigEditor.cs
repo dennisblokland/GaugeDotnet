@@ -9,7 +9,8 @@ namespace GaugeDotnet
         private enum EditorScreen
         {
             ScreenList,
-            GaugeEdit
+            GaugeEdit,
+            GridCellEdit
         }
 
         private readonly AppConfig _config;
@@ -20,6 +21,7 @@ namespace GaugeDotnet
         private EditorScreen _currentScreen = EditorScreen.ScreenList;
         private int _cursorIndex;
         private int _selectedScreenIndex;
+        private int _selectedCellIndex;
         private bool _saved;
         private double _savedMessageTimer;
 
@@ -57,7 +59,7 @@ namespace GaugeDotnet
             _font = FontHelper.GetFont("Race Sport");
         }
 
-        private static string[] GetFieldsForType(GaugeType type)
+        private string[] GetFieldsForType(GaugeType type)
         {
             return type switch
             {
@@ -68,8 +70,20 @@ namespace GaugeDotnet
                 GaugeType.Digital => ["Type", "DataSource", "Title", "ColorHex", "MinValue", "MaxValue", "InitialValue", "Decimals"],
                 GaugeType.Sweep => ["Type", "DataSource", "Title", "ColorHex", "MinValue", "MaxValue", "InitialValue", "Decimals", "Smoothing"],
                 GaugeType.MinMax => ["Type", "DataSource", "Title", "ColorHex", "MinValue", "MaxValue", "InitialValue", "Decimals", "SegmentCount", "Smoothing"],
+                GaugeType.Grid => BuildGridFields(_config.Screens[_selectedScreenIndex].Gauge),
                 _ => ["Type", "DataSource", "Title", "ColorHex", "MinValue", "MaxValue", "InitialValue", "Decimals"],
             };
+        }
+
+        private static string[] BuildGridFields(GaugeConfig gauge)
+        {
+            string[] fields = new string[1 + gauge.Cells.Count];
+            fields[0] = "Type";
+            for (int i = 0; i < gauge.Cells.Count; i++)
+            {
+                fields[i + 1] = $"Cell {i + 1}";
+            }
+            return fields;
         }
 
         public void HandleInput(GamepadKey key, SDL2.SDL.SDL_Keycode? sdlKey = null)
@@ -113,6 +127,9 @@ namespace GaugeDotnet
                 case EditorScreen.GaugeEdit:
                     HandleGaugeEdit(key);
                     break;
+                case EditorScreen.GridCellEdit:
+                    HandleGridCellEdit(key);
+                    break;
             }
         }
 
@@ -127,6 +144,9 @@ namespace GaugeDotnet
                     break;
                 case EditorScreen.GaugeEdit:
                     DrawGaugeEdit(canvas);
+                    break;
+                case EditorScreen.GridCellEdit:
+                    DrawGridCellEdit(canvas);
                     break;
             }
 
@@ -209,12 +229,87 @@ namespace GaugeDotnet
                     AdjustField(gauge, fields[_cursorIndex], key == GamepadKey.RIGHT ? 1 : -1);
                     ConfigChanged = true;
                     break;
+                case GamepadKey.A_DOWN:
+                    // Open cell edit if on a cell row
+                    if (gauge.Type == GaugeType.Grid && fields[_cursorIndex].StartsWith("Cell "))
+                    {
+                        _selectedCellIndex = _cursorIndex - 1; // first field is Type
+                        _currentScreen = EditorScreen.GridCellEdit;
+                        _cursorIndex = 0;
+                    }
+                    break;
                 case GamepadKey.B_DOWN:
                     _currentScreen = EditorScreen.ScreenList;
                     _cursorIndex = _selectedScreenIndex;
                     break;
                 case GamepadKey.START_DOWN:
                     SaveConfig();
+                    break;
+            }
+        }
+
+        private static readonly string[] GridCellFields = ["DataSource", "Title", "Unit", "Decimals"];
+
+        private static readonly string[] UnitOptions =
+        [
+            "", "rpm", "kPa", "\u00b0C", "\u00b0F", "V", "psi", "\u03bb", "AFR",
+            "%", "\u00b0", "ms", "km/h", "mph", "mg/s", "g/s",
+        ];
+
+        private void HandleGridCellEdit(GamepadKey key)
+        {
+            GaugeConfig gauge = _config.Screens[_selectedScreenIndex].Gauge;
+            GridCellConfig cell = gauge.Cells[_selectedCellIndex];
+
+            switch (key)
+            {
+                case GamepadKey.UP:
+                    _cursorIndex = Math.Max(0, _cursorIndex - 1);
+                    break;
+                case GamepadKey.DOWN:
+                    _cursorIndex = Math.Min(GridCellFields.Length - 1, _cursorIndex + 1);
+                    break;
+                case GamepadKey.LEFT:
+                case GamepadKey.RIGHT:
+                    AdjustCellField(cell, GridCellFields[_cursorIndex], key == GamepadKey.RIGHT ? 1 : -1);
+                    ConfigChanged = true;
+                    break;
+                case GamepadKey.B_DOWN:
+                    _currentScreen = EditorScreen.GaugeEdit;
+                    _cursorIndex = _selectedCellIndex + 1;
+                    break;
+                case GamepadKey.START_DOWN:
+                    SaveConfig();
+                    break;
+            }
+        }
+
+        private static void AdjustCellField(GridCellConfig cell, string field, int direction)
+        {
+            List<string> dataSources = DataSourceMapper.DataSourceNames;
+
+            switch (field)
+            {
+                case "DataSource":
+                    int dsIdx = dataSources.IndexOf(cell.DataSource);
+                    if (dsIdx < 0) dsIdx = 0;
+                    dsIdx = (dsIdx + direction + dataSources.Count) % dataSources.Count;
+                    cell.DataSource = dataSources[dsIdx];
+                    break;
+                case "Title":
+                    int tIdx = dataSources.IndexOf(cell.Title);
+                    if (tIdx < 0) tIdx = 0;
+                    tIdx = (tIdx + direction + dataSources.Count) % dataSources.Count;
+                    cell.Title = dataSources[tIdx];
+                    break;
+                case "Unit":
+                    int uIdx = Array.IndexOf(UnitOptions, cell.Unit);
+                    if (uIdx < 0) uIdx = 0;
+                    uIdx = (uIdx + direction + UnitOptions.Length) % UnitOptions.Length;
+                    cell.Unit = UnitOptions[uIdx];
+                    break;
+                case "Decimals":
+                    cell.Decimals = Math.Clamp(cell.Decimals + direction, 0, 4);
                     break;
             }
         }
@@ -230,6 +325,14 @@ namespace GaugeDotnet
                     int typeIdx = Array.IndexOf(gaugeTypes, gauge.Type);
                     typeIdx = (typeIdx + direction + gaugeTypes.Length) % gaugeTypes.Length;
                     gauge.Type = gaugeTypes[typeIdx];
+                    // Initialize 16 cells when switching to Grid
+                    if (gauge.Type == GaugeType.Grid && gauge.Cells.Count < 4)
+                    {
+                        while (gauge.Cells.Count < 4)
+                        {
+                            gauge.Cells.Add(new GridCellConfig());
+                        }
+                    }
                     // Clamp cursor if new type has fewer fields
                     string[] newFields = GetFieldsForType(gauge.Type);
                     if (_cursorIndex >= newFields.Length)
@@ -297,7 +400,9 @@ namespace GaugeDotnet
             for (int i = 0; i < _config.Screens.Count; i++)
             {
                 ScreenConfig screen = _config.Screens[i];
-                string label = $"Screen {i + 1}: {screen.Gauge.Title} ({screen.Gauge.DataSource})";
+                string label = screen.Gauge.Type == GaugeType.Grid
+                    ? $"Screen {i + 1}: Grid (2x2)"
+                    : $"Screen {i + 1}: {screen.Gauge.Title} ({screen.Gauge.DataSource})";
                 DrawMenuItem(canvas, label, y, i == _cursorIndex);
                 y += 40;
             }
@@ -314,8 +419,18 @@ namespace GaugeDotnet
             DrawTitle(canvas, $"Screen {_selectedScreenIndex + 1}: {gauge.Title}");
 
             string[] fields = GetFieldsForType(gauge.Type);
+
+            // For grid, scroll so cursor stays visible
+            int maxVisible = (_screenHeight - 100) / 30;
+            int scrollOffset = 0;
+            if (fields.Length > maxVisible)
+            {
+                scrollOffset = Math.Max(0, _cursorIndex - maxVisible + 2);
+                scrollOffset = Math.Min(scrollOffset, fields.Length - maxVisible);
+            }
+
             float y = 70;
-            for (int i = 0; i < fields.Length; i++)
+            for (int i = scrollOffset; i < fields.Length && y < _screenHeight - 40; i++)
             {
                 string field = fields[i];
                 string value = GetFieldValue(gauge, field);
@@ -323,12 +438,47 @@ namespace GaugeDotnet
 
                 DrawFieldRow(canvas, field, value, y, selected, field == "ColorHex" ? gauge.ColorHex : null);
 
+                y += 30;
+            }
+        }
+
+        private void DrawGridCellEdit(SKCanvas canvas)
+        {
+            GaugeConfig gauge = _config.Screens[_selectedScreenIndex].Gauge;
+            GridCellConfig cell = gauge.Cells[_selectedCellIndex];
+            DrawTitle(canvas, $"Cell {_selectedCellIndex + 1}");
+
+            float y = 80;
+            for (int i = 0; i < GridCellFields.Length; i++)
+            {
+                string field = GridCellFields[i];
+                string value = field switch
+                {
+                    "DataSource" => cell.DataSource,
+                    "Title" => cell.Title,
+                    "Unit" => cell.Unit.Length == 0 ? "(none)" : cell.Unit,
+                    "Decimals" => cell.Decimals.ToString(),
+                    _ => "?"
+                };
+                bool selected = i == _cursorIndex;
+                DrawFieldRow(canvas, field, value, y, selected, null);
                 y += 38;
             }
         }
 
-        private static string GetFieldValue(GaugeConfig gauge, string field)
+        private string GetFieldValue(GaugeConfig gauge, string field)
         {
+            if (field.StartsWith("Cell ") && int.TryParse(field.AsSpan(5), out int cellNum))
+            {
+                int idx = cellNum - 1;
+                if (idx >= 0 && idx < gauge.Cells.Count)
+                {
+                    GridCellConfig cell = gauge.Cells[idx];
+                    return $"{cell.DataSource} ({cell.Unit})";
+                }
+                return "?";
+            }
+
             return field switch
             {
                 "Type" => gauge.Type.ToString(),
@@ -418,7 +568,8 @@ namespace GaugeDotnet
             string controls = _currentScreen switch
             {
                 EditorScreen.ScreenList => "UP/DOWN:Nav  A:Edit  X:Delete  START:Save  B:Exit",
-                EditorScreen.GaugeEdit => "UP/DOWN:Nav  LEFT/RIGHT:Change  B:Back  START:Save",
+                EditorScreen.GaugeEdit => "UP/DOWN:Nav  LEFT/RIGHT:Change  A:Edit Cell  B:Back  START:Save",
+                EditorScreen.GridCellEdit => "UP/DOWN:Nav  LEFT/RIGHT:Change  B:Back  START:Save",
                 _ => ""
             };
 

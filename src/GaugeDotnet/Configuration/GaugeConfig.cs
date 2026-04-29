@@ -19,5 +19,8 @@ namespace GaugeDotnet.Configuration
         // Histogram gauge specific
         public int MaxDataPoints { get; set; } = 50;
         public int IntervalMs { get; set; } = 1000;
+
+        // Grid gauge specific
+        public List<GridCellConfig> Cells { get; set; } = new();
     }
 }

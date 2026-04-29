@@ -8,6 +8,7 @@ namespace GaugeDotnet.Configuration
         Needle,
         Digital,
         Sweep,
-        MinMax
+        MinMax,
+        Grid
     }
 }
