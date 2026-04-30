@@ -83,7 +83,7 @@ namespace GaugeDotnet
                 {
                     Console.WriteLine($"Could not reconnect {_ble.Address}, trying again in {delaySeconds} seconds");
                     await Task.Delay(TimeSpan.FromSeconds(delaySeconds), cancellationToken);
-                    delaySeconds = int.Min(10, delaySeconds + 1);
+                    delaySeconds = Math.Min(10, delaySeconds + 1);
                 }
             }
         }
@@ -95,11 +95,16 @@ namespace GaugeDotnet
         public async Task ConnectAsync()
         {
             _shouldTryReconnect = true;
-            await _ble.ConnectAsync().ConfigureAwait(false);
+            if (!await _ble.IsConnectedAsync().ConfigureAwait(false))
+            {
+                await _ble.ConnectAsync().ConfigureAwait(false);
+            }
+
             // Retrieve the list of services to ensure the device is fully initialized before proceeding
             await _ble.GetServicesAsync();
             await _ble.RegisterNotificationCallback(RaceChronoIds.ServiceUuid, RaceChronoIds.CanBusCharacteristicUuid, DataReceived);
             await SendMessage(MagicAllPidPackage).ConfigureAwait(false);
+            SetConnectionState(ConnectionState.Connected);
         }
         private async Task SendMessage(byte[] msg)
         {

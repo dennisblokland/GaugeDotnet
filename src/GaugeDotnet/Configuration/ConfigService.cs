@@ -56,6 +56,7 @@ namespace GaugeDotnet.Configuration
         {
             return new AppConfig
             {
+                DeviceMacAddress = "A0:DD:6C:B3:42:CE",
                 Screens =
                 [
                     new ScreenConfig

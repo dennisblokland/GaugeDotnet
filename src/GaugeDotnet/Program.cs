@@ -78,9 +78,19 @@ internal class Program
         try
         {
             BleManager bleManager = await BleManager.CreateAsync();
-            Console.WriteLine("Scanning for ME device...");
+            IMeDevice? device;
 
-            IMeDevice? device = await bleManager.ScanAsync(findAll: true, cancellationToken: exit.Token);
+            if (!string.IsNullOrWhiteSpace(appConfig.DeviceMacAddress))
+            {
+                Console.WriteLine($"Connecting to configured ME device {appConfig.DeviceMacAddress}...");
+                device = await bleManager.ConnectByAddressAsync(appConfig.DeviceMacAddress, exit.Token);
+            }
+            else
+            {
+                Console.WriteLine("Scanning for ME device...");
+                device = await bleManager.ScanAsync(findAll: true, cancellationToken: exit.Token);
+            }
+
             if (device == null)
             {
                 Console.WriteLine("No ME device found.");
@@ -104,10 +114,22 @@ internal class Program
             ShowErrorScreen("BLE library architecture\nmismatch.");
             return null;
         }
+        catch (FormatException ex)
+        {
+            Console.WriteLine($"Invalid configured Bluetooth MAC address: {ex.Message}");
+            ShowErrorScreen("Invalid Bluetooth MAC\naddress in config.");
+            return null;
+        }
         catch (Exception ex) when (ex.GetType().Name.Contains("Btle"))
         {
             Console.WriteLine($"Bluetooth error: {ex.Message}");
             ShowErrorScreen($"Bluetooth error:\n{ex.Message}");
+            return null;
+        }
+        catch (OperationCanceledException)
+        {
+            Console.WriteLine("Timed out while scanning for ME device.");
+            ShowErrorScreen("Timed out while scanning\nfor ME device.");
             return null;
         }
     }

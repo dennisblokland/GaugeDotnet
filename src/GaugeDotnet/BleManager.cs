@@ -37,13 +37,17 @@ namespace GaugeDotnet
             if (!findAll && savedIdentifiers == null)
                 throw new ArgumentException($"One of {nameof(findAll)} or {nameof(savedIdentifiers)} must be set");
 
-            HashSet<ulong>? idSet = savedIdentifiers?.Select(s => ulong.Parse(s, NumberStyles.AllowHexSpecifier)).ToHashSet();
+            HashSet<ulong>? idSet = savedIdentifiers?.Select(ParseIdentifier).ToHashSet();
 
             await foreach (BtlePeripheral peripheral in _ble.GetPeripherals([RaceChronoIds.ServiceUuid], false, cancellationToken))
             {
+                string mac = FormatMac(peripheral.Address);
+                Console.WriteLine($"Discovered ME device candidate {mac}");
+
                 if (!findAll && idSet != null && !idSet.Contains(peripheral.Address))
                 {
                     peripheral.Dispose();
+                    Console.WriteLine($"Device {mac} not in saved identifiers, skipping");
                     continue;
                 }
 
@@ -51,6 +55,42 @@ namespace GaugeDotnet
             }
 
             return null;
+        }
+
+        public async Task<MeDevice?> ConnectByAddressAsync(
+            string macAddress,
+            CancellationToken cancellationToken = default)
+        {
+            ulong address = ParseIdentifier(macAddress);
+            string formattedAddress = FormatMac(address);
+            Console.WriteLine($"Scanning for configured ME device {formattedAddress}...");
+
+            await foreach (BtlePeripheral peripheral in _ble.GetPeripherals([], false, cancellationToken))
+            {
+                if (peripheral.Address != address)
+                {
+                    peripheral.Dispose();
+                    continue;
+                }
+
+                Console.WriteLine($"Found configured ME device {formattedAddress}");
+                return MeDevice.Create(peripheral);
+            }
+
+            return null;
+        }
+
+        private static ulong ParseIdentifier(string identifier)
+        {
+            string normalized = identifier.Trim().Replace(":", string.Empty).Replace("-", string.Empty);
+            return ulong.Parse(normalized, NumberStyles.AllowHexSpecifier);
+        }
+
+        private static string FormatMac(ulong address)
+        {
+            string hex = address.ToString("X12");
+            return string.Join(":", Enumerable.Range(0, 6)
+                .Select(i => hex.Substring(i * 2, 2)));
         }
 
         public async Task<MeDevice?> ReattachAsync(
