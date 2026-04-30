@@ -20,6 +20,18 @@ namespace GaugeDotnet.Gauges
 
 		private SKColor _cachedActiveColor;
 		private SKColor _cachedInactiveColor;
+		// Pre-computed per-segment angles (degrees) — computed once in constructor
+		private readonly float[] _segmentStartDeg;
+		private readonly float[] _segmentSweepDeg;
+
+		// Pre-computed arc rect from constants
+		private readonly SKRect _arcRect;
+
+		// Cached active-segment bitmap — only redrawn when segment count or color changes
+		private readonly SKBitmap _activeBitmap;
+		private readonly SKCanvas _activeCanvas;
+		private int _cachedActiveSegmentCount = -1;
+		private SKColor _cachedActiveSegmentColor;
 
 		private const float SHADOW_BLUR = 15f;
 		private const float CENTER_X = 320f;
@@ -50,8 +62,25 @@ namespace GaugeDotnet.Gauges
 			_smoothing = settings.Smoothing;
 			_segmentCount = settings.SegmentCount;
 
+			// Pre-compute per-segment start angle and sweep (degrees) — reused every frame
+			_segmentStartDeg = new float[_segmentCount];
+			_segmentSweepDeg = new float[_segmentCount];
+			for (int i = 0; i < _segmentCount; i++)
+			{
+				float segStartRad = StartAngleRad + ((float)i / _segmentCount) * RangeAngleRad + SEGMENT_MARGIN / 2f;
+				float segEndRad = StartAngleRad + ((float)(i + 1) / _segmentCount) * RangeAngleRad - SEGMENT_MARGIN / 2f;
+				_segmentStartDeg[i] = segStartRad * 180f / MathF.PI;
+				_segmentSweepDeg[i] = (segEndRad - segStartRad) * 180f / MathF.PI;
+			}
+
+			// Arc rect is derived purely from constants — compute once
+			_arcRect = new SKRect(CENTER_X - RADIUS, CENTER_Y - RADIUS, CENTER_X + RADIUS, CENTER_Y + RADIUS);
+
 			_staticBitmap = new SKBitmap(screenWidth, screenHeight, SKColorType.Rgba8888, SKAlphaType.Premul);
 			_staticCanvas = new SKCanvas(_staticBitmap);
+
+			_activeBitmap = new SKBitmap(screenWidth, screenHeight, SKColorType.Rgba8888, SKAlphaType.Premul);
+			_activeCanvas = new SKCanvas(_activeBitmap);
 
 			(SKColor activeCol, SKColor inactiveCol) = Colors;
 			_valueDisplay = new SegmentDisplay(
@@ -104,21 +133,13 @@ namespace GaugeDotnet.Gauges
 			DrawBackground(_staticCanvas, screenWidth, screenHeight);
 
 			(SKColor activeCol, SKColor inactiveCol) = Colors;
-			SKRect arcRect = new(
-				CENTER_X - RADIUS, CENTER_Y - RADIUS,
-				CENTER_X + RADIUS, CENTER_Y + RADIUS
-			);
 
 			// 1. Draw inactive segmented arc
 			_arcPaint.Color = inactiveCol;
 			_arcPaint.MaskFilter = null;
 			for (int i = 0; i < _segmentCount; i++)
 			{
-				float segStartRad = StartAngleRad + ((float)i / _segmentCount) * RangeAngleRad + SEGMENT_MARGIN / 2f;
-				float segEndRad = StartAngleRad + ((float)(i + 1) / _segmentCount) * RangeAngleRad - SEGMENT_MARGIN / 2f;
-				float sweepDeg = (segEndRad - segStartRad) * 180f / MathF.PI;
-				float startDeg = segStartRad * 180f / MathF.PI;
-				_staticCanvas.DrawArc(arcRect, startDeg, sweepDeg, false, _arcPaint);
+				_staticCanvas.DrawArc(_arcRect, _segmentStartDeg[i], _segmentSweepDeg[i], false, _arcPaint);
 			}
 
 			// 2. Draw inner arc with glow
@@ -188,6 +209,9 @@ namespace GaugeDotnet.Gauges
 			_cachedActiveColor = activeCol;
 			_cachedInactiveColor = inactiveCol;
 
+			// Invalidate active segment cache so it redraws with the new color
+			_cachedActiveSegmentCount = -1;
+
 			StaticCacheValid = true;
 		}
 
@@ -210,41 +234,39 @@ namespace GaugeDotnet.Gauges
 				UpdateStaticBackground(canvas.DeviceClipBounds.Width, canvas.DeviceClipBounds.Height);
 			}
 
-			canvas.DrawBitmap(_staticBitmap, 0, 0);
+				canvas.DrawBitmap(_staticBitmap, 0, 0);
 
-			// Draw active segments
+			// Draw active segments — only regenerate when count or color changes
 			float pct = (float)((_currentValue - MinValue) / (MaxValue - MinValue));
 			pct = Math.Clamp(pct, 0f, 1f);
 			int activeSegments = (int)MathF.Round(pct * _segmentCount);
 
-			SKRect arcRect = new(
-				CENTER_X - RADIUS, CENTER_Y - RADIUS,
-				CENTER_X + RADIUS, CENTER_Y + RADIUS
-			);
-
-			_glowArcPaint.Color = activeCol;
-			_glowArcPaint.MaskFilter = _blur;
-			for (int i = 0; i < activeSegments; i++)
+			if (activeSegments != _cachedActiveSegmentCount || activeCol != _cachedActiveSegmentColor)
 			{
-				float segStartRad = StartAngleRad + ((float)i / _segmentCount) * RangeAngleRad + SEGMENT_MARGIN / 2f;
-				float segEndRad = StartAngleRad + ((float)(i + 1) / _segmentCount) * RangeAngleRad - SEGMENT_MARGIN / 2f;
-				float sweepDeg = (segEndRad - segStartRad) * 180f / MathF.PI;
-				float startDeg = segStartRad * 180f / MathF.PI;
-				canvas.DrawArc(arcRect, startDeg, sweepDeg, false, _glowArcPaint);
+				_activeCanvas.Clear(SKColors.Transparent);
+
+				if (activeSegments > 0)
+				{
+					_glowArcPaint.Color = activeCol;
+					_glowArcPaint.MaskFilter = _blur;
+					for (int i = 0; i < activeSegments; i++)
+					{
+						_activeCanvas.DrawArc(_arcRect, _segmentStartDeg[i], _segmentSweepDeg[i], false, _glowArcPaint);
+					}
+
+					_glowArcPaint.MaskFilter = null;
+					for (int i = 0; i < activeSegments; i++)
+					{
+						_activeCanvas.DrawArc(_arcRect, _segmentStartDeg[i], _segmentSweepDeg[i], false, _glowArcPaint);
+					}
+				}
+
+				_cachedActiveSegmentCount = activeSegments;
+				_cachedActiveSegmentColor = activeCol;
 			}
 
-			// Draw again without blur for crisp segments
-			_glowArcPaint.MaskFilter = null;
-			for (int i = 0; i < activeSegments; i++)
-			{
-				float segStartRad = StartAngleRad + ((float)i / _segmentCount) * RangeAngleRad + SEGMENT_MARGIN / 2f;
-				float segEndRad = StartAngleRad + ((float)(i + 1) / _segmentCount) * RangeAngleRad - SEGMENT_MARGIN / 2f;
-				float sweepDeg = (segEndRad - segStartRad) * 180f / MathF.PI;
-				float startDeg = segStartRad * 180f / MathF.PI;
-				canvas.DrawArc(arcRect, startDeg, sweepDeg, false, _glowArcPaint);
-			}
+			canvas.DrawBitmap(_activeBitmap, 0, 0);
 
-			// Draw value display
 			_valueDisplay.SetValue(Value);
 			if (activeCol != _cachedActiveColor || inactiveCol != _cachedInactiveColor)
 			{
