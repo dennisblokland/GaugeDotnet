@@ -10,28 +10,34 @@ namespace ME1_4NET.Tests.Frames
         public void Decode_ValidPayload_ReturnsCorrectValues()
         {
             // Arrange
-            // oilTemp = -10 (0xF6), oilPressure = 300 (0x012C), fuelPressure = 500 (0x01F4)
+            // priInjDuty = 100 * 0.5 = 50%, secInjDuty = 60 * 0.5 = 30%
+            // secInjAngle = 3500 * 0.1 = 350 deg, secInjPw = 50 * 0.1 = 5 ms
+            // boostCtrlDuty = 140 * 0.5 = 70%
             byte[] payload =
             [
-                0xF6,       // oilTemp = -10
-                0x2C, 0x01, // oilPressure = 300
-                0xF4, 0x01  // fuelPressure = 500
+                100,        // priInjDuty raw = 100
+                60,         // secInjDuty raw = 60
+                0xAC, 0x0D, // secInjAngle raw = 3500 (little-endian)
+                0x32, 0x00, // secInjPw raw = 50 (little-endian)
+                140         // boostCtrlDuty raw = 140
             ];
 
             // Act
             ME1_4 frame = ME1_4.Decode(payload);
 
             // Assert
-            Assert.Equal(-10, frame.OilTemp);
-            Assert.Equal((ushort)300, frame.OilPressure);
-            Assert.Equal((ushort)500, frame.FuelPressure);
+            Assert.Equal(50.0f, frame.PriInjDuty);
+            Assert.Equal(30.0f, frame.SecInjDuty);
+            Assert.Equal(350.0f, frame.SecInjAngle, 1);
+            Assert.Equal(5.0f, frame.SecInjPw, 1);
+            Assert.Equal(70.0f, frame.BoostCtrlDuty);
         }
 
         [Fact]
         public void Decode_PayloadTooShort_ThrowsArgumentException()
         {
             // Arrange
-            byte[] payload = new byte[4];
+            byte[] payload = new byte[6];
 
             // Act & Assert
             Assert.Throws<ArgumentException>(() => ME1_4.Decode(payload));
@@ -41,57 +47,62 @@ namespace ME1_4NET.Tests.Frames
         public void Decode_AllZeros_ReturnsZeros()
         {
             // Arrange
-            byte[] payload = new byte[5];
+            byte[] payload = new byte[7];
 
             // Act
             ME1_4 frame = ME1_4.Decode(payload);
 
             // Assert
-            Assert.Equal(0, frame.OilTemp);
-            Assert.Equal((ushort)0, frame.OilPressure);
-            Assert.Equal((ushort)0, frame.FuelPressure);
+            Assert.Equal(0f, frame.PriInjDuty);
+            Assert.Equal(0f, frame.SecInjDuty);
+            Assert.Equal(0f, frame.SecInjAngle);
+            Assert.Equal(0f, frame.SecInjPw);
+            Assert.Equal(0f, frame.BoostCtrlDuty);
         }
 
         [Fact]
-        public void Decode_EdgeValues_WorksCorrectly()
+        public void Decode_MaxDuty_ReturnsCorrectValues()
         {
             // Arrange
-            // oilTemp = sbyte.MinValue (-128, 0x80), oilPressure = ushort.MaxValue (0xFFFF), fuelPressure = ushort.MinValue (0x0000)
+            // 255 * 0.5 = 127.5%
             byte[] payload =
             [
-                0x80,       // oilTemp = -128
-                0xFF, 0xFF, // oilPressure = 65535
-                0x00, 0x00  // fuelPressure = 0
+                0xFF,       // priInjDuty = 127.5
+                0xFF,       // secInjDuty = 127.5
+                0x00, 0x00, // secInjAngle = 0
+                0x00, 0x00, // secInjPw = 0
+                0xFF        // boostCtrlDuty = 127.5
             ];
 
             // Act
             ME1_4 frame = ME1_4.Decode(payload);
 
             // Assert
-            Assert.Equal(sbyte.MinValue, frame.OilTemp);
-            Assert.Equal(ushort.MaxValue, frame.OilPressure);
-            Assert.Equal((ushort)0, frame.FuelPressure);
+            Assert.Equal(127.5f, frame.PriInjDuty);
+            Assert.Equal(127.5f, frame.SecInjDuty);
+            Assert.Equal(127.5f, frame.BoostCtrlDuty);
         }
 
         [Fact]
-        public void Decode_MaxOilTempAndFuelPressure_WorksCorrectly()
+        public void Decode_NegativeAngle_ReturnsCorrectValues()
         {
             // Arrange
-            // oilTemp = sbyte.MaxValue (127, 0x7F), oilPressure = 0, fuelPressure = ushort.MaxValue (0xFFFF)
+            // secInjAngle raw = -100, * 0.1 = -10.0 deg
             byte[] payload =
             [
-                0x7F,       // oilTemp = 127
-                0x00, 0x00, // oilPressure = 0
-                0xFF, 0xFF  // fuelPressure = 65535
+                0x00,       // priInjDuty = 0
+                0x00,       // secInjDuty = 0
+                0x9C, 0xFF, // secInjAngle raw = -100 (little-endian)
+                0x9C, 0xFF, // secInjPw raw = -100, * 0.1 = -10.0 ms
+                0x00        // boostCtrlDuty = 0
             ];
 
             // Act
             ME1_4 frame = ME1_4.Decode(payload);
 
             // Assert
-            Assert.Equal(sbyte.MaxValue, frame.OilTemp);
-            Assert.Equal((ushort)0, frame.OilPressure);
-            Assert.Equal(ushort.MaxValue, frame.FuelPressure);
+            Assert.Equal(-10.0f, frame.SecInjAngle, 1);
+            Assert.Equal(-10.0f, frame.SecInjPw, 1);
         }
     }
 }

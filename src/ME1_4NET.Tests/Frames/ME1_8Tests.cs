@@ -9,68 +9,68 @@ namespace ME1_4NET.Tests.Frames
         public void Decode_ValidPayload_ReturnsCorrectValues()
         {
             // Arrange
-            byte[] payload = [0x34, 0x12, 0xFF, 0x7F, 0xCD, 0xAB];
+            // egt1 raw = 7000, * 0.1 = 700.0 deg C
+            // egt2 raw = 6500, * 0.1 = 650.0 deg C
+            // gpt1 = 100, gpt2 = -50
+            byte[] payload =
+            [
+                0x58, 0x1B, // egt1 raw = 7000
+                0x64, 0x19, // egt2 raw = 6500
+                0x64, 0x00, // gpt1 = 100
+                0xCE, 0xFF  // gpt2 = -50
+            ];
 
             // Act
             ME1_8 frame = ME1_8.Decode(payload);
 
             // Assert
-            Assert.Equal(0x1234, frame.TpsVoltage);
-            Assert.Equal(0x7FFF, frame.CamAngle);
-            Assert.Equal(0xABCD, frame.Baro);
+            Assert.Equal(700.0f, frame.Egt1, 1);
+            Assert.Equal(650.0f, frame.Egt2, 1);
+            Assert.Equal((short)100, frame.Gpt1);
+            Assert.Equal((short)-50, frame.Gpt2);
         }
 
         [Fact]
         public void Decode_PayloadTooShort_ThrowsArgumentException()
         {
             // Arrange
-            byte[] payload = [0x01, 0x02, 0x03, 0x04, 0x05]; // Only 5 bytes
+            byte[] payload = [0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07]; // Only 7 bytes
 
             // Act & Assert
             Assert.Throws<ArgumentException>(() => ME1_8.Decode(payload));
         }
 
         [Fact]
-        public void Decode_MinValues_ReturnsCorrectly()
+        public void Decode_AllZeros_ReturnsCorrectly()
         {
             // Arrange
-            byte[] payload = [0x00, 0x00, 0x00, 0x80, 0x00, 0x00];
+            byte[] payload = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
 
             // Act
             ME1_8 frame = ME1_8.Decode(payload);
 
             // Assert
-            Assert.Equal(0x0000, frame.TpsVoltage);
-            Assert.Equal(-32768, frame.CamAngle);
-            Assert.Equal(0x0000, frame.Baro);
+            Assert.Equal(0f, frame.Egt1);
+            Assert.Equal(0f, frame.Egt2);
+            Assert.Equal((short)0, frame.Gpt1);
+            Assert.Equal((short)0, frame.Gpt2);
         }
 
         [Fact]
-        public void Decode_MaxValues_ReturnsCorrectly()
+        public void Decode_MaxEgt_ReturnsCorrectly()
         {
             // Arrange
-            byte[] payload = [0xFF, 0xFF, 0xFF, 0x7F, 0xFF, 0xFF];
+            // egt1 raw = 0xFFFF = 65535, * 0.1 = 6553.5
+            byte[] payload = [0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x7F, 0x00, 0x80];
 
             // Act
             ME1_8 frame = ME1_8.Decode(payload);
 
             // Assert
-            Assert.Equal(0xFFFF, frame.TpsVoltage);
-            Assert.Equal(32767, frame.CamAngle);
-            Assert.Equal(0xFFFF, frame.Baro);
-        }
-
-        [Fact]
-        public void Decode_NegativeCamAngle_ReturnsCorrectly()
-        {
-            // Arrange
-            byte[] payload = [0x00, 0x00, 0xC7, 0xCF, 0x00, 0x00];
-
-            // Act
-            ME1_8 frame = ME1_8.Decode(payload);
-
-            // Assert
-            Assert.Equal(-12345, frame.CamAngle);
+            Assert.Equal(6553.5f, frame.Egt1, 1);
+            Assert.Equal(6553.5f, frame.Egt2, 1);
+            Assert.Equal(short.MaxValue, frame.Gpt1);
+            Assert.Equal(short.MinValue, frame.Gpt2);
         }
     }
 }

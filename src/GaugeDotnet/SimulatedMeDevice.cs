@@ -56,27 +56,34 @@ namespace GaugeDotnet
                 Data.PriInjPw = (short)(50 + sine * 30);
 
                 // ME1_4
-                Data.OilTemp = (sbyte)(90 + fast * 15);
-                Data.OilPressure = (ushort)(40 + sine * 20);
-                Data.FuelPressure = (ushort)(43 + fast * 3);
+                Data.PriInjDuty = (float)(40 + sine * 35);
+                Data.SecInjDuty = (float)(20 + sine * 15);
+                Data.SecInjAngle = (float)(350 + fast * 10);
+                Data.SecInjPw = (float)(5 + sine * 3);
+                Data.BoostCtrlDuty = (float)(50 + sine * 40);
 
                 // ME1_5
-                Data.BatteryVoltage = (ushort)(138 + fast * 5);
-                Data.KnockLevel = (byte)Math.Max(0, fast * 3);
-                Data.InjectorDuty = (byte)(40 + sine * 35);
+                Data.OilTemp = (float)(90 + fast * 15);
+                Data.OilPressure = (float)(400 + sine * 200);
+                Data.Clt = (float)(85 + fast * 10);
+                Data.Vbat = (float)(13.8 + fast * 0.5);
 
                 // ME1_6
                 Data.GearPos = (byte)Math.Clamp((int)(3 + sine * 2.5), 1, 6);
                 Data.VehicleSpeed = (ushort)(60 + sine * 60);
 
                 // ME1_7
-                Data.Egt = (ushort)(700 + sine * 200);
-                Data.TurboSpeed = (ushort)(80000 + sine * 40000);
-                Data.WastegateDuty = (byte)(50 + sine * 40);
+                Data.KnockPeakReading = (ushort)(100 + sine * 50);
+                Data.KnockIgnAdvMod = (float)(sine * -2.0);
+                Data.FuelPressure = (ushort)(400 + sine * 100);
+                Data.FuelTemp = (byte)(40 + fast * 10);
+                Data.KnockEvsCnt = (ushort)(fast * 5);
 
                 // ME1_8
-                Data.Baro = (ushort)(1013 + fast * 5);
-                Data.CamAngle = (short)(sine * 20);
+                Data.Egt1 = (float)(700 + sine * 200);
+                Data.Egt2 = (float)(680 + sine * 180);
+                Data.Gpt1 = (short)(sine * 20);
+                Data.Gpt2 = (short)(sine * 15);
 
                 t += 0.05;
 

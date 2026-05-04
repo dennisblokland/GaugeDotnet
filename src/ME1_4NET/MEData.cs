@@ -25,14 +25,17 @@ namespace ME1_4NET
         public short PriInjPw { get; set; }
 
         // ME1_4
-        public sbyte OilTemp { get; set; }
-        public ushort OilPressure { get; set; }
-        public ushort FuelPressure { get; set; }
+        public float PriInjDuty { get; set; }
+        public float SecInjDuty { get; set; }
+        public float SecInjAngle { get; set; }
+        public float SecInjPw { get; set; }
+        public float BoostCtrlDuty { get; set; }
 
         // ME1_5
-        public ushort BatteryVoltage { get; set; }
-        public byte KnockLevel { get; set; }
-        public byte InjectorDuty { get; set; }
+        public float OilTemp { get; set; }
+        public float OilPressure { get; set; }
+        public float Clt { get; set; }
+        public float Vbat { get; set; }
 
         // ME1_6
         public byte GearPos { get; set; }
@@ -41,14 +44,17 @@ namespace ME1_4NET
         public ushort EpsEvMsk { get; set; }
 
         // ME1_7
-        public ushort Egt { get; set; }
-        public ushort TurboSpeed { get; set; }
-        public byte WastegateDuty { get; set; }
+        public ushort KnockPeakReading { get; set; }
+        public float KnockIgnAdvMod { get; set; }
+        public ushort FuelPressure { get; set; }
+        public byte FuelTemp { get; set; }
+        public ushort KnockEvsCnt { get; set; }
 
         // ME1_8
-        public ushort TpsVoltage { get; set; }
-        public short CamAngle { get; set; }
-        public ushort Baro { get; set; }
+        public float Egt1 { get; set; }
+        public float Egt2 { get; set; }
+        public short Gpt1 { get; set; }
+        public short Gpt2 { get; set; }
 
         public void Apply(ICanFrame frame)
         {
@@ -75,14 +81,17 @@ namespace ME1_4NET
                     PriInjPw = f.PriInjPw;
                     break;
                 case ME1_4 f:
-                    OilTemp = f.OilTemp;
-                    OilPressure = f.OilPressure;
-                    FuelPressure = f.FuelPressure;
+                    PriInjDuty = f.PriInjDuty;
+                    SecInjDuty = f.SecInjDuty;
+                    SecInjAngle = f.SecInjAngle;
+                    SecInjPw = f.SecInjPw;
+                    BoostCtrlDuty = f.BoostCtrlDuty;
                     break;
                 case ME1_5 f:
-                    BatteryVoltage = f.BatteryVoltage;
-                    KnockLevel = f.KnockLevel;
-                    InjectorDuty = f.InjectorDuty;
+                    OilTemp = f.OilTemp;
+                    OilPressure = f.OilPressure;
+                    Clt = f.Clt;
+                    Vbat = f.Vbat;
                     break;
                 case ME1_6 f:
                     GearPos = f.GearPos;
@@ -91,14 +100,17 @@ namespace ME1_4NET
                     EpsEvMsk = f.EpsEvMsk;
                     break;
                 case ME1_7 f:
-                    Egt = f.Egt;
-                    TurboSpeed = f.TurboSpeed;
-                    WastegateDuty = f.WastegateDuty;
+                    KnockPeakReading = f.KnockPeakReading;
+                    KnockIgnAdvMod = f.KnockIgnAdvMod;
+                    FuelPressure = f.FuelPressure;
+                    FuelTemp = f.FuelTemp;
+                    KnockEvsCnt = f.KnockEvsCnt;
                     break;
                 case ME1_8 f:
-                    TpsVoltage = f.TpsVoltage;
-                    CamAngle = f.CamAngle;
-                    Baro = f.Baro;
+                    Egt1 = f.Egt1;
+                    Egt2 = f.Egt2;
+                    Gpt1 = f.Gpt1;
+                    Gpt2 = f.Gpt2;
                     break;
             }
         }

@@ -8,73 +8,61 @@ namespace ME1_4NET.Tests.Frames
         [Fact]
         public void Decode_ValidPayload_ReturnsCorrectValues()
         {
-            // battery_voltage = 12345 (0x3039), knock_level = 200, injector_duty = 150
+            // oil_temp raw = 900, * 0.1 = 90.0 deg C
+            // oil_pressure raw = 4000, * 0.1 = 400.0 kPa
+            // clt raw = 850, * 0.1 = 85.0 deg C
+            // vbat raw = 138, * 0.1 = 13.8 V
             byte[] payload =
             [
-                0x39, 0x30, // battery_voltage = 0x3039 = 12345
-                0xC8,       // knock_level = 200
-                0x96        // injector_duty = 150
+                0x84, 0x03, // oil_temp raw = 900
+                0xA0, 0x0F, // oil_pressure raw = 4000
+                0x52, 0x03, // clt raw = 850
+                0x8A, 0x00  // vbat raw = 138
             ];
 
             ME1_5 frame = ME1_5.Decode(payload);
 
-            Assert.Equal((ushort)12345, frame.BatteryVoltage);
-            Assert.Equal((byte)200, frame.KnockLevel);
-            Assert.Equal((byte)150, frame.InjectorDuty);
+            Assert.Equal(90.0f, frame.OilTemp, 1);
+            Assert.Equal(400.0f, frame.OilPressure, 1);
+            Assert.Equal(85.0f, frame.Clt, 1);
+            Assert.Equal(13.8f, frame.Vbat, 1);
         }
 
         [Fact]
         public void Decode_PayloadTooShort_ThrowsArgumentException()
         {
-            byte[] payload = new byte[3];
+            byte[] payload = new byte[7];
             Assert.Throws<ArgumentException>(() => ME1_5.Decode(payload));
         }
 
         [Fact]
         public void Decode_AllZeros_ReturnsZeros()
         {
-            byte[] payload = new byte[4];
+            byte[] payload = new byte[8];
             ME1_5 frame = ME1_5.Decode(payload);
 
-            Assert.Equal((ushort)0, frame.BatteryVoltage);
-            Assert.Equal((byte)0, frame.KnockLevel);
-            Assert.Equal((byte)0, frame.InjectorDuty);
+            Assert.Equal(0f, frame.OilTemp);
+            Assert.Equal(0f, frame.OilPressure);
+            Assert.Equal(0f, frame.Clt);
+            Assert.Equal(0f, frame.Vbat);
         }
 
         [Fact]
-        public void Decode_EdgeValues_WorksCorrectly()
+        public void Decode_NegativeValues_ReturnsCorrectly()
         {
-            // battery_voltage = ushort.MaxValue (0xFFFF), knock_level = byte.MaxValue (0xFF), injector_duty = byte.MinValue (0x00)
+            // oil_temp raw = -200, * 0.1 = -20.0 deg C
             byte[] payload =
             [
-                0xFF, 0xFF, // battery_voltage = 65535
-                0xFF,       // knock_level = 255
-                0x00        // injector_duty = 0
+                0x38, 0xFF, // oil_temp raw = -200
+                0x00, 0x00, // oil_pressure = 0
+                0x38, 0xFF, // clt raw = -200, * 0.1 = -20.0
+                0x00, 0x00  // vbat = 0
             ];
 
             ME1_5 frame = ME1_5.Decode(payload);
 
-            Assert.Equal(ushort.MaxValue, frame.BatteryVoltage);
-            Assert.Equal(byte.MaxValue, frame.KnockLevel);
-            Assert.Equal((byte)0, frame.InjectorDuty);
-        }
-
-        [Fact]
-        public void Decode_MinBatteryVoltageAndMaxInjectorDuty_WorksCorrectly()
-        {
-            // battery_voltage = 0, knock_level = 0, injector_duty = 255
-            byte[] payload =
-            [
-                0x00, 0x00, // battery_voltage = 0
-                0x00,       // knock_level = 0
-                0xFF        // injector_duty = 255
-            ];
-
-            ME1_5 frame = ME1_5.Decode(payload);
-
-            Assert.Equal((ushort)0, frame.BatteryVoltage);
-            Assert.Equal((byte)0, frame.KnockLevel);
-            Assert.Equal(byte.MaxValue, frame.InjectorDuty);
+            Assert.Equal(-20.0f, frame.OilTemp, 1);
+            Assert.Equal(-20.0f, frame.Clt, 1);
         }
     }
 }
