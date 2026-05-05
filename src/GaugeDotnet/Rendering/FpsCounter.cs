@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using SkiaSharp;
 
-namespace GaugeDotnet
+namespace GaugeDotnet.Rendering
 {
 	public class FpsCounter
 	{

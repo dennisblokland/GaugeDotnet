@@ -1,7 +1,7 @@
 using System.Globalization;
 using VaettirNet.Btleplug;
 
-namespace GaugeDotnet
+namespace GaugeDotnet.Devices
 {
     /// class created from <see cref="CreateAsync"/>. Dice can be found and connected using
     /// <see cref="StartScan"/>

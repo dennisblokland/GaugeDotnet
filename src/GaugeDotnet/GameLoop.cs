@@ -1,6 +1,8 @@
 using System.Diagnostics;
 using GaugeDotnet.Configuration;
+using GaugeDotnet.Devices;
 using GaugeDotnet.Gauges;
+using GaugeDotnet.Rendering;
 using SkiaSharp;
 using static SDL2.SDL;
 using RG35XX.Core.GamePads;

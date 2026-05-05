@@ -1,7 +1,7 @@
 using SkiaSharp;
 using SDL2;
 
-namespace GaugeDotnet
+namespace GaugeDotnet.Rendering
 {
     public class GaugeSDL
     {

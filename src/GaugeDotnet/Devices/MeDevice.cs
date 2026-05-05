@@ -1,7 +1,7 @@
 using ME1_4NET;
 using VaettirNet.Btleplug;
 
-namespace GaugeDotnet
+namespace GaugeDotnet.Devices
 {
     public class MeDevice : IDisposable, IMeDevice
     {

@@ -1,3 +1,4 @@
+using GaugeDotnet.Rendering;
 using GaugeDotnet.Extensions;
 using GaugeDotnet.Gauges.Components;
 using GaugeDotnet.Gauges.Models;

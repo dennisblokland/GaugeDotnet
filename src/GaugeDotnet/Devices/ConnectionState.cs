@@ -1,4 +1,4 @@
-namespace GaugeDotnet
+namespace GaugeDotnet.Devices
 {
     public enum ConnectionState
     {

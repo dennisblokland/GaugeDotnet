@@ -1,6 +1,6 @@
 using ME1_4NET;
 
-namespace GaugeDotnet
+namespace GaugeDotnet.Devices
 {
     /// <summary>
     /// A simulated ME device for debug/PC use. Generates oscillating gauge values so the

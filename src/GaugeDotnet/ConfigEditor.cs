@@ -1,4 +1,5 @@
 using GaugeDotnet.Configuration;
+using GaugeDotnet.Rendering;
 using RG35XX.Core.GamePads;
 using SkiaSharp;
 

@@ -1,4 +1,5 @@
 using GaugeDotnet.Configuration;
+using GaugeDotnet.Devices;
 using GaugeDotnet.Gauges.Models;
 
 namespace GaugeDotnet.Gauges

@@ -1,6 +1,6 @@
 using ME1_4NET;
 
-namespace GaugeDotnet
+namespace GaugeDotnet.Devices
 {
     public interface IMeDevice
     {

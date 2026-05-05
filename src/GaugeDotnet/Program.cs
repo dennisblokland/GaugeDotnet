@@ -1,67 +1,11 @@
 ﻿using GaugeDotnet.Configuration;
-using SkiaSharp;
+using GaugeDotnet.Devices;
+using GaugeDotnet.Rendering;
 using GaugeDotnet;
 using static SDL2.SDL;
-using RG35XX.Libraries;
-using RG35XX.Core.Interfaces;
-using RG35XX.Core.GamePads;
 
 internal class Program
 {
-    private static void ShowErrorScreen(string message)
-    {
-        int w = 640, h = 480;
-        GaugeSDL sdl = new(screenWidth: w, screenHeight: h);
-        IGamePadReader gp = new GamePadReader();
-        gp.Initialize();
-
-        using var bitmap = new SKBitmap(w, h);
-        using var bmpCanvas = new SKCanvas(bitmap);
-        bmpCanvas.Clear(SKColors.Black);
-
-        using SKPaint paint = new() { Color = SKColors.Red, IsAntialias = true };
-        SKTypeface typeface = FontHelper.GetFont("Race Sport");
-        using SKFont font = new(typeface, 24);
-
-        float y = 200;
-        foreach (string line in message.Split('\n'))
-        {
-            float lw = font.MeasureText(line);
-            bmpCanvas.DrawText(line, (w - lw) / 2, y, font, paint);
-            y += 34;
-        }
-
-        paint.Color = SKColors.White;
-        const string exitMsg = "Press any button to exit";
-        float ew = font.MeasureText(exitMsg);
-        bmpCanvas.DrawText(exitMsg, (w - ew) / 2, y + 20, font, paint);
-
-        SKCanvas canvas = sdl.GetCanvas();
-        canvas.Clear(SKColors.Black);
-        using var image = SKImage.FromBitmap(bitmap);
-        canvas.DrawImage(image, 0, 0);
-        sdl.FlushAndSwap();
-
-        while (true)
-        {
-            while (SDL_PollEvent(out SDL_Event e) == 1)
-            {
-                if (e.type == SDL_EventType.SDL_QUIT || e.type == SDL_EventType.SDL_KEYDOWN)
-                {
-                    SDL_Quit();
-                    return;
-                }
-            }
-            GamepadKey key = gp.ReadInput();
-            if (key != GamepadKey.None)
-            {
-                SDL_Quit();
-                return;
-            }
-            Thread.Sleep(50);
-        }
-    }
-
     private static async Task<IMeDevice?> ConnectDeviceAsync(AppConfig appConfig, CancellationTokenSource exit)
     {
         if (appConfig.DemoMode)
@@ -94,7 +38,7 @@ internal class Program
             if (device == null)
             {
                 Console.WriteLine("No ME device found.");
-                ShowErrorScreen("No ME device found.");
+                ErrorScreen.Show("No ME device found.");
                 return null;
             }
 
@@ -105,31 +49,31 @@ internal class Program
         catch (DllNotFoundException ex)
         {
             Console.WriteLine($"BLE native library missing: {ex.Message}");
-            ShowErrorScreen("BLE library not available\nfor this platform.");
+            ErrorScreen.Show("BLE library not available\nfor this platform.");
             return null;
         }
         catch (BadImageFormatException ex)
         {
             Console.WriteLine($"BLE library architecture mismatch: {ex.Message}");
-            ShowErrorScreen("BLE library architecture\nmismatch.");
+            ErrorScreen.Show("BLE library architecture\nmismatch.");
             return null;
         }
         catch (FormatException ex)
         {
             Console.WriteLine($"Invalid configured Bluetooth MAC address: {ex.Message}");
-            ShowErrorScreen("Invalid Bluetooth MAC\naddress in config.");
+            ErrorScreen.Show("Invalid Bluetooth MAC\naddress in config.");
             return null;
         }
         catch (Exception ex) when (ex.GetType().Name.Contains("Btle"))
         {
             Console.WriteLine($"Bluetooth error: {ex.Message}");
-            ShowErrorScreen($"Bluetooth error:\n{ex.Message}");
+            ErrorScreen.Show($"Bluetooth error:\n{ex.Message}");
             return null;
         }
         catch (OperationCanceledException)
         {
             Console.WriteLine("Timed out while scanning for ME device.");
-            ShowErrorScreen("Timed out while scanning\nfor ME device.");
+            ErrorScreen.Show("Timed out while scanning\nfor ME device.");
             return null;
         }
     }

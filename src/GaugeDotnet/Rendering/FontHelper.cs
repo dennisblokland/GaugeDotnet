@@ -1,6 +1,6 @@
 using SkiaSharp;
 
-namespace GaugeDotnet
+namespace GaugeDotnet.Rendering
 {
     public static class FontHelper
     {
