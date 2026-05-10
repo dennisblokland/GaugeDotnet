@@ -519,6 +519,20 @@ public static class ElementRenderer
 		return Path.Combine(AppContext.BaseDirectory, path);
 	}
 
+	/// <summary>
+	/// Save a cached image to disk as PNG. Returns false if the image is not in cache.
+	/// </summary>
+	public static bool SaveImageFromCache(string imagePath, string destPath)
+	{
+		SKBitmap? bitmap = LoadImage(imagePath);
+		if (bitmap == null) return false;
+
+		using SKData data = bitmap.Encode(SKEncodedImageFormat.Png, 100);
+		using FileStream fs = File.Create(destPath);
+		data.SaveTo(fs);
+		return true;
+	}
+
 	public static void ClearImageCache()
 	{
 		foreach (SKBitmap? bitmap in _imageCache.Values)

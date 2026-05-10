@@ -728,9 +728,24 @@ public partial class MainWindow : Window
 			string json = JsonSerializer.Serialize(exportDef, JsonOptions);
 			await File.WriteAllTextAsync(file.Path.LocalPath, json);
 
-			// Update base dir so continued editing resolves relative paths
+			// Adopt the exported paths so continued editing uses the saved relative paths
+			int selectedIdx = _selectedElement != null ? _definition.Elements.IndexOf(_selectedElement) : -1;
+			_definition = exportDef;
+			_selectedElement = selectedIdx >= 0 && selectedIdx < _definition.Elements.Count
+				? _definition.Elements[selectedIdx]
+				: null;
 			GaugeDotnet.Gauges.Custom.ElementRenderer.ClearImageCache();
 			GaugeDotnet.Gauges.Custom.ElementRenderer.SetBaseDirectory(saveDir);
+			RefreshElementList();
+			if (_selectedElement != null)
+			{
+				ShowProperties(_selectedElement);
+			}
+			else
+			{
+				ClearProperties();
+			}
+			Redraw();
 		}
 	}
 
@@ -743,32 +758,28 @@ public partial class MainWindow : Window
 			?? new CustomGaugeDefinition();
 
 		bool dirCreated = false;
+		int imageIndex = 0;
 
-		export.BackgroundImage = CopyAndRelativize(export.BackgroundImage, saveDir, imagesDir, ref dirCreated);
+		export.BackgroundImage = SaveAndRelativize(export.BackgroundImage, imagesDir, ref dirCreated, ref imageIndex);
 
 		foreach (GaugeElement element in export.Elements)
 		{
 			if (element is ImageElement img)
 			{
-				img.ImagePath = CopyAndRelativize(img.ImagePath, saveDir, imagesDir, ref dirCreated) ?? "";
+				img.ImagePath = SaveAndRelativize(img.ImagePath, imagesDir, ref dirCreated, ref imageIndex) ?? "";
 			}
 			else if (element is NeedleElement needle)
 			{
-				needle.ImagePath = CopyAndRelativize(needle.ImagePath, saveDir, imagesDir, ref dirCreated);
+				needle.ImagePath = SaveAndRelativize(needle.ImagePath, imagesDir, ref dirCreated, ref imageIndex);
 			}
 		}
 
 		return export;
 	}
 
-	private static string? CopyAndRelativize(string? path, string saveDir, string imagesDir, ref bool dirCreated)
+	private static string? SaveAndRelativize(string? path, string imagesDir, ref bool dirCreated, ref int imageIndex)
 	{
 		if (string.IsNullOrEmpty(path)) return path;
-
-		// Already relative → keep as-is
-		if (!Path.IsPathRooted(path)) return path;
-
-		if (!File.Exists(path)) return path;
 
 		if (!dirCreated)
 		{
@@ -776,14 +787,11 @@ public partial class MainWindow : Window
 			dirCreated = true;
 		}
 
-		string fileName = Path.GetFileName(path);
+		imageIndex++;
+		string fileName = $"image_{imageIndex}.png";
 		string destPath = Path.Combine(imagesDir, fileName);
 
-		// Avoid overwriting if same file
-		if (!string.Equals(Path.GetFullPath(path), Path.GetFullPath(destPath), StringComparison.Ordinal))
-		{
-			File.Copy(path, destPath, overwrite: true);
-		}
+		GaugeDotnet.Gauges.Custom.ElementRenderer.SaveImageFromCache(path, destPath);
 
 		return Path.Combine("images", fileName);
 	}
