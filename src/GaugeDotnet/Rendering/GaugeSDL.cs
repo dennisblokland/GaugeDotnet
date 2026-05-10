@@ -71,6 +71,9 @@ namespace GaugeDotnet.Rendering
                     throw new InvalidOperationException("Failed to create SkiaSharp GRContext for OpenGL.");
                 }
 
+                // Cap GPU resource cache to prevent unbounded growth on shared-memory ARM devices
+                _grContext.SetResourceCacheLimit(16 * 1024 * 1024);
+
                 Console.WriteLine(_grContext.Backend);
 
                 // 6) Create a SkiaSurface that targets FBO #0 (the window's backbuffer)

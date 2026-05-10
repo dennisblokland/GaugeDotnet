@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.IO;
 using GaugeDotnet.Rendering;
 using SkiaSharp;
 
@@ -7,6 +9,23 @@ namespace GaugeDotnet.Gauges.Custom;
 
 public static class ElementRenderer
 {
+	private static readonly ConcurrentDictionary<string, SKBitmap?> _imageCache = new();
+	private static readonly ConcurrentDictionary<float, SKMaskFilter> _blurCache = new();
+	private static string? _baseDirectory;
+
+	// Reusable paint/font objects — rendering is single-threaded
+	private static readonly SKPaint _paint = new() { IsAntialias = true };
+	private static readonly SKFont _font = new();
+
+	/// <summary>
+	/// Set the base directory for resolving relative image paths.
+	/// Call once after loading the definition file.
+	/// </summary>
+	public static void SetBaseDirectory(string? directory)
+	{
+		_baseDirectory = directory;
+	}
+
 	public static void Render(
 		SKCanvas canvas,
 		CustomGaugeDefinition definition,
@@ -14,6 +33,19 @@ public static class ElementRenderer
 		Dictionary<string, float>? targetValues = null)
 	{
 		canvas.Clear(SKColor.Parse(definition.BackgroundColor));
+
+		if (!string.IsNullOrEmpty(definition.BackgroundImage))
+		{
+			SKBitmap? bgBitmap = LoadImage(definition.BackgroundImage);
+			if (bgBitmap != null)
+			{
+				SKRect dest = new(0, 0, definition.Width, definition.Height);
+				_paint.Style = SKPaintStyle.Fill;
+				_paint.MaskFilter = null;
+				_paint.Color = SKColors.White;
+				canvas.DrawBitmap(bgBitmap, dest, _paint);
+			}
+		}
 
 		foreach (GaugeElement element in definition.Elements)
 		{
@@ -45,6 +77,7 @@ public static class ElementRenderer
 			case LineElement line: DrawLine(canvas, line); break;
 			case LinearBarElement bar: DrawLinearBar(canvas, bar, value); break;
 			case WarningIndicatorElement warn: DrawWarningIndicator(canvas, warn, value); break;
+			case ImageElement img: DrawImage(canvas, img); break;
 		}
 	}
 
@@ -56,15 +89,12 @@ public static class ElementRenderer
 
 		if (arc.ShowTrack)
 		{
-			using SKPaint trackPaint = new()
-			{
-				Style = SKPaintStyle.Stroke,
-				StrokeWidth = arc.StrokeWidth,
-				StrokeCap = SKStrokeCap.Butt,
-				Color = SKColor.Parse(arc.TrackColor),
-				IsAntialias = true,
-			};
-			canvas.DrawArc(rect, arc.StartAngleDeg, arc.SweepAngleDeg, false, trackPaint);
+			_paint.Style = SKPaintStyle.Stroke;
+			_paint.StrokeWidth = arc.StrokeWidth;
+			_paint.StrokeCap = SKStrokeCap.Butt;
+			_paint.Color = SKColor.Parse(arc.TrackColor);
+			_paint.MaskFilter = null;
+			canvas.DrawArc(rect, arc.StartAngleDeg, arc.SweepAngleDeg, false, _paint);
 		}
 
 		float fillSweep = arc.SweepAngleDeg;
@@ -75,29 +105,19 @@ public static class ElementRenderer
 			fillSweep = arc.SweepAngleDeg * t;
 		}
 
-		using SKPaint fillPaint = new()
-		{
-			Style = SKPaintStyle.Stroke,
-			StrokeWidth = arc.StrokeWidth,
-			StrokeCap = SKStrokeCap.Butt,
-			Color = SKColor.Parse(arc.Color),
-			IsAntialias = true,
-		};
-		canvas.DrawArc(rect, arc.StartAngleDeg, fillSweep, false, fillPaint);
+		_paint.Style = SKPaintStyle.Stroke;
+		_paint.StrokeWidth = arc.StrokeWidth;
+		_paint.StrokeCap = SKStrokeCap.Butt;
+		_paint.Color = SKColor.Parse(arc.Color);
+		_paint.MaskFilter = null;
+		canvas.DrawArc(rect, arc.StartAngleDeg, fillSweep, false, _paint);
 
 		if (fillSweep > 0)
 		{
-			SKColor glowColor = SKColor.Parse(arc.Color).WithAlpha(60);
-			using SKPaint glowPaint = new()
-			{
-				Style = SKPaintStyle.Stroke,
-				StrokeWidth = arc.StrokeWidth + 12,
-				StrokeCap = SKStrokeCap.Butt,
-				Color = glowColor,
-				IsAntialias = true,
-				MaskFilter = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, 8),
-			};
-			canvas.DrawArc(rect, arc.StartAngleDeg, fillSweep, false, glowPaint);
+			_paint.StrokeWidth = arc.StrokeWidth + 12;
+			_paint.Color = SKColor.Parse(arc.Color).WithAlpha(60);
+			_paint.MaskFilter = GetBlur(8);
+			canvas.DrawArc(rect, arc.StartAngleDeg, fillSweep, false, _paint);
 		}
 	}
 
@@ -111,6 +131,33 @@ public static class ElementRenderer
 		}
 
 		float angleDeg = needle.StartAngleDeg + t * needle.SweepAngleDeg;
+
+		if (!string.IsNullOrEmpty(needle.ImagePath))
+		{
+			SKBitmap? img = LoadImage(needle.ImagePath);
+			if (img != null)
+			{
+				canvas.Save();
+				canvas.Translate(needle.X, needle.Y);
+				canvas.RotateDegrees(angleDeg + 90);
+				SKRect dest = new(
+					-needle.ImageWidth / 2, -needle.ImageLength,
+					needle.ImageWidth / 2, 0);
+				_paint.Style = SKPaintStyle.Fill;
+				_paint.MaskFilter = null;
+				_paint.Color = SKColors.White;
+				canvas.DrawBitmap(img, dest, _paint);
+				canvas.Restore();
+
+				if (needle.ShowHub)
+				{
+					_paint.Color = SKColor.Parse(needle.HubColor);
+					canvas.DrawCircle(needle.X, needle.Y, needle.HubRadius, _paint);
+				}
+				return;
+			}
+		}
+
 		float angleRad = angleDeg * MathF.PI / 180f;
 
 		float tipX = needle.X + MathF.Cos(angleRad) * needle.Length;
@@ -118,67 +165,55 @@ public static class ElementRenderer
 		float tailX = needle.X - MathF.Cos(angleRad) * needle.TailLength;
 		float tailY = needle.Y - MathF.Sin(angleRad) * needle.TailLength;
 
-		using SKPaint glowPaint = new()
-		{
-			Style = SKPaintStyle.Stroke,
-			StrokeWidth = needle.NeedleWidth + 6,
-			StrokeCap = SKStrokeCap.Round,
-			Color = SKColor.Parse(needle.Color).WithAlpha(50),
-			IsAntialias = true,
-			MaskFilter = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, 6),
-		};
-		canvas.DrawLine(tailX, tailY, tipX, tipY, glowPaint);
+		_paint.Style = SKPaintStyle.Stroke;
+		_paint.StrokeWidth = needle.NeedleWidth + 6;
+		_paint.StrokeCap = SKStrokeCap.Round;
+		_paint.Color = SKColor.Parse(needle.Color).WithAlpha(50);
+		_paint.MaskFilter = GetBlur(6);
+		canvas.DrawLine(tailX, tailY, tipX, tipY, _paint);
 
-		using SKPaint needlePaint = new()
-		{
-			Style = SKPaintStyle.Stroke,
-			StrokeWidth = needle.NeedleWidth,
-			StrokeCap = SKStrokeCap.Round,
-			Color = SKColor.Parse(needle.Color),
-			IsAntialias = true,
-		};
-		canvas.DrawLine(tailX, tailY, tipX, tipY, needlePaint);
+		_paint.StrokeWidth = needle.NeedleWidth;
+		_paint.Color = SKColor.Parse(needle.Color);
+		_paint.MaskFilter = null;
+		canvas.DrawLine(tailX, tailY, tipX, tipY, _paint);
 
 		if (needle.ShowHub)
 		{
-			using SKPaint hubPaint = new()
-			{
-				Style = SKPaintStyle.Fill,
-				Color = SKColor.Parse(needle.HubColor),
-				IsAntialias = true,
-			};
-			canvas.DrawCircle(needle.X, needle.Y, needle.HubRadius, hubPaint);
+			_paint.Style = SKPaintStyle.Fill;
+			_paint.Color = SKColor.Parse(needle.HubColor);
+			canvas.DrawCircle(needle.X, needle.Y, needle.HubRadius, _paint);
 		}
 	}
 
 	private static void DrawText(SKCanvas canvas, TextElement text)
 	{
 		SKTypeface typeface = GetTypeface(text.Font);
-		using SKFont font = new(typeface, text.FontSize);
-		using SKPaint paint = new()
-		{
-			Color = SKColor.Parse(text.Color),
-			IsAntialias = true,
-		};
-		canvas.DrawText(text.Text, text.X, text.Y, SKTextAlign.Center, font, paint);
+		_font.Typeface = typeface;
+		_font.Size = text.FontSize;
+		_paint.Style = SKPaintStyle.Fill;
+		_paint.Color = SKColor.Parse(text.Color);
+		_paint.MaskFilter = null;
+		canvas.DrawText(text.Text, text.X, text.Y, SKTextAlign.Center, _font, _paint);
 	}
 
 	private static void DrawValueDisplay(SKCanvas canvas, ValueDisplayElement display, float value)
 	{
 		string formatted = value.ToString(display.Format) + display.Suffix;
 		SKTypeface typeface = GetTypeface(display.Font);
-		using SKFont font = new(typeface, display.FontSize);
-		using SKPaint paint = new()
-		{
-			Color = SKColor.Parse(display.Color),
-			IsAntialias = true,
-		};
-		canvas.DrawText(formatted, display.X, display.Y, SKTextAlign.Center, font, paint);
+		_font.Typeface = typeface;
+		_font.Size = display.FontSize;
+		_paint.Style = SKPaintStyle.Fill;
+		_paint.Color = SKColor.Parse(display.Color);
+		_paint.MaskFilter = null;
+		canvas.DrawText(formatted, display.X, display.Y, SKTextAlign.Center, _font, _paint);
 	}
 
 	private static void DrawTickRing(SKCanvas canvas, TickRingElement ticks)
 	{
 		int totalMajor = ticks.MajorCount;
+
+		_paint.Style = SKPaintStyle.Stroke;
+		_paint.MaskFilter = null;
 
 		for (int i = 0; i <= totalMajor; i++)
 		{
@@ -191,37 +226,62 @@ public static class ElementRenderer
 
 			float outerX = ticks.X + cos * ticks.Radius;
 			float outerY = ticks.Y + sin * ticks.Radius;
-			float innerX = ticks.X + cos * (ticks.Radius - ticks.MajorLength);
-			float innerY = ticks.Y + sin * (ticks.Radius - ticks.MajorLength);
-
-			using SKPaint majorPaint = new()
+			float innerX, innerY;
+			if (ticks.TicksInside)
 			{
-				Style = SKPaintStyle.Stroke,
-				StrokeWidth = ticks.MajorWidth,
-				Color = SKColor.Parse(ticks.Color),
-				IsAntialias = true,
-			};
-			canvas.DrawLine(outerX, outerY, innerX, innerY, majorPaint);
+				innerX = ticks.X + cos * (ticks.Radius + ticks.MajorLength);
+				innerY = ticks.Y + sin * (ticks.Radius + ticks.MajorLength);
+			}
+			else
+			{
+				innerX = ticks.X + cos * (ticks.Radius - ticks.MajorLength);
+				innerY = ticks.Y + sin * (ticks.Radius - ticks.MajorLength);
+			}
+
+			if (ticks.ShowTicks)
+			{
+				_paint.StrokeWidth = ticks.MajorWidth;
+				_paint.StrokeCap = SKStrokeCap.Butt;
+				_paint.Color = SKColor.Parse(ticks.Color);
+				canvas.DrawLine(outerX, outerY, innerX, innerY, _paint);
+			}
 
 			if (ticks.ShowLabels)
 			{
 				float labelValue = ticks.MinValue + t * (ticks.MaxValue - ticks.MinValue);
 				string label = labelValue.ToString("F0");
-				float labelDist = ticks.Radius - ticks.MajorLength - ticks.LabelOffset;
+				float labelDist = ticks.TicksInside
+					? ticks.Radius + ticks.MajorLength + ticks.LabelOffset
+					: ticks.Radius - ticks.MajorLength - ticks.LabelOffset;
 				float labelX = ticks.X + cos * labelDist;
 				float labelY = ticks.Y + sin * labelDist;
 
-				using SKFont labelFont = new(SKTypeface.Default, ticks.LabelFontSize);
-				using SKPaint labelPaint = new()
+				_font.Typeface = SKTypeface.Default;
+				_font.Size = ticks.LabelFontSize;
+				_paint.Style = SKPaintStyle.Fill;
+				_paint.Color = SKColor.Parse(ticks.LabelColor);
+
+				if (ticks.RadialLabels)
 				{
-					Color = SKColor.Parse(ticks.LabelColor),
-					IsAntialias = true,
-				};
-				canvas.DrawText(label, labelX, labelY + ticks.LabelFontSize / 3f, SKTextAlign.Center, labelFont, labelPaint);
+					canvas.Save();
+					canvas.Translate(labelX, labelY);
+					canvas.RotateDegrees(angleDeg + 90);
+					canvas.DrawText(label, 0, ticks.LabelFontSize / 3f, SKTextAlign.Center, _font, _paint);
+					canvas.Restore();
+				}
+				else
+				{
+					canvas.DrawText(label, labelX, labelY + ticks.LabelFontSize / 3f, SKTextAlign.Center, _font, _paint);
+				}
+
+				_paint.Style = SKPaintStyle.Stroke;
 			}
 
-			if (i < totalMajor && ticks.MinorPerMajor > 0)
+			if (i < totalMajor && ticks.MinorPerMajor > 0 && ticks.ShowTicks)
 			{
+				_paint.StrokeWidth = ticks.MinorWidth;
+				_paint.Color = SKColor.Parse(ticks.Color);
+
 				for (int j = 1; j <= ticks.MinorPerMajor; j++)
 				{
 					float mt = t + ((float)j / (ticks.MinorPerMajor + 1)) / totalMajor;
@@ -231,17 +291,19 @@ public static class ElementRenderer
 
 					float mOuterX = ticks.X + mCos * ticks.Radius;
 					float mOuterY = ticks.Y + mSin * ticks.Radius;
-					float mInnerX = ticks.X + mCos * (ticks.Radius - ticks.MinorLength);
-					float mInnerY = ticks.Y + mSin * (ticks.Radius - ticks.MinorLength);
-
-					using SKPaint minorPaint = new()
+					float mInnerX, mInnerY;
+					if (ticks.TicksInside)
 					{
-						Style = SKPaintStyle.Stroke,
-						StrokeWidth = ticks.MinorWidth,
-						Color = SKColor.Parse(ticks.Color),
-						IsAntialias = true,
-					};
-					canvas.DrawLine(mOuterX, mOuterY, mInnerX, mInnerY, minorPaint);
+						mInnerX = ticks.X + mCos * (ticks.Radius + ticks.MinorLength);
+						mInnerY = ticks.Y + mSin * (ticks.Radius + ticks.MinorLength);
+					}
+					else
+					{
+						mInnerX = ticks.X + mCos * (ticks.Radius - ticks.MinorLength);
+						mInnerY = ticks.Y + mSin * (ticks.Radius - ticks.MinorLength);
+					}
+
+					canvas.DrawLine(mOuterX, mOuterY, mInnerX, mInnerY, _paint);
 				}
 			}
 		}
@@ -249,24 +311,17 @@ public static class ElementRenderer
 
 	private static void DrawCircle(SKCanvas canvas, CircleElement circle)
 	{
-		using SKPaint fillPaint = new()
-		{
-			Style = SKPaintStyle.Fill,
-			Color = SKColor.Parse(circle.FillColor),
-			IsAntialias = true,
-		};
-		canvas.DrawCircle(circle.X, circle.Y, circle.Radius, fillPaint);
+		_paint.Style = SKPaintStyle.Fill;
+		_paint.Color = SKColor.Parse(circle.FillColor);
+		_paint.MaskFilter = null;
+		canvas.DrawCircle(circle.X, circle.Y, circle.Radius, _paint);
 
 		if (circle.CircleStrokeWidth > 0)
 		{
-			using SKPaint strokePaint = new()
-			{
-				Style = SKPaintStyle.Stroke,
-				StrokeWidth = circle.CircleStrokeWidth,
-				Color = SKColor.Parse(circle.StrokeColor),
-				IsAntialias = true,
-			};
-			canvas.DrawCircle(circle.X, circle.Y, circle.Radius, strokePaint);
+			_paint.Style = SKPaintStyle.Stroke;
+			_paint.StrokeWidth = circle.CircleStrokeWidth;
+			_paint.Color = SKColor.Parse(circle.StrokeColor);
+			canvas.DrawCircle(circle.X, circle.Y, circle.Radius, _paint);
 		}
 	}
 
@@ -274,54 +329,44 @@ public static class ElementRenderer
 	{
 		SKRect bounds = new(rect.X, rect.Y, rect.X + rect.Width, rect.Y + rect.Height);
 
-		using SKPaint fillPaint = new()
-		{
-			Style = SKPaintStyle.Fill,
-			Color = SKColor.Parse(rect.FillColor),
-			IsAntialias = true,
-		};
+		_paint.Style = SKPaintStyle.Fill;
+		_paint.Color = SKColor.Parse(rect.FillColor);
+		_paint.MaskFilter = null;
 
 		if (rect.CornerRadius > 0)
 		{
-			canvas.DrawRoundRect(bounds, rect.CornerRadius, rect.CornerRadius, fillPaint);
+			canvas.DrawRoundRect(bounds, rect.CornerRadius, rect.CornerRadius, _paint);
 		}
 		else
 		{
-			canvas.DrawRect(bounds, fillPaint);
+			canvas.DrawRect(bounds, _paint);
 		}
 
 		if (rect.RectStrokeWidth > 0)
 		{
-			using SKPaint strokePaint = new()
-			{
-				Style = SKPaintStyle.Stroke,
-				StrokeWidth = rect.RectStrokeWidth,
-				Color = SKColor.Parse(rect.StrokeColor),
-				IsAntialias = true,
-			};
+			_paint.Style = SKPaintStyle.Stroke;
+			_paint.StrokeWidth = rect.RectStrokeWidth;
+			_paint.Color = SKColor.Parse(rect.StrokeColor);
 
 			if (rect.CornerRadius > 0)
 			{
-				canvas.DrawRoundRect(bounds, rect.CornerRadius, rect.CornerRadius, strokePaint);
+				canvas.DrawRoundRect(bounds, rect.CornerRadius, rect.CornerRadius, _paint);
 			}
 			else
 			{
-				canvas.DrawRect(bounds, strokePaint);
+				canvas.DrawRect(bounds, _paint);
 			}
 		}
 	}
 
 	private static void DrawLine(SKCanvas canvas, LineElement line)
 	{
-		using SKPaint paint = new()
-		{
-			Style = SKPaintStyle.Stroke,
-			StrokeWidth = line.LineWidth,
-			StrokeCap = SKStrokeCap.Round,
-			Color = SKColor.Parse(line.Color),
-			IsAntialias = true,
-		};
-		canvas.DrawLine(line.X, line.Y, line.X2, line.Y2, paint);
+		_paint.Style = SKPaintStyle.Stroke;
+		_paint.StrokeWidth = line.LineWidth;
+		_paint.StrokeCap = SKStrokeCap.Round;
+		_paint.Color = SKColor.Parse(line.Color);
+		_paint.MaskFilter = null;
+		canvas.DrawLine(line.X, line.Y, line.X2, line.Y2, _paint);
 	}
 
 	private static void DrawLinearBar(SKCanvas canvas, LinearBarElement bar, float value)
@@ -332,19 +377,16 @@ public static class ElementRenderer
 		SKRect trackRect = new(bar.X, bar.Y, bar.X + bar.Width, bar.Y + bar.Height);
 
 		// Track
-		using SKPaint trackPaint = new()
-		{
-			Style = SKPaintStyle.Fill,
-			Color = SKColor.Parse(bar.TrackColor),
-			IsAntialias = true,
-		};
+		_paint.Style = SKPaintStyle.Fill;
+		_paint.Color = SKColor.Parse(bar.TrackColor);
+		_paint.MaskFilter = null;
 		if (bar.CornerRadius > 0)
 		{
-			canvas.DrawRoundRect(trackRect, bar.CornerRadius, bar.CornerRadius, trackPaint);
+			canvas.DrawRoundRect(trackRect, bar.CornerRadius, bar.CornerRadius, _paint);
 		}
 		else
 		{
-			canvas.DrawRect(trackRect, trackPaint);
+			canvas.DrawRect(trackRect, _paint);
 		}
 
 		// Fill
@@ -370,43 +412,30 @@ public static class ElementRenderer
 				canvas.ClipPath(clipPath);
 			}
 
-			using SKPaint fillPaint = new()
-			{
-				Style = SKPaintStyle.Fill,
-				Color = SKColor.Parse(bar.FillColor),
-				IsAntialias = true,
-			};
-			canvas.DrawRect(fillRect, fillPaint);
+			_paint.Color = SKColor.Parse(bar.FillColor);
+			canvas.DrawRect(fillRect, _paint);
 
 			// Glow
-			SKColor glowColor = SKColor.Parse(bar.FillColor).WithAlpha(60);
-			using SKPaint glowPaint = new()
-			{
-				Style = SKPaintStyle.Fill,
-				Color = glowColor,
-				MaskFilter = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, 6),
-			};
-			canvas.DrawRect(fillRect, glowPaint);
+			_paint.Color = SKColor.Parse(bar.FillColor).WithAlpha(60);
+			_paint.MaskFilter = GetBlur(6);
+			canvas.DrawRect(fillRect, _paint);
 			canvas.Restore();
 		}
 
 		// Border
 		if (bar.BorderWidth > 0)
 		{
-			using SKPaint borderPaint = new()
-			{
-				Style = SKPaintStyle.Stroke,
-				StrokeWidth = bar.BorderWidth,
-				Color = SKColor.Parse(bar.BorderColor),
-				IsAntialias = true,
-			};
+			_paint.Style = SKPaintStyle.Stroke;
+			_paint.StrokeWidth = bar.BorderWidth;
+			_paint.Color = SKColor.Parse(bar.BorderColor);
+			_paint.MaskFilter = null;
 			if (bar.CornerRadius > 0)
 			{
-				canvas.DrawRoundRect(trackRect, bar.CornerRadius, bar.CornerRadius, borderPaint);
+				canvas.DrawRoundRect(trackRect, bar.CornerRadius, bar.CornerRadius, _paint);
 			}
 			else
 			{
-				canvas.DrawRect(trackRect, borderPaint);
+				canvas.DrawRect(trackRect, _paint);
 			}
 		}
 	}
@@ -419,38 +448,95 @@ public static class ElementRenderer
 
 		string color = active ? warn.ActiveColor : warn.InactiveColor;
 
-		using SKPaint fillPaint = new()
-		{
-			Style = SKPaintStyle.Fill,
-			Color = SKColor.Parse(color),
-			IsAntialias = true,
-		};
-		canvas.DrawCircle(warn.X, warn.Y, warn.Radius, fillPaint);
+		_paint.Style = SKPaintStyle.Fill;
+		_paint.Color = SKColor.Parse(color);
+		_paint.MaskFilter = null;
+		canvas.DrawCircle(warn.X, warn.Y, warn.Radius, _paint);
 
 		if (active)
 		{
-			SKColor glowColor = SKColor.Parse(warn.ActiveColor).WithAlpha(80);
-			using SKPaint glowPaint = new()
-			{
-				Style = SKPaintStyle.Fill,
-				Color = glowColor,
-				MaskFilter = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, 10),
-				IsAntialias = true,
-			};
-			canvas.DrawCircle(warn.X, warn.Y, warn.Radius + 4, glowPaint);
+			_paint.Color = SKColor.Parse(warn.ActiveColor).WithAlpha(80);
+			_paint.MaskFilter = GetBlur(10);
+			canvas.DrawCircle(warn.X, warn.Y, warn.Radius + 4, _paint);
 		}
 
 		if (warn.ShowLabel)
 		{
-			using SKFont font = new(SKTypeface.Default, warn.LabelFontSize);
-			using SKPaint labelPaint = new()
-			{
-				Color = SKColor.Parse(warn.LabelColor),
-				IsAntialias = true,
-			};
+			_font.Typeface = SKTypeface.Default;
+			_font.Size = warn.LabelFontSize;
+			_paint.Color = SKColor.Parse(warn.LabelColor);
+			_paint.MaskFilter = null;
 			canvas.DrawText(warn.Label, warn.X, warn.Y + warn.Radius + warn.LabelFontSize + 4,
-				SKTextAlign.Center, font, labelPaint);
+				SKTextAlign.Center, _font, _paint);
 		}
+	}
+
+	private static void DrawImage(SKCanvas canvas, ImageElement img)
+	{
+		if (string.IsNullOrEmpty(img.ImagePath)) return;
+
+		SKBitmap? bitmap = LoadImage(img.ImagePath);
+		if (bitmap == null) return;
+
+		canvas.Save();
+
+		if (img.Rotation != 0)
+		{
+			canvas.Translate(img.X + img.Width / 2, img.Y + img.Height / 2);
+			canvas.RotateDegrees(img.Rotation);
+			canvas.Translate(-(img.X + img.Width / 2), -(img.Y + img.Height / 2));
+		}
+
+		SKRect dest = new(img.X, img.Y, img.X + img.Width, img.Y + img.Height);
+		_paint.Style = SKPaintStyle.Fill;
+		_paint.Color = new SKColor(255, 255, 255, img.Opacity);
+		_paint.MaskFilter = null;
+		canvas.DrawBitmap(bitmap, dest, _paint);
+		canvas.Restore();
+	}
+
+	internal static SKBitmap? LoadImage(string path)
+	{
+		return _imageCache.GetOrAdd(path, p =>
+		{
+			string resolved = ResolveImagePath(p);
+			if (!File.Exists(resolved)) return null;
+			try
+			{
+				return SKBitmap.Decode(resolved);
+			}
+			catch
+			{
+				return null;
+			}
+		});
+	}
+
+	private static string ResolveImagePath(string path)
+	{
+		if (Path.IsPathRooted(path)) return path;
+		if (_baseDirectory != null) return Path.Combine(_baseDirectory, path);
+		return Path.Combine(AppContext.BaseDirectory, path);
+	}
+
+	public static void ClearImageCache()
+	{
+		foreach (SKBitmap? bitmap in _imageCache.Values)
+		{
+			bitmap?.Dispose();
+		}
+		_imageCache.Clear();
+
+		foreach (SKMaskFilter filter in _blurCache.Values)
+		{
+			filter.Dispose();
+		}
+		_blurCache.Clear();
+	}
+
+	private static SKMaskFilter GetBlur(float sigma)
+	{
+		return _blurCache.GetOrAdd(sigma, s => SKMaskFilter.CreateBlur(SKBlurStyle.Normal, s));
 	}
 
 	private static SKTypeface GetTypeface(string fontKey)

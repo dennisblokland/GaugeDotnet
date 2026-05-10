@@ -54,6 +54,8 @@ public class CustomGauge : BaseGauge
 	public static CustomGaugeDefinition LoadDefinition(string path)
 	{
 		string json = File.ReadAllText(path);
+		string? directory = Path.GetDirectoryName(Path.GetFullPath(path));
+		ElementRenderer.SetBaseDirectory(directory);
 		return JsonSerializer.Deserialize(json, CustomGaugeJsonContext.Default.CustomGaugeDefinition)
 			?? new CustomGaugeDefinition();
 	}

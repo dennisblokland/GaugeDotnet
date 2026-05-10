@@ -53,15 +53,15 @@ Drag-and-drop gauge designer → JSON definition → runtime rendering on device
 
 1. `dotnet run --project src/GaugeDotnet.Designer` — opens Avalonia designer
 2. Add/arrange elements, bind data sources, tweak properties
-3. Save → `gauge-design.json`
-4. Reference in `gauges.json`: `{ "Gauge": { "Type": "Custom" }, "CustomDefinitionFile": "gauge-design.json" }`
+3. Save → `custom-gauge.json`
+4. Reference in `gauges.json`: `{ "Gauge": { "Type": "Custom" }, "CustomDefinitionFile": "custom-gauge.json" }`
 
 ### Element Types
 
 | Type | `$type` | Data-Driven | Description |
 |------|---------|-------------|-------------|
 | `ArcElement` | `arc` | Yes | Sweep arc with track, glow, dynamic fill |
-| `NeedleElement` | `needle` | Yes | Rotating needle with tail + hub |
+| `NeedleElement` | `needle` | Yes | Rotating needle with tail + hub (optional image needle) |
 | `TextElement` | `text` | No | Static label (custom font) |
 | `ValueDisplayElement` | `value` | Yes | Formatted numeric display |
 | `TickRingElement` | `ticks` | No | Major/minor tick marks with labels |
@@ -70,6 +70,9 @@ Drag-and-drop gauge designer → JSON definition → runtime rendering on device
 | `LineElement` | `line` | No | Straight line between two points |
 | `LinearBarElement` | `linearbar` | Yes | Horizontal/vertical fill bar |
 | `WarningIndicatorElement` | `warning` | Yes | Threshold-triggered color change with label |
+| `ImageElement` | `image` | No | Custom image (backgrounds, logos, overlays) with opacity + rotation |
+
+`CustomGaugeDefinition` also supports `BackgroundImage` (path) drawn behind all elements.
 
 ### Key Files
 
@@ -83,6 +86,21 @@ Drag-and-drop gauge designer → JSON definition → runtime rendering on device
 ### Smoothing
 
 `CustomGauge` lerps display values toward target at 10%/frame. Visual elements (arc, needle, bar) use smoothed values. Text/value/warning elements snap to target values.
+
+### Needle Image Guide
+
+When using `ImagePath` on a `NeedleElement`, the image is rotated around the element's (X, Y) pivot point. The image should be a vertical needle pointing **up** (12 o'clock), as the renderer applies rotation from that orientation.
+
+| Property | Description | Recommendation |
+|----------|-------------|----------------|
+| `ImagePath` | Path to PNG/JPG/WebP (relative to JSON or absolute) | Use transparent PNG for best results |
+| `ImageWidth` | Rendered width of the needle image (px) | Match the visual width of the needle artwork |
+| `ImageLength` | Rendered length from pivot to tip (px) | Should match `Length` or the visible needle portion |
+| `Length` | Still used for hit-test bounds when image is set | Keep equal to `ImageLength` |
+
+**Image orientation:** The source image should be a vertical strip with the **tip at the top** and the **pivot point at the bottom edge**. The renderer draws it into a rect from `(-ImageWidth/2, -ImageLength)` to `(ImageWidth/2, 0)` relative to the pivot, then rotates.
+
+**Recommended dimensions:** For a 640×480 gauge canvas, a needle image of roughly 20×180 px works well. Use a tall narrow PNG (e.g., 40×360 source scaled down to `ImageWidth: 20, ImageLength: 180`).
 
 ## Tests
 

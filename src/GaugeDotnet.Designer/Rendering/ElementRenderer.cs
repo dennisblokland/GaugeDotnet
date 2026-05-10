@@ -100,6 +100,9 @@ public static class ElementRenderer
 				warn.Y - warn.Radius,
 				warn.X + warn.Radius,
 				warn.Y + warn.Radius + (warn.ShowLabel ? warn.LabelFontSize + 8 : 0)),
+			ImageElement img => new SKRect(
+				img.X, img.Y,
+				img.X + img.Width, img.Y + img.Height),
 			_ => new SKRect(element.X - 20, element.Y - 20, element.X + 20, element.Y + 20),
 		};
 	}

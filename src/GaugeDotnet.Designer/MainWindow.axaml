@@ -23,6 +23,7 @@
         <Button x:Name="AddLineBtn" Content="Line" Padding="10,4"/>
         <Button x:Name="AddBarBtn" Content="Bar" Padding="10,4"/>
         <Button x:Name="AddWarningBtn" Content="Warning" Padding="10,4"/>
+        <Button x:Name="AddImageBtn" Content="Image" Padding="10,4"/>
         <Separator Margin="8,0"/>
         <Button x:Name="DuplicateBtn" Content="Duplicate" Padding="10,4" IsEnabled="False"/>
         <Button x:Name="DeleteBtn" Content="Delete" Padding="10,4" IsEnabled="False"/>

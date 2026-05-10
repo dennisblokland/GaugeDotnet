@@ -9,6 +9,7 @@ public class CustomGaugeDefinition
 	public int Width { get; set; } = 640;
 	public int Height { get; set; } = 480;
 	public string BackgroundColor { get; set; } = "#000000";
+	public string? BackgroundImage { get; set; }
 	public List<GaugeElement> Elements { get; set; } = new();
 }
 
@@ -23,6 +24,7 @@ public class CustomGaugeDefinition
 [JsonDerivedType(typeof(LineElement), "line")]
 [JsonDerivedType(typeof(LinearBarElement), "linearbar")]
 [JsonDerivedType(typeof(WarningIndicatorElement), "warning")]
+[JsonDerivedType(typeof(ImageElement), "image")]
 public abstract class GaugeElement
 {
 	public string Id { get; set; } = Guid.NewGuid().ToString("N")[..8];
@@ -63,6 +65,9 @@ public class NeedleElement : GaugeElement
 	public bool ShowHub { get; set; } = true;
 	public float HubRadius { get; set; } = 10f;
 	public string HubColor { get; set; } = "#CCCCCC";
+	public string? ImagePath { get; set; }
+	public float ImageWidth { get; set; } = 20f;
+	public float ImageLength { get; set; } = 180f;
 
 	[JsonIgnore]
 	public override string TypeLabel => "Needle";
@@ -103,7 +108,10 @@ public class TickRingElement : GaugeElement
 	public float MajorWidth { get; set; } = 3f;
 	public float MinorWidth { get; set; } = 1f;
 	public string Color { get; set; } = "#FFFFFF";
+	public bool ShowTicks { get; set; } = true;
+	public bool TicksInside { get; set; }
 	public bool ShowLabels { get; set; } = true;
+	public bool RadialLabels { get; set; }
 	public float LabelFontSize { get; set; } = 14f;
 	public string LabelColor { get; set; } = "#CCCCCC";
 	public float LabelOffset { get; set; } = 25f;
@@ -176,4 +184,16 @@ public class WarningIndicatorElement : GaugeElement
 
 	[JsonIgnore]
 	public override string TypeLabel => "Warning";
+}
+
+public class ImageElement : GaugeElement
+{
+	public string ImagePath { get; set; } = "";
+	public float Width { get; set; } = 100f;
+	public float Height { get; set; } = 100f;
+	public byte Opacity { get; set; } = 255;
+	public float Rotation { get; set; }
+
+	[JsonIgnore]
+	public override string TypeLabel => "Image";
 }

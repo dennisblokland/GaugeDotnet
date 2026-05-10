@@ -68,6 +68,7 @@ public partial class MainWindow : Window
 		AddLineBtn.Click += (_, _) => AddElement(new LineElement());
 		AddBarBtn.Click += (_, _) => AddElement(new LinearBarElement());
 		AddWarningBtn.Click += (_, _) => AddElement(new WarningIndicatorElement());
+		AddImageBtn.Click += (_, _) => AddElement(new ImageElement());
 
 		DuplicateBtn.Click += (_, _) => DuplicateSelectedElement();
 		DeleteBtn.Click += (_, _) => DeleteSelectedElement();
@@ -264,13 +265,18 @@ public partial class MainWindow : Window
 
 	private void ClearProperties()
 	{
+		_suppressPropertyEvents = true;
 		PropertiesPanel.Children.Clear();
-		PropertiesPanel.Children.Add(new TextBlock
+		AddHeader("Canvas Properties");
+		AddColorProp("Background", _definition.BackgroundColor, v =>
 		{
-			Text = "Select an element to edit",
-			Foreground = Avalonia.Media.Brushes.Gray,
-			FontStyle = Avalonia.Media.FontStyle.Italic,
+			_definition.BackgroundColor = v;
 		});
+		AddImagePathProp("Background Image", _definition.BackgroundImage ?? "", v =>
+		{
+			_definition.BackgroundImage = string.IsNullOrEmpty(v) ? null : v;
+		});
+		_suppressPropertyEvents = false;
 	}
 
 	private void ShowProperties(GaugeElement element)
@@ -328,6 +334,10 @@ public partial class MainWindow : Window
 				AddBoolProp("Show Hub", needle.ShowHub, v => needle.ShowHub = v);
 				AddFloatProp("Hub Radius", needle.HubRadius, v => needle.HubRadius = v, 2, 30);
 				AddColorProp("Hub Color", needle.HubColor, v => needle.HubColor = v);
+				AddSeparator();
+				AddImagePathProp("Needle Image", needle.ImagePath ?? "", v => needle.ImagePath = string.IsNullOrEmpty(v) ? null : v);
+				AddFloatProp("Image Width", needle.ImageWidth, v => needle.ImageWidth = v, 2, 100);
+				AddFloatProp("Image Length", needle.ImageLength, v => needle.ImageLength = v, 10, 400);
 				break;
 
 			case TextElement text:
@@ -356,7 +366,10 @@ public partial class MainWindow : Window
 				AddFloatProp("Major Width", ticks.MajorWidth, v => ticks.MajorWidth = v, 0.5f, 10, 0.5f);
 				AddFloatProp("Minor Width", ticks.MinorWidth, v => ticks.MinorWidth = v, 0.5f, 5, 0.5f);
 				AddColorProp("Color", ticks.Color, v => ticks.Color = v);
+				AddBoolProp("Show Ticks", ticks.ShowTicks, v => ticks.ShowTicks = v);
+				AddBoolProp("Ticks Inside", ticks.TicksInside, v => ticks.TicksInside = v);
 				AddBoolProp("Show Labels", ticks.ShowLabels, v => ticks.ShowLabels = v);
+				AddBoolProp("Radial Labels", ticks.RadialLabels, v => ticks.RadialLabels = v);
 				AddFloatProp("Label Font Size", ticks.LabelFontSize, v => ticks.LabelFontSize = v, 8, 30);
 				AddColorProp("Label Color", ticks.LabelColor, v => ticks.LabelColor = v);
 				AddFloatProp("Label Offset", ticks.LabelOffset, v => ticks.LabelOffset = v, 5, 60);
@@ -406,6 +419,14 @@ public partial class MainWindow : Window
 				AddTextProp("Label", warn.Label, v => warn.Label = v);
 				AddFloatProp("Label Size", warn.LabelFontSize, v => warn.LabelFontSize = v, 8, 30);
 				AddColorProp("Label Color", warn.LabelColor, v => warn.LabelColor = v);
+				break;
+
+			case ImageElement img:
+				AddImagePathProp("Image Path", img.ImagePath, v => img.ImagePath = v);
+				AddFloatProp("Width", img.Width, v => img.Width = v, 1, 1280);
+				AddFloatProp("Height", img.Height, v => img.Height = v, 1, 960);
+				AddIntProp("Opacity", img.Opacity, v => img.Opacity = (byte)v, 0, 255);
+				AddFloatProp("Rotation", img.Rotation, v => img.Rotation = v, -360, 360);
 				break;
 		}
 
@@ -568,6 +589,49 @@ public partial class MainWindow : Window
 		PropertiesPanel.Children.Add(cb);
 	}
 
+	private void AddImagePathProp(string label, string value, Action<string> setter)
+	{
+		PropertiesPanel.Children.Add(new TextBlock { Text = label, Margin = new Thickness(0, 2, 0, 0) });
+		StackPanel row = new() { Orientation = Orientation.Horizontal, Spacing = 4 };
+		TextBox tb = new() { Text = value, Width = 160 };
+		Button browseBtn = new() { Content = "Browse", Padding = new Thickness(8, 2) };
+		browseBtn.Click += async (_, _) =>
+		{
+			TopLevel? topLevel = GetTopLevel(this);
+			if (topLevel == null) return;
+
+			IReadOnlyList<IStorageFile> files = await topLevel.StorageProvider.OpenFilePickerAsync(
+				new FilePickerOpenOptions
+				{
+					Title = $"Select {label}",
+					AllowMultiple = false,
+					FileTypeFilter = [new FilePickerFileType("Images") { Patterns = ["*.png", "*.jpg", "*.jpeg", "*.webp", "*.bmp"] }],
+				});
+
+			if (files.Count > 0)
+			{
+				string path = files[0].Path.LocalPath;
+				tb.Text = path;
+				GaugeDotnet.Gauges.Custom.ElementRenderer.ClearImageCache();
+				GaugeDotnet.Gauges.Custom.ElementRenderer.SetBaseDirectory(Path.GetDirectoryName(path));
+				setter(path);
+				Redraw();
+			}
+		};
+		tb.TextChanged += (_, _) =>
+		{
+			if (!_suppressPropertyEvents)
+			{
+				GaugeDotnet.Gauges.Custom.ElementRenderer.ClearImageCache();
+				setter(tb.Text ?? "");
+				Redraw();
+			}
+		};
+		row.Children.Add(tb);
+		row.Children.Add(browseBtn);
+		PropertiesPanel.Children.Add(row);
+	}
+
 	// ──────────────────── Test Values ────────────────────
 
 	private void UpdateTestValueSliders()
@@ -652,15 +716,76 @@ public partial class MainWindow : Window
 		{
 			Title = "Save Gauge Definition",
 			DefaultExtension = "json",
-			SuggestedFileName = "gauge-design.json",
+			SuggestedFileName = "custom-gauge.json",
 			FileTypeChoices = [new FilePickerFileType("JSON") { Patterns = ["*.json"] }],
 		});
 
 		if (file != null)
 		{
-			string json = JsonSerializer.Serialize(_definition, JsonOptions);
+			string saveDir = Path.GetDirectoryName(file.Path.LocalPath) ?? ".";
+			string imagesDir = Path.Combine(saveDir, "images");
+			CustomGaugeDefinition exportDef = CopyImagesAndRewritePaths(_definition, saveDir, imagesDir);
+			string json = JsonSerializer.Serialize(exportDef, JsonOptions);
 			await File.WriteAllTextAsync(file.Path.LocalPath, json);
+
+			// Update base dir so continued editing resolves relative paths
+			GaugeDotnet.Gauges.Custom.ElementRenderer.ClearImageCache();
+			GaugeDotnet.Gauges.Custom.ElementRenderer.SetBaseDirectory(saveDir);
 		}
+	}
+
+	private static CustomGaugeDefinition CopyImagesAndRewritePaths(
+		CustomGaugeDefinition definition, string saveDir, string imagesDir)
+	{
+		// Deep-copy via JSON round-trip
+		string tmp = JsonSerializer.Serialize(definition, JsonOptions);
+		CustomGaugeDefinition export = JsonSerializer.Deserialize<CustomGaugeDefinition>(tmp, JsonOptions)
+			?? new CustomGaugeDefinition();
+
+		bool dirCreated = false;
+
+		export.BackgroundImage = CopyAndRelativize(export.BackgroundImage, saveDir, imagesDir, ref dirCreated);
+
+		foreach (GaugeElement element in export.Elements)
+		{
+			if (element is ImageElement img)
+			{
+				img.ImagePath = CopyAndRelativize(img.ImagePath, saveDir, imagesDir, ref dirCreated) ?? "";
+			}
+			else if (element is NeedleElement needle)
+			{
+				needle.ImagePath = CopyAndRelativize(needle.ImagePath, saveDir, imagesDir, ref dirCreated);
+			}
+		}
+
+		return export;
+	}
+
+	private static string? CopyAndRelativize(string? path, string saveDir, string imagesDir, ref bool dirCreated)
+	{
+		if (string.IsNullOrEmpty(path)) return path;
+
+		// Already relative → keep as-is
+		if (!Path.IsPathRooted(path)) return path;
+
+		if (!File.Exists(path)) return path;
+
+		if (!dirCreated)
+		{
+			Directory.CreateDirectory(imagesDir);
+			dirCreated = true;
+		}
+
+		string fileName = Path.GetFileName(path);
+		string destPath = Path.Combine(imagesDir, fileName);
+
+		// Avoid overwriting if same file
+		if (!string.Equals(Path.GetFullPath(path), Path.GetFullPath(destPath), StringComparison.Ordinal))
+		{
+			File.Copy(path, destPath, overwrite: true);
+		}
+
+		return Path.Combine("images", fileName);
 	}
 
 	private async void OnLoadClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
@@ -681,6 +806,10 @@ public partial class MainWindow : Window
 		string json = await File.ReadAllTextAsync(files[0].Path.LocalPath);
 		CustomGaugeDefinition? loaded = JsonSerializer.Deserialize<CustomGaugeDefinition>(json, JsonOptions);
 		if (loaded == null) return;
+
+		string? directory = Path.GetDirectoryName(files[0].Path.LocalPath);
+		GaugeDotnet.Gauges.Custom.ElementRenderer.ClearImageCache();
+		GaugeDotnet.Gauges.Custom.ElementRenderer.SetBaseDirectory(directory);
 
 		_definition = loaded;
 		_selectedElement = null;
