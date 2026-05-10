@@ -9,6 +9,7 @@ namespace GaugeDotnet.Configuration
         Digital,
         Sweep,
         MinMax,
-        Grid
+        Grid,
+        Custom
     }
 }

@@ -1,5 +1,6 @@
 using GaugeDotnet.Configuration;
 using GaugeDotnet.Devices;
+using GaugeDotnet.Gauges.Custom;
 using GaugeDotnet.Gauges.Models;
 
 namespace GaugeDotnet.Gauges
@@ -12,6 +13,16 @@ namespace GaugeDotnet.Gauges
             foreach (ScreenConfig screenConfig in config.Screens)
             {
                 GaugeConfig gaugeConfig = screenConfig.Gauge;
+
+                if (gaugeConfig.Type == GaugeType.Custom && !string.IsNullOrWhiteSpace(screenConfig.CustomDefinitionFile))
+                {
+                    string defPath = ResolveDefinitionPath(screenConfig.CustomDefinitionFile);
+                    CustomGaugeDefinition definition = CustomGauge.LoadDefinition(defPath);
+                    CustomGauge customGauge = new(definition, new BaseGaugeSettings());
+                    screens.Add((customGauge, ""));
+                    continue;
+                }
+
                 BaseGauge gauge = CreateGauge(gaugeConfig, screenWidth, screenHeight);
 
                 if (gaugeConfig.Type != GaugeType.Grid)
@@ -22,6 +33,15 @@ namespace GaugeDotnet.Gauges
                 screens.Add((gauge, gaugeConfig.DataSource));
             }
             return screens;
+        }
+
+        private static string ResolveDefinitionPath(string path)
+        {
+            if (Path.IsPathRooted(path))
+            {
+                return path;
+            }
+            return Path.Combine(AppContext.BaseDirectory, path);
         }
 
         private static BaseGauge CreateGauge(GaugeConfig config, int screenWidth, int screenHeight)
@@ -130,7 +150,11 @@ namespace GaugeDotnet.Gauges
 
         public static void UpdateGaugeValues(BaseGauge gauge, string dataSource, IMeDevice device)
         {
-            if (gauge is GridGauge gridGauge)
+            if (gauge is CustomGauge customGauge)
+            {
+                customGauge.UpdateFromDevice(device.Data);
+            }
+            else if (gauge is GridGauge gridGauge)
             {
                 for (int i = 0; i < gridGauge.CellCount; i++)
                 {

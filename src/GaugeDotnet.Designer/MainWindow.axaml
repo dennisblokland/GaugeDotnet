@@ -1,0 +1,71 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="1280" d:DesignHeight="720"
+        x:Class="GaugeDotnet.Designer.MainWindow"
+        Title="Gauge Designer"
+        Width="1280" Height="720"
+        MinWidth="1000" MinHeight="600">
+
+  <DockPanel>
+    <!-- Toolbar -->
+    <Border DockPanel.Dock="Top" BorderBrush="#333333" BorderThickness="0,0,0,1" Padding="8,6">
+      <StackPanel Orientation="Horizontal" Spacing="6">
+        <TextBlock Text="Add:" VerticalAlignment="Center" FontWeight="SemiBold" Margin="0,0,4,0"/>
+        <Button x:Name="AddArcBtn" Content="Arc" Padding="10,4"/>
+        <Button x:Name="AddNeedleBtn" Content="Needle" Padding="10,4"/>
+        <Button x:Name="AddTicksBtn" Content="Ticks" Padding="10,4"/>
+        <Button x:Name="AddTextBtn" Content="Text" Padding="10,4"/>
+        <Button x:Name="AddValueBtn" Content="Value" Padding="10,4"/>
+        <Button x:Name="AddCircleBtn" Content="Circle" Padding="10,4"/>
+        <Separator Margin="8,0"/>
+        <Button x:Name="DuplicateBtn" Content="Duplicate" Padding="10,4" IsEnabled="False"/>
+        <Button x:Name="DeleteBtn" Content="Delete" Padding="10,4" IsEnabled="False"/>
+        <Separator Margin="8,0"/>
+        <Button x:Name="NewBtn" Content="New" Padding="10,4"/>
+        <Button x:Name="SaveBtn" Content="Save" Padding="10,4"/>
+        <Button x:Name="LoadBtn" Content="Load" Padding="10,4"/>
+      </StackPanel>
+    </Border>
+
+    <!-- Main content -->
+    <Grid ColumnDefinitions="Auto,*">
+      <!-- Canvas area -->
+      <Border Grid.Column="0" Background="#111111" Margin="8"
+              BorderBrush="#444444" BorderThickness="1" CornerRadius="4"
+              VerticalAlignment="Center" HorizontalAlignment="Center">
+        <Image x:Name="CanvasImage" Width="640" Height="480" Stretch="None"/>
+      </Border>
+
+      <!-- Right panel -->
+      <Grid Grid.Column="1" RowDefinitions="Auto,*,Auto" Margin="0,8,8,8">
+        <!-- Element list -->
+        <StackPanel Spacing="4">
+          <TextBlock Text="Elements" FontWeight="Bold" FontSize="14"/>
+          <ListBox x:Name="ElementList" MaxHeight="180" SelectionMode="Single"/>
+          <StackPanel Orientation="Horizontal" Spacing="4">
+            <Button x:Name="MoveUpBtn" Content="Move Up" Padding="8,4"/>
+            <Button x:Name="MoveDownBtn" Content="Move Down" Padding="8,4"/>
+          </StackPanel>
+        </StackPanel>
+
+        <!-- Properties (scrollable) -->
+        <ScrollViewer Grid.Row="1" Margin="0,8" VerticalScrollBarVisibility="Auto">
+          <StackPanel x:Name="PropertiesPanel" Spacing="4" Margin="0,0,8,0">
+            <TextBlock Text="Select an element to edit" Foreground="#888888" FontStyle="Italic"/>
+          </StackPanel>
+        </ScrollViewer>
+
+        <!-- Test values -->
+        <StackPanel Grid.Row="2" Spacing="4" Margin="0,4,0,0">
+          <Separator/>
+          <TextBlock Text="Test Values" FontWeight="Bold" FontSize="14"/>
+          <ScrollViewer MaxHeight="180" VerticalScrollBarVisibility="Auto">
+            <StackPanel x:Name="TestValuesPanel" Spacing="4"/>
+          </ScrollViewer>
+        </StackPanel>
+      </Grid>
+    </Grid>
+  </DockPanel>
+</Window>
