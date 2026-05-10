@@ -3,6 +3,7 @@ using GaugeDotnet.Configuration;
 using GaugeDotnet.Devices;
 using GaugeDotnet.Gauges;
 using GaugeDotnet.Rendering;
+using RG35XX.Libraries;
 using SkiaSharp;
 using static SDL2.SDL;
 using RG35XX.Core.GamePads;
@@ -25,6 +26,7 @@ namespace GaugeDotnet
 		private int _currentScreen;
 		private ConfigEditor? _configEditor;
 		private double _lastUpdate;
+		private double _lastKeepAlive;
 
 		public GameLoop(AppConfig appConfig, IMeDevice? meDevice, int screenWidth, int screenHeight)
 		{
@@ -123,6 +125,13 @@ namespace GaugeDotnet
 		private void UpdateGaugeData()
 		{
 			double now = _stopwatch.Elapsed.TotalSeconds;
+
+			if (now - _lastKeepAlive >= 3.0)
+			{
+				_lastKeepAlive = now;
+				ScreenKeepAlive.Poke();
+			}
+
 			if (now - _lastUpdate < 0.05)
 			{
 				return;
