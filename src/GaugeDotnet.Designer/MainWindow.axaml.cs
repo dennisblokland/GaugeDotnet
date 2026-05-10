@@ -64,6 +64,10 @@ public partial class MainWindow : Window
 		AddTextBtn.Click += (_, _) => AddElement(new TextElement());
 		AddValueBtn.Click += (_, _) => AddElement(new ValueDisplayElement());
 		AddCircleBtn.Click += (_, _) => AddElement(new CircleElement());
+		AddRectBtn.Click += (_, _) => AddElement(new RectangleElement());
+		AddLineBtn.Click += (_, _) => AddElement(new LineElement());
+		AddBarBtn.Click += (_, _) => AddElement(new LinearBarElement());
+		AddWarningBtn.Click += (_, _) => AddElement(new WarningIndicatorElement());
 
 		DuplicateBtn.Click += (_, _) => DuplicateSelectedElement();
 		DeleteBtn.Click += (_, _) => DeleteSelectedElement();
@@ -280,7 +284,8 @@ public partial class MainWindow : Window
 		AddFloatProp("Y", element.Y, v => element.Y = v, 0, CanvasHeight);
 
 		// Data binding (only for dynamic element types)
-		bool supportsData = element is ArcElement or NeedleElement or ValueDisplayElement;
+		bool supportsData = element is ArcElement or NeedleElement or ValueDisplayElement
+			or LinearBarElement or WarningIndicatorElement;
 		if (supportsData)
 		{
 			AddDataSourceProp(element.DataSource, v =>
@@ -290,7 +295,8 @@ public partial class MainWindow : Window
 			});
 		}
 
-		bool hasRange = element is ArcElement or NeedleElement or ValueDisplayElement or TickRingElement;
+		bool hasRange = element is ArcElement or NeedleElement or ValueDisplayElement
+			or TickRingElement or LinearBarElement or WarningIndicatorElement;
 		if (hasRange)
 		{
 			AddFloatProp("Min Value", element.MinValue, v => element.MinValue = v, -10000, 100000);
@@ -361,6 +367,45 @@ public partial class MainWindow : Window
 				AddColorProp("Fill Color", circle.FillColor, v => circle.FillColor = v);
 				AddColorProp("Stroke Color", circle.StrokeColor, v => circle.StrokeColor = v);
 				AddFloatProp("Stroke Width", circle.CircleStrokeWidth, v => circle.CircleStrokeWidth = v, 0, 10, 0.5f);
+				break;
+
+			case RectangleElement rect:
+				AddFloatProp("Width", rect.Width, v => rect.Width = v, 1, 640);
+				AddFloatProp("Height", rect.Height, v => rect.Height = v, 1, 480);
+				AddColorProp("Fill Color", rect.FillColor, v => rect.FillColor = v);
+				AddColorProp("Stroke Color", rect.StrokeColor, v => rect.StrokeColor = v);
+				AddFloatProp("Stroke Width", rect.RectStrokeWidth, v => rect.RectStrokeWidth = v, 0, 10, 0.5f);
+				AddFloatProp("Corner Radius", rect.CornerRadius, v => rect.CornerRadius = v, 0, 50);
+				break;
+
+			case LineElement line:
+				AddFloatProp("End X", line.X2, v => line.X2 = v, 0, 640);
+				AddFloatProp("End Y", line.Y2, v => line.Y2 = v, 0, 480);
+				AddFloatProp("Width", line.LineWidth, v => line.LineWidth = v, 0.5f, 20, 0.5f);
+				AddColorProp("Color", line.Color, v => line.Color = v);
+				break;
+
+			case LinearBarElement bar:
+				AddFloatProp("Width", bar.Width, v => bar.Width = v, 10, 600);
+				AddFloatProp("Height", bar.Height, v => bar.Height = v, 4, 400);
+				AddBoolProp("Vertical", bar.IsVertical, v => bar.IsVertical = v);
+				AddColorProp("Fill Color", bar.FillColor, v => bar.FillColor = v);
+				AddColorProp("Track Color", bar.TrackColor, v => bar.TrackColor = v);
+				AddColorProp("Border Color", bar.BorderColor, v => bar.BorderColor = v);
+				AddFloatProp("Border Width", bar.BorderWidth, v => bar.BorderWidth = v, 0, 5, 0.5f);
+				AddFloatProp("Corner Radius", bar.CornerRadius, v => bar.CornerRadius = v, 0, 20);
+				break;
+
+			case WarningIndicatorElement warn:
+				AddFloatProp("Radius", warn.Radius, v => warn.Radius = v, 4, 60);
+				AddFloatProp("Threshold", warn.Threshold, v => warn.Threshold = v, -10000, 100000);
+				AddBoolProp("Trigger Above", warn.TriggerAbove, v => warn.TriggerAbove = v);
+				AddColorProp("Active Color", warn.ActiveColor, v => warn.ActiveColor = v);
+				AddColorProp("Inactive Color", warn.InactiveColor, v => warn.InactiveColor = v);
+				AddBoolProp("Show Label", warn.ShowLabel, v => warn.ShowLabel = v);
+				AddTextProp("Label", warn.Label, v => warn.Label = v);
+				AddFloatProp("Label Size", warn.LabelFontSize, v => warn.LabelFontSize = v, 8, 30);
+				AddColorProp("Label Color", warn.LabelColor, v => warn.LabelColor = v);
 				break;
 		}
 

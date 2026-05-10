@@ -84,6 +84,22 @@ public static class ElementRenderer
 				circle.Y - circle.Radius,
 				circle.X + circle.Radius,
 				circle.Y + circle.Radius),
+			RectangleElement rect => new SKRect(
+				rect.X, rect.Y,
+				rect.X + rect.Width, rect.Y + rect.Height),
+			LineElement line => new SKRect(
+				MathF.Min(line.X, line.X2) - line.LineWidth,
+				MathF.Min(line.Y, line.Y2) - line.LineWidth,
+				MathF.Max(line.X, line.X2) + line.LineWidth,
+				MathF.Max(line.Y, line.Y2) + line.LineWidth),
+			LinearBarElement bar => new SKRect(
+				bar.X, bar.Y,
+				bar.X + bar.Width, bar.Y + bar.Height),
+			WarningIndicatorElement warn => new SKRect(
+				warn.X - warn.Radius,
+				warn.Y - warn.Radius,
+				warn.X + warn.Radius,
+				warn.Y + warn.Radius + (warn.ShowLabel ? warn.LabelFontSize + 8 : 0)),
 			_ => new SKRect(element.X - 20, element.Y - 20, element.X + 20, element.Y + 20),
 		};
 	}

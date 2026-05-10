@@ -19,6 +19,10 @@
         <Button x:Name="AddTextBtn" Content="Text" Padding="10,4"/>
         <Button x:Name="AddValueBtn" Content="Value" Padding="10,4"/>
         <Button x:Name="AddCircleBtn" Content="Circle" Padding="10,4"/>
+        <Button x:Name="AddRectBtn" Content="Rect" Padding="10,4"/>
+        <Button x:Name="AddLineBtn" Content="Line" Padding="10,4"/>
+        <Button x:Name="AddBarBtn" Content="Bar" Padding="10,4"/>
+        <Button x:Name="AddWarningBtn" Content="Warning" Padding="10,4"/>
         <Separator Margin="8,0"/>
         <Button x:Name="DuplicateBtn" Content="Duplicate" Padding="10,4" IsEnabled="False"/>
         <Button x:Name="DeleteBtn" Content="Delete" Padding="10,4" IsEnabled="False"/>
