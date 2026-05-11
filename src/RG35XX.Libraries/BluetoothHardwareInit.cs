@@ -88,6 +88,26 @@ namespace RG35XX.Libraries
         }
 
         /// <summary>
+        /// Remove the given MAC from bluez's device cache. Use this before a scan
+        /// when the device is already cached: bluez updates a known device's
+        /// org.bluez.Device1 object with PropertiesChanged instead of emitting a
+        /// fresh InterfacesAdded, which btleplug's scan listener can miss.
+        /// </summary>
+        public static bool EvictCachedDevice(string macAddress)
+        {
+            if (string.IsNullOrWhiteSpace(macAddress))
+                return false;
+
+            string trimmed = macAddress.Trim();
+            if (!IsDeviceCached(trimmed))
+                return false;
+
+            Console.WriteLine($"[BLE] evicting cached bluez entry for {trimmed} so scan re-emits InterfacesAdded");
+            Run("bluetoothctl", $"remove {trimmed}");
+            return true;
+        }
+
+        /// <summary>
         /// If bluez believes the cached device is still connected from a prior session,
         /// tell it to disconnect so the next scan/connect starts from a clean slate.
         /// Returns true if a disconnect was issued.
@@ -176,15 +196,23 @@ namespace RG35XX.Libraries
 
         private static async Task EnsureBluetoothdAsync(CancellationToken ct)
         {
-            if (!IsRunning("bluetoothd"))
+            // Always restart bluetoothd cleanly. A previous launch may have used
+            // `-d` (debug spam), and bluetoothd's stdout/stderr inherited from a
+            // prior process can pollute our console. Kill and relaunch with
+            // output redirected to /dev/null.
+            if (IsRunning("bluetoothd"))
             {
-                Console.WriteLine("[BLE] starting bluetoothd");
-                StartBackground("/usr/libexec/bluetooth/bluetoothd", "-n -d");
+                Console.WriteLine("[BLE] killing existing bluetoothd for clean relaunch");
+                Run("pkill", "-f bluetoothd");
+                for (int i = 1; i <= 10; i++)
+                {
+                    if (!IsRunning("bluetoothd")) break;
+                    await Task.Delay(200, ct);
+                }
             }
-            else
-            {
-                Console.WriteLine("[BLE] bluetoothd already running");
-            }
+
+            Console.WriteLine("[BLE] starting bluetoothd (silent)");
+            StartBackgroundSilent("/usr/libexec/bluetooth/bluetoothd", "-n");
 
             for (int i = 1; i <= 5; i++)
             {
@@ -251,6 +279,26 @@ namespace RG35XX.Libraries
             catch (Exception ex)
             {
                 Console.WriteLine($"[BLE] failed to start '{cmd}': {ex.Message}");
+            }
+        }
+
+        private static void StartBackgroundSilent(string cmd, string args)
+        {
+            // Launch through /bin/sh so we can detach stdin and redirect stdout
+            // and stderr to /dev/null, keeping the child's chatter out of our
+            // console. setsid puts it in a new session so SIGHUP on our exit
+            // doesn't take it with us.
+            try
+            {
+                string shellCmd = $"setsid {cmd} {args} </dev/null >/dev/null 2>&1 &";
+                Process.Start(new ProcessStartInfo("/bin/sh", $"-c \"{shellCmd}\"")
+                {
+                    UseShellExecute = false,
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[BLE] failed to start '{cmd}' silently: {ex.Message}");
             }
         }
     }

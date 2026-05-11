@@ -33,6 +33,12 @@ internal class Program
 
             if (!string.IsNullOrWhiteSpace(appConfig.DeviceMacAddress))
             {
+                // Bluez may have the device cached from a prior session; if so it
+                // updates the existing object with PropertiesChanged instead of
+                // emitting InterfacesAdded, and btleplug's scan never sees it.
+                BluetoothHardwareInit.DisconnectCachedDevice(appConfig.DeviceMacAddress);
+                BluetoothHardwareInit.EvictCachedDevice(appConfig.DeviceMacAddress);
+
                 Console.WriteLine($"Connecting to configured ME device {appConfig.DeviceMacAddress}...");
                 device = await bleManager.ConnectByAddressAsync(appConfig.DeviceMacAddress, exit.Token);
             }

@@ -65,7 +65,9 @@ namespace GaugeDotnet.Devices
             string formattedAddress = FormatMac(address);
             Console.WriteLine($"Scanning for configured ME device {formattedAddress}...");
 
-            await foreach (BtlePeripheral peripheral in _ble.GetPeripherals([], false, cancellationToken))
+            // Narrow the bluez discovery filter to the RaceChrono service so we don't
+            // get an InterfacesAdded event (and log spam) for every nearby advertiser.
+            await foreach (BtlePeripheral peripheral in _ble.GetPeripherals([RaceChronoIds.ServiceUuid], false, cancellationToken))
             {
                 if (peripheral.Address != address)
                 {
