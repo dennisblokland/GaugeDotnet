@@ -17,6 +17,7 @@
     <PackageReference Include="ppy.SDL2-CS" />
     <PackageReference Include="VaettirNet.Btleplug"/> 
     <PackageReference Include="Tmds.DBus"/>
+    <PackageReference Include="Tmds.DBus.Protocol"/>
   </ItemGroup>
 <ItemGroup>
   <None Include="fonts\**\*.ttf">
