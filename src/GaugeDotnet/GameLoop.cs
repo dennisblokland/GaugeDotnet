@@ -79,6 +79,68 @@ namespace GaugeDotnet
 				UpdateGaugeData();
 				Render();
 			}
+
+			RenderExitMessage();
+		}
+
+		private void RenderExitMessage()
+		{
+			var accent = new SKColor(0xFF, 0x6B, 0x35); // orange
+			float cx = _screenWidth / 2f;
+			float cy = _screenHeight / 2f;
+
+			using SKPaint titlePaint = new()
+			{
+				IsAntialias = true,
+				TextAlign = SKTextAlign.Center,
+				Typeface = SKTypeface.FromFamilyName("monospace", SKFontStyleWeight.Bold, SKFontStyleWidth.Normal, SKFontStyleSlant.Upright),
+				TextSize = 64,
+			};
+
+			using SKPaint subPaint = new()
+			{
+				Color = new SKColor(180, 180, 180),
+				IsAntialias = true,
+				TextAlign = SKTextAlign.Center,
+				TextSize = 22,
+			};
+
+			using SKPaint linePaint = new()
+			{
+				Color = accent,
+				StrokeWidth = 2,
+				IsAntialias = true,
+				Style = SKPaintStyle.Stroke,
+			};
+
+			const int steps = 20;
+			for (int i = 0; i <= steps; i++)
+			{
+				float t = i / (float)steps;
+				byte alpha = (byte)(255 * t);
+
+				SKCanvas canvas = _gaugeSDL.GetCanvas();
+				canvas.Clear(SKColors.Black);
+
+				float lineY1 = cy - 52;
+				float lineY2 = cy + 30;
+				float halfLen = _screenWidth * 0.38f * t;
+
+				linePaint.Color = accent.WithAlpha(alpha);
+				canvas.DrawLine(cx - halfLen, lineY1, cx + halfLen, lineY1, linePaint);
+				canvas.DrawLine(cx - halfLen, lineY2, cx + halfLen, lineY2, linePaint);
+
+				titlePaint.Color = SKColors.White.WithAlpha(alpha);
+				canvas.DrawText("EXITING", cx, cy + 10, titlePaint);
+
+				subPaint.Color = new SKColor(180, 180, 180, alpha);
+				canvas.DrawText("Goodbye", cx, cy + 58, subPaint);
+
+				_gaugeSDL.FlushAndSwap();
+				Thread.Sleep(18);
+			}
+
+			Thread.Sleep(600);
 		}
 
 		private bool HandleConfigEditor(GamepadKey key, SDL_Keycode? sdlKey)
