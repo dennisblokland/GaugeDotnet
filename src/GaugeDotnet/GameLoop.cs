@@ -84,18 +84,18 @@ namespace GaugeDotnet
 			RenderExitMessage();
 		}
 
-        private void HandleReset(GamepadKey key, SDL_Keycode? sdlKey)
-        {
-            if (key == GamepadKey.R1_DOWN || sdlKey == SDL_Keycode.SDLK_r)
+		private void HandleReset(GamepadKey key, SDL_Keycode? sdlKey)
+		{
+			if (key == GamepadKey.R1_DOWN || sdlKey == SDL_Keycode.SDLK_r)
 			{
 				if (_screens.Count > 0 && _currentScreen < _screens.Count)
 				{
 					_screens[_currentScreen].Gauge.ResetSavedState();
 				}
 			}
-        }
+		}
 
-        private void RenderExitMessage()
+		private void RenderExitMessage()
 		{
 			var accent = new SKColor(0xFF, 0x6B, 0x35); // orange
 			float cx = _screenWidth / 2f;
@@ -104,18 +104,19 @@ namespace GaugeDotnet
 			using SKPaint titlePaint = new()
 			{
 				IsAntialias = true,
-				TextAlign = SKTextAlign.Center,
-				Typeface = SKTypeface.FromFamilyName("monospace", SKFontStyleWeight.Bold, SKFontStyleWidth.Normal, SKFontStyleSlant.Upright),
-				TextSize = 64,
+
 			};
+			using SKTypeface titleTypeface = SKTypeface.FromFamilyName("monospace", SKFontStyleWeight.Bold, SKFontStyleWidth.Normal, SKFontStyleSlant.Upright);
+
+			using SKFont titleFont = new(titleTypeface, 64);
 
 			using SKPaint subPaint = new()
 			{
 				Color = new SKColor(180, 180, 180),
 				IsAntialias = true,
-				TextAlign = SKTextAlign.Center,
-				TextSize = 22,
 			};
+
+			using SKFont subFont = new(titleTypeface, 24);
 
 			using SKPaint linePaint = new()
 			{
@@ -143,10 +144,11 @@ namespace GaugeDotnet
 				canvas.DrawLine(cx - halfLen, lineY2, cx + halfLen, lineY2, linePaint);
 
 				titlePaint.Color = SKColors.White.WithAlpha(alpha);
-				canvas.DrawText("EXITING", cx, cy + 10, titlePaint);
+
+				canvas.DrawText("EXITING", cx, cy + 10, SKTextAlign.Center, titleFont, titlePaint);
 
 				subPaint.Color = new SKColor(180, 180, 180, alpha);
-				canvas.DrawText("Goodbye", cx, cy + 58, subPaint);
+				canvas.DrawText("Goodbye", cx, cy + 58, SKTextAlign.Center,  subFont, subPaint);
 
 				_gaugeSDL.FlushAndSwap();
 				Thread.Sleep(18);

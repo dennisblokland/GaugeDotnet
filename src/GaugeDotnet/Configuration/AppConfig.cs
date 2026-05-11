@@ -11,8 +11,6 @@ namespace GaugeDotnet.Configuration
 
         public string? DeviceMacAddress { get; set; } = "20:E7:C8:B9:20:2A";
 
-
-        [MaxLength(MaxScreens)]
         public List<ScreenConfig> Screens { get; set; } = new();
     }
 }
