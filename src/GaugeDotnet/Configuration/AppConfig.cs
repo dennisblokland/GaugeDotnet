@@ -8,7 +8,7 @@ namespace GaugeDotnet.Configuration
 
         public bool DemoMode { get; set; } = false;
 
-        public string? DeviceMacAddress { get; set; } = "A0:DD:6C:B3:42:CE";
+        public string? DeviceMacAddress { get; set; } = "20:E7:C8:B9:20:2A";
 
 
         [MaxLength(MaxScreens)]
