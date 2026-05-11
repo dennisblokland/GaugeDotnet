@@ -1,4 +1,4 @@
-﻿using RG35XX.Core.GamePads;
+using RG35XX.Core.GamePads;
 using RG35XX.Core.Interfaces;
 
 namespace RG35XX.Libraries
@@ -30,6 +30,11 @@ namespace RG35XX.Libraries
         public GamepadKey ReadInput()
         {
             return _gamePadReader.ReadInput();
+        }
+
+        public void Dispose()
+        {
+            _gamePadReader.Dispose();
         }
     }
 }

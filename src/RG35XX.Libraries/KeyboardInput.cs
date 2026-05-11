@@ -19,5 +19,9 @@ namespace RG35XX.Libraries
         {
             return KeyBus.ReadInput();
         }
+
+        public void Dispose()
+        {
+        }
     }
 }

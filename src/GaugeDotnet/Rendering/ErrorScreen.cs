@@ -10,9 +10,14 @@ namespace GaugeDotnet.Rendering
 	{
 		public static void Show(string message)
 		{
-			int w = 640, h = 480;
-			GaugeSDL sdl = new(screenWidth: w, screenHeight: h);
-			IGamePadReader gp = new GamePadReader();
+			using GaugeSDL sdl = new(screenWidth: 640, screenHeight: 480);
+			ShowOn(sdl, message);
+		}
+
+		public static void ShowOn(GaugeSDL sdl, string message)
+		{
+			const int w = 640, h = 480;
+			using IGamePadReader gp = new GamePadReader();
 			gp.Initialize();
 
 			using var bitmap = new SKBitmap(w, h);
@@ -48,14 +53,12 @@ namespace GaugeDotnet.Rendering
 				{
 					if (e.type == SDL_EventType.SDL_QUIT || e.type == SDL_EventType.SDL_KEYDOWN)
 					{
-						SDL_Quit();
 						return;
 					}
 				}
 				GamepadKey key = gp.ReadInput();
 				if (key != GamepadKey.None)
 				{
-					SDL_Quit();
 					return;
 				}
 				Thread.Sleep(50);

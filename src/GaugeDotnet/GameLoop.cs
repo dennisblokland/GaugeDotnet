@@ -28,14 +28,14 @@ namespace GaugeDotnet
 		private double _lastUpdate;
 		private double _lastKeepAlive;
 
-		public GameLoop(AppConfig appConfig, IMeDevice? meDevice, int screenWidth, int screenHeight)
+		public GameLoop(AppConfig appConfig, IMeDevice? meDevice, GaugeSDL gaugeSDL, int screenWidth, int screenHeight)
 		{
 			_appConfig = appConfig;
 			_meDevice = meDevice;
 			_screenWidth = screenWidth;
 			_screenHeight = screenHeight;
 
-			_gaugeSDL = new GaugeSDL(screenWidth: screenWidth, screenHeight: screenHeight);
+			_gaugeSDL = gaugeSDL;
 			_input = new InputHandler();
 			_fps = new FpsCounter();
 			_stopwatch = Stopwatch.StartNew();
@@ -146,7 +146,11 @@ namespace GaugeDotnet
 			_lastUpdate = now;
 		}
 
-		public void Dispose() => _gaugeSDL.Dispose();
+		public void Dispose()
+		{
+			_input.Dispose();
+			_gaugeSDL.Dispose();
+		}
 
 		private void Render()
 		{

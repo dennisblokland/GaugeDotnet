@@ -5,7 +5,7 @@ using RG35XX.Libraries;
 
 namespace GaugeDotnet
 {
-	public class InputHandler
+	public class InputHandler : IDisposable
 	{
 		private readonly IGamePadReader _gamePadReader;
 
@@ -17,6 +17,11 @@ namespace GaugeDotnet
 		{
 			_gamePadReader = new GamePadReader();
 			_gamePadReader.Initialize();
+		}
+
+		public void Dispose()
+		{
+			_gamePadReader.Dispose();
 		}
 
 		public void Poll()
