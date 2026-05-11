@@ -245,12 +245,13 @@ namespace GaugeDotnet.Gauges
             float perpX = -sin * NEEDLE_HALF_WIDTH;
             float perpY = cos * NEEDLE_HALF_WIDTH;
 
-            using SKPath needlePath = new();
-            needlePath.MoveTo(tipX, tipY);
-            needlePath.LineTo(CENTER_X + perpX, CENTER_Y + perpY);
-            needlePath.LineTo(tailX, tailY);
-            needlePath.LineTo(CENTER_X - perpX, CENTER_Y - perpY);
-            needlePath.Close();
+            using SKPathBuilder needlePathBuilder = new();
+            needlePathBuilder.MoveTo(tipX, tipY);
+            needlePathBuilder.LineTo(CENTER_X + perpX, CENTER_Y + perpY);
+            needlePathBuilder.LineTo(tailX, tailY);
+            needlePathBuilder.LineTo(CENTER_X - perpX, CENTER_Y - perpY);
+            needlePathBuilder.Close();
+            using SKPath needlePath = needlePathBuilder.Detach();
 
             // Glow
             _needleGlowPaint.Color = activeCol;

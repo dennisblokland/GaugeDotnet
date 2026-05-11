@@ -15,7 +15,7 @@ public static class ElementRenderer
 
 	// Reusable paint/font objects — rendering is single-threaded
 	private static readonly SKPaint _paint = new() { IsAntialias = true };
-	private static readonly SKFont _font = new();
+	private static readonly SKFont _font = new(FontHelper.Default);
 
 	/// <summary>
 	/// Set the base directory for resolving relative image paths.
@@ -258,7 +258,7 @@ public static class ElementRenderer
 				float labelX = ticks.X + cos * labelDist;
 				float labelY = ticks.Y + sin * labelDist;
 
-				_font.Typeface = SKTypeface.Default;
+				_font.Typeface = FontHelper.Default;
 				_font.Size = ticks.LabelFontSize;
 				_paint.Style = SKPaintStyle.Fill;
 				_paint.Color = SKColor.Parse(ticks.LabelColor);
@@ -409,8 +409,9 @@ public static class ElementRenderer
 			canvas.Save();
 			if (bar.CornerRadius > 0)
 			{
-				using SKPath clipPath = new();
-				clipPath.AddRoundRect(trackRect, bar.CornerRadius, bar.CornerRadius);
+				using SKPathBuilder clipPathBuilder = new();
+				clipPathBuilder.AddRoundRect(trackRect, bar.CornerRadius, bar.CornerRadius);
+				using SKPath clipPath = clipPathBuilder.Detach();
 				canvas.ClipPath(clipPath);
 			}
 
@@ -464,7 +465,7 @@ public static class ElementRenderer
 
 		if (warn.ShowLabel)
 		{
-			_font.Typeface = SKTypeface.Default;
+			_font.Typeface = FontHelper.Default;
 			_font.Size = warn.LabelFontSize;
 			_paint.Color = SKColor.Parse(warn.LabelColor);
 			_paint.MaskFilter = null;
@@ -558,7 +559,7 @@ public static class ElementRenderer
 		}
 		catch
 		{
-			return SKTypeface.Default;
+			return FontHelper.Default;
 		}
 	}
 }

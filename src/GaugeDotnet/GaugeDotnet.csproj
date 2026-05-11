@@ -9,11 +9,12 @@
     <InvariantGlobalization>true</InvariantGlobalization>
     <PublishTrimmed>true</PublishTrimmed>
     <TrimMode>link</TrimMode>
+    <NoWarn>$(NoWarn);IL2104</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="SkiaSharp" />
-    <PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux" /> 
     <PackageReference Include="ppy.SDL2-CS" />
     <PackageReference Include="VaettirNet.Btleplug"/> 
     <PackageReference Include="Tmds.DBus"/>

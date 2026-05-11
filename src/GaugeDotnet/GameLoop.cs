@@ -106,7 +106,7 @@ namespace GaugeDotnet
 				IsAntialias = true,
 
 			};
-			using SKTypeface titleTypeface = SKTypeface.FromFamilyName("monospace", SKFontStyleWeight.Bold, SKFontStyleWidth.Normal, SKFontStyleSlant.Upright);
+			using SKTypeface titleTypeface = FontHelper.Default;
 
 			using SKFont titleFont = new(titleTypeface, 64);
 

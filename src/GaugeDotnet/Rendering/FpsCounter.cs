@@ -17,7 +17,7 @@ namespace GaugeDotnet.Rendering
 			IsAntialias = true
 		};
 
-		private readonly SKFont _font = new() { Size = 20 };
+		private readonly SKFont _font = new(FontHelper.Default) { Size = 20 };
 
 		public void Tick()
 		{

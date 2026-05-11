@@ -173,7 +173,7 @@ public static class ElementRenderer
 		}
 		catch
 		{
-			return SKTypeface.Default;
+			return FontHelper.Default;
 		}
 	}
 }

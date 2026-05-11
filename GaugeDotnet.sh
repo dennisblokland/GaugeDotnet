@@ -1,6 +1,9 @@
 #!/bin/bash
 # PORTMASTER: GaugeDotnet.zip, GaugeDotnet.sh
 
+export LANG=en_US.UTF-8
+export LC_ALL=en_US.UTF-8
+
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/libexec/bluetooth:$PATH"
 XDG_DATA_HOME=${XDG_DATA_HOME:-$HOME/.local/share}
 
