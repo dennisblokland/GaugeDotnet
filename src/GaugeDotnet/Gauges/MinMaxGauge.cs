@@ -224,5 +224,13 @@ namespace GaugeDotnet.Gauges
             _markerPaint.MaskFilter = null;
             canvas.DrawPath(path, _markerPaint);
         }
+
+        public override void ResetSavedState()
+        {
+            _currentValue = Value;
+            _minTracked = Value;
+            _maxTracked = Value;
+            _peaksInitialized = false;
+        }
     }
 }

@@ -75,6 +75,7 @@ namespace GaugeDotnet
 					continue;
 				}
 
+				HandleReset(key, sdlKey);
 				HandleScreenNavigation(key);
 				UpdateGaugeData();
 				Render();
@@ -83,7 +84,18 @@ namespace GaugeDotnet
 			RenderExitMessage();
 		}
 
-		private void RenderExitMessage()
+        private void HandleReset(GamepadKey key, SDL_Keycode? sdlKey)
+        {
+            if (key == GamepadKey.R1_DOWN || sdlKey == SDL_Keycode.SDLK_r)
+			{
+				if (_screens.Count > 0 && _currentScreen < _screens.Count)
+				{
+					_screens[_currentScreen].Gauge.ResetSavedState();
+				}
+			}
+        }
+
+        private void RenderExitMessage()
 		{
 			var accent = new SKColor(0xFF, 0x6B, 0x35); // orange
 			float cx = _screenWidth / 2f;

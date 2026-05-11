@@ -191,5 +191,14 @@ namespace GaugeDotnet.Gauges
 			}
 			_valueDisplay.DrawOnCanvas(canvas);
 		}
-	}
+
+        public override void ResetSavedState()
+        {
+            // Clear data points
+			Array.Fill(_dataPoints, 0f	);
+			_dataCount = _maxDataPoints;
+			_dataHead = 0;
+			_lastUpdateTicks = Environment.TickCount64;
+        }
+    }
 }

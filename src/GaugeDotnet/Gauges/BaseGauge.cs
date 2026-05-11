@@ -33,6 +33,8 @@ namespace GaugeDotnet.Gauges
             _value = v;
         }
 
+        public virtual void ResetSavedState() { }
+
         public float Value => _value;
         public float MinValue => _minValue;
         public float MaxValue => _maxValue;
