@@ -30,13 +30,15 @@ public static class ElementRenderer
 		SKCanvas canvas,
 		CustomGaugeDefinition definition,
 		Dictionary<string, float> values,
-		Dictionary<string, float>? targetValues = null)
+		Dictionary<string, float>? targetValues = null,
+		string? baseDirectory = null)
 	{
+		string? effectiveBaseDir = baseDirectory ?? _baseDirectory;
 		canvas.Clear(SKColor.Parse(definition.BackgroundColor));
 
 		if (!string.IsNullOrEmpty(definition.BackgroundImage))
 		{
-			SKBitmap? bgBitmap = LoadImage(definition.BackgroundImage);
+			SKBitmap? bgBitmap = LoadImage(definition.BackgroundImage, effectiveBaseDir);
 			if (bgBitmap != null)
 			{
 				SKRect dest = new(0, 0, definition.Width, definition.Height);
@@ -59,16 +61,16 @@ public static class ElementRenderer
 			{
 				value = v;
 			}
-			DrawElement(canvas, element, value);
+			DrawElement(canvas, element, value, effectiveBaseDir);
 		}
 	}
 
-	public static void DrawElement(SKCanvas canvas, GaugeElement element, float value)
+	public static void DrawElement(SKCanvas canvas, GaugeElement element, float value, string? baseDirectory = null)
 	{
 		switch (element)
 		{
 			case ArcElement arc: DrawArc(canvas, arc, value); break;
-			case NeedleElement needle: DrawNeedle(canvas, needle, value); break;
+			case NeedleElement needle: DrawNeedle(canvas, needle, value, baseDirectory); break;
 			case TextElement text: DrawText(canvas, text); break;
 			case ValueDisplayElement val: DrawValueDisplay(canvas, val, value); break;
 			case TickRingElement ticks: DrawTickRing(canvas, ticks); break;
@@ -77,7 +79,7 @@ public static class ElementRenderer
 			case LineElement line: DrawLine(canvas, line); break;
 			case LinearBarElement bar: DrawLinearBar(canvas, bar, value); break;
 			case WarningIndicatorElement warn: DrawWarningIndicator(canvas, warn, value); break;
-			case ImageElement img: DrawImage(canvas, img); break;
+			case ImageElement img: DrawImage(canvas, img, baseDirectory); break;
 		}
 	}
 
@@ -121,7 +123,7 @@ public static class ElementRenderer
 		}
 	}
 
-	private static void DrawNeedle(SKCanvas canvas, NeedleElement needle, float value)
+	private static void DrawNeedle(SKCanvas canvas, NeedleElement needle, float value, string? baseDirectory = null)
 	{
 		float t = 0f;
 		if (!string.IsNullOrEmpty(needle.DataSource))
@@ -134,7 +136,7 @@ public static class ElementRenderer
 
 		if (!string.IsNullOrEmpty(needle.ImagePath))
 		{
-			SKBitmap? img = LoadImage(needle.ImagePath);
+			SKBitmap? img = LoadImage(needle.ImagePath, baseDirectory);
 			if (img != null)
 			{
 				canvas.Save();
@@ -471,11 +473,11 @@ public static class ElementRenderer
 		}
 	}
 
-	private static void DrawImage(SKCanvas canvas, ImageElement img)
+	private static void DrawImage(SKCanvas canvas, ImageElement img, string? baseDirectory = null)
 	{
 		if (string.IsNullOrEmpty(img.ImagePath)) return;
 
-		SKBitmap? bitmap = LoadImage(img.ImagePath);
+		SKBitmap? bitmap = LoadImage(img.ImagePath, baseDirectory);
 		if (bitmap == null) return;
 
 		canvas.Save();
@@ -495,27 +497,22 @@ public static class ElementRenderer
 		canvas.Restore();
 	}
 
-	internal static SKBitmap? LoadImage(string path)
+	internal static SKBitmap? LoadImage(string path, string? baseDirectory = null)
 	{
-		return _imageCache.GetOrAdd(path, p =>
+		string resolved = ResolveImagePath(path, baseDirectory);
+		return _imageCache.GetOrAdd(resolved, p =>
 		{
-			string resolved = ResolveImagePath(p);
-			if (!File.Exists(resolved)) return null;
-			try
-			{
-				return SKBitmap.Decode(resolved);
-			}
-			catch
-			{
-				return null;
-			}
+			if (!File.Exists(p)) return null;
+			try { return SKBitmap.Decode(p); }
+			catch { return null; }
 		});
 	}
 
-	private static string ResolveImagePath(string path)
+	private static string ResolveImagePath(string path, string? baseDirectory)
 	{
 		if (Path.IsPathRooted(path)) return path;
-		if (_baseDirectory != null) return Path.Combine(_baseDirectory, path);
+		string? dir = baseDirectory ?? _baseDirectory;
+		if (dir != null) return Path.Combine(dir, path);
 		return Path.Combine(AppContext.BaseDirectory, path);
 	}
 
@@ -524,7 +521,7 @@ public static class ElementRenderer
 	/// </summary>
 	public static bool SaveImageFromCache(string imagePath, string destPath)
 	{
-		SKBitmap? bitmap = LoadImage(imagePath);
+		SKBitmap? bitmap = LoadImage(imagePath, _baseDirectory);
 		if (bitmap == null) return false;
 
 		using SKData data = bitmap.Encode(SKEncodedImageFormat.Png, 100);

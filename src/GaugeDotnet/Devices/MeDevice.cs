@@ -6,7 +6,7 @@ namespace GaugeDotnet.Devices
     public class MeDevice : IDisposable, IMeDevice
     {
         private readonly BtlePeripheral _ble;
-        private bool _shouldTryReconnect;
+        private volatile bool _shouldTryReconnect;
         public ConnectionState ConnectionState { get; private set; }
         public bool IsConnected => ConnectionState == ConnectionState.Connected;
 
@@ -120,23 +120,21 @@ namespace GaugeDotnet.Devices
         {
             try
             {
-                // get can id form the first two bytes of data
                 if (data.Length < 2)
                 {
                     return;
                 }
 
-                ushort canId = BitConverter.ToUInt16(data.ToArray(), 0);
+                ushort canId = BitConverter.ToUInt16(data);
                 ReadOnlySpan<byte> dataPacket = data[4..];
 
-                Pid pid = (Pid)(canId & 0x0FFF); // Assuming the PID is in the lower 12 bits of the CAN ID
+                Pid pid = (Pid)(canId & 0x0FFF);
                 if (!Enum.IsDefined(pid))
                 {
-                    //    Console.WriteLine($"Unknown PID: {pid}");
                     return;
                 }
 
-                ICanFrame frame = CanDecoder.Decode(pid, dataPacket.ToArray());
+                ICanFrame frame = CanDecoder.Decode(pid, dataPacket);
                 Data.Apply(frame);
             }
             catch (Exception ex)

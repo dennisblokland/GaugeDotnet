@@ -3,7 +3,7 @@ using SDL2;
 
 namespace GaugeDotnet.Rendering
 {
-    public class GaugeSDL
+    public class GaugeSDL : IDisposable
     {
         private IntPtr _window;
         private IntPtr _glContext;
@@ -111,6 +111,8 @@ namespace GaugeDotnet.Rendering
             }
         }
 
+
+        public void Dispose() => Cleanup();
 
         private void Cleanup()
         {

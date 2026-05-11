@@ -26,23 +26,6 @@ namespace GaugeDotnet
         private bool _saved;
         private double _savedMessageTimer;
 
-        // Editable fields for a gauge (Type must be first, type-specific fields are filtered dynamically)
-        private static readonly string[] AllGaugeFields =
-        [
-            "Type",
-            "DataSource",
-            "Title",
-            "ColorHex",
-            "MinValue",
-            "MaxValue",
-            "InitialValue",
-            "Decimals",
-            "SegmentCount",
-            "Smoothing",
-            "MaxDataPoints",
-            "IntervalMs",
-        ];
-
         private static readonly string[] ColorOptions =
         [
             "#00FFFF", "#FF0000", "#00FF00", "#FFFF00",
@@ -287,7 +270,7 @@ namespace GaugeDotnet
 
         private static void AdjustCellField(GridCellConfig cell, string field, int direction)
         {
-            List<string> dataSources = DataSourceMapper.DataSourceNames;
+            IList<string> dataSources = (IList<string>)DataSourceMapper.DataSourceNames;
 
             switch (field)
             {
@@ -317,7 +300,7 @@ namespace GaugeDotnet
 
         private void AdjustField(GaugeConfig gauge, string field, int direction)
         {
-            List<string> dataSources = DataSourceMapper.DataSourceNames;
+            IList<string> dataSources = (IList<string>)DataSourceMapper.DataSourceNames;
             GaugeType[] gaugeTypes = (GaugeType[])Enum.GetValues(typeof(GaugeType));
 
             switch (field)

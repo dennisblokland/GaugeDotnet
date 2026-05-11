@@ -10,7 +10,7 @@ using RG35XX.Core.GamePads;
 
 namespace GaugeDotnet
 {
-	public class GameLoop
+	public class GameLoop : IDisposable
 	{
 		private readonly AppConfig _appConfig;
 		private readonly IMeDevice? _meDevice;
@@ -145,6 +145,8 @@ namespace GaugeDotnet
 
 			_lastUpdate = now;
 		}
+
+		public void Dispose() => _gaugeSDL.Dispose();
 
 		private void Render()
 		{

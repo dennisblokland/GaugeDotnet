@@ -22,7 +22,7 @@ namespace ME1_4NET.Frames
             Iat = iat;
         }
 
-        public static ME1_1 Decode(byte[] payload)
+        public static ME1_1 Decode(ReadOnlySpan<byte> payload)
         {
             if (payload.Length < 8)
                 throw new ArgumentException("Payload too short for Frame1");

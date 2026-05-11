@@ -15,10 +15,10 @@ namespace GaugeDotnet.Devices
             _ble = ble;
         }
 
-        public static Task<BleManager> CreateAsync()
+        public static BleManager Create()
         {
             BtleManager manager = BtleManager.Create();
-            return Task.FromResult(new BleManager(manager));
+            return new BleManager(manager);
         }
 
         /// <summary>
@@ -101,7 +101,7 @@ namespace GaugeDotnet.Devices
         {
             timeout ??= TimeSpan.FromSeconds(30);
             List<string> items = savedIdentifiers.ToList();
-            var src = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            using var src = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             src.CancelAfter(timeout.Value);
 
             MeDevice? me = await ScanAsync(false, items, src.Token);

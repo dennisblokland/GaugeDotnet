@@ -22,7 +22,7 @@ namespace ME1_4NET.Frames
             Gpt2 = gpt2;
         }
 
-        public static ME1_8 Decode(byte[] payload)
+        public static ME1_8 Decode(ReadOnlySpan<byte> payload)
         {
             if (payload.Length < 8)
                 throw new ArgumentException("Payload too short for Frame8");

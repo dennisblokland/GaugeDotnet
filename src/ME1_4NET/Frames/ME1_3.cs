@@ -22,7 +22,7 @@ namespace ME1_4NET.Frames
             PriInjPw = priPw;
         }
 
-        public static ME1_3 Decode(byte[] payload)
+        public static ME1_3 Decode(ReadOnlySpan<byte> payload)
         {
             if (payload.Length < 8)
                 throw new ArgumentException("Payload too short for Frame3");

@@ -9,7 +9,7 @@ namespace GaugeDotnet.Devices
     public sealed class SimulatedMeDevice : IMeDevice, IDisposable
     {
         private readonly CancellationTokenSource _cts = new();
-        private readonly Task _simulationTask;
+        private Task? _simulationTask;
 
         public MEData Data { get; } = new();
         public bool IsConnected => ConnectionState == ConnectionState.Connected;
@@ -17,13 +17,9 @@ namespace GaugeDotnet.Devices
 
         public event Action<IMeDevice, ConnectionState>? ConnectionStateChanged;
 
-        public SimulatedMeDevice()
-        {
-            _simulationTask = Task.Run(SimulateAsync);
-        }
-
         public Task ConnectAsync()
         {
+            _simulationTask = Task.Run(SimulateAsync);
             ConnectionState = ConnectionState.Connected;
             ConnectionStateChanged?.Invoke(this, ConnectionState);
             Console.WriteLine("[SimulatedMeDevice] Connected (simulated)");
@@ -101,7 +97,7 @@ namespace GaugeDotnet.Devices
         public void Dispose()
         {
             _cts.Cancel();
-            _simulationTask.Wait(500);
+            _simulationTask?.Wait(500);
             _cts.Dispose();
         }
     }

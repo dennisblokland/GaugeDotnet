@@ -28,10 +28,7 @@ public partial class MainWindow : Window
 		DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
 	};
 
-	private CustomGaugeDefinition _definition;
-	private GaugeElement? _selectedElement;
-	private readonly Dictionary<string, float> _testValues = new();
-	private int _elementCounter;
+	private readonly GaugeDesignerViewModel _vm = new();
 
 	// Drag state
 	private bool _isDragging;
@@ -45,8 +42,6 @@ public partial class MainWindow : Window
 	public MainWindow()
 	{
 		InitializeComponent();
-		_definition = CreateDefaultGauge();
-		_elementCounter = _definition.Elements.Count;
 		WireEvents();
 		RefreshElementList();
 		UpdateTestValueSliders();
@@ -70,8 +65,8 @@ public partial class MainWindow : Window
 		AddWarningBtn.Click += (_, _) => AddElement(new WarningIndicatorElement());
 		AddImageBtn.Click += (_, _) => AddElement(new ImageElement());
 
-		DuplicateBtn.Click += (_, _) => DuplicateSelectedElement();
-		DeleteBtn.Click += (_, _) => DeleteSelectedElement();
+		DuplicateBtn.Click += (_, _) => DuplicateElement();
+		DeleteBtn.Click += (_, _) => DeleteElement();
 
 		NewBtn.Click += (_, _) => OnNewClick();
 		SaveBtn.Click += OnSaveClick;
@@ -82,14 +77,10 @@ public partial class MainWindow : Window
 		{
 			if (_suppressListEvents) return;
 			int idx = ElementList.SelectedIndex;
-			if (idx >= 0 && idx < _definition.Elements.Count)
-			{
-				SelectElement(_definition.Elements[idx]);
-			}
-			else
-			{
-				SelectElement(null);
-			}
+			GaugeElement? element = idx >= 0 && idx < _vm.Definition.Elements.Count
+				? _vm.Definition.Elements[idx]
+				: null;
+			SelectElement(element);
 		};
 
 		MoveUpBtn.Click += (_, _) => MoveElement(-1);
@@ -103,103 +94,75 @@ public partial class MainWindow : Window
 		// Keyboard
 		KeyDown += (_, e) =>
 		{
-			if (e.Key == Key.Delete && _selectedElement != null)
+			if (e.Key == Key.Delete && _vm.SelectedElement != null)
 			{
-				DeleteSelectedElement();
+				DeleteElement();
 				e.Handled = true;
 			}
 		};
 	}
 
-	// ──────────────────── Element Management ────────────────────
+	// ──────────────────── Element Management (delegates to ViewModel) ────────────────────
 
 	private void AddElement(GaugeElement element)
 	{
-		_elementCounter++;
-		if (string.IsNullOrEmpty(element.Name))
-		{
-			element.Name = $"{element.TypeLabel} {_elementCounter}";
-		}
-		_definition.Elements.Add(element);
+		_vm.AddElement(element);
 		RefreshElementList();
-		SelectElement(element);
 		UpdateTestValueSliders();
+		ShowProperties(_vm.SelectedElement!);
 		Redraw();
 	}
 
-	private void DeleteSelectedElement()
+	private void DeleteElement()
 	{
-		if (_selectedElement == null) return;
-		_definition.Elements.Remove(_selectedElement);
-		SelectElement(null);
+		_vm.DeleteSelected();
 		RefreshElementList();
 		UpdateTestValueSliders();
+		ClearProperties();
 		Redraw();
 	}
 
-	private void DuplicateSelectedElement()
+	private void DuplicateElement()
 	{
-		if (_selectedElement == null) return;
-		string json = JsonSerializer.Serialize<GaugeElement>(_selectedElement, JsonOptions);
-		GaugeElement? copy = JsonSerializer.Deserialize<GaugeElement>(json, JsonOptions);
+		GaugeElement? copy = _vm.Duplicate();
 		if (copy == null) return;
-
-		_elementCounter++;
-		copy.Id = Guid.NewGuid().ToString("N")[..8];
-		copy.Name = $"{copy.Name} copy";
-		copy.X += 20;
-		copy.Y += 20;
-		_definition.Elements.Add(copy);
 		RefreshElementList();
-		SelectElement(copy);
+		ShowProperties(copy);
 		Redraw();
 	}
 
 	private void MoveElement(int direction)
 	{
-		if (_selectedElement == null) return;
-		int idx = _definition.Elements.IndexOf(_selectedElement);
-		int newIdx = idx + direction;
-		if (newIdx < 0 || newIdx >= _definition.Elements.Count) return;
-
-		_definition.Elements.RemoveAt(idx);
-		_definition.Elements.Insert(newIdx, _selectedElement);
+		_vm.MoveElement(direction);
 		RefreshElementList();
 		Redraw();
 	}
 
 	private void SelectElement(GaugeElement? element)
 	{
-		_selectedElement = element;
+		_vm.SelectElement(element);
 		DeleteBtn.IsEnabled = element != null;
 		DuplicateBtn.IsEnabled = element != null;
 
+		_suppressListEvents = true;
+		ElementList.SelectedIndex = element != null ? _vm.Definition.Elements.IndexOf(element) : -1;
+		_suppressListEvents = false;
+
 		if (element != null)
-		{
-			_suppressListEvents = true;
-			ElementList.SelectedIndex = _definition.Elements.IndexOf(element);
-			_suppressListEvents = false;
 			ShowProperties(element);
-		}
 		else
-		{
-			_suppressListEvents = true;
-			ElementList.SelectedIndex = -1;
-			_suppressListEvents = false;
 			ClearProperties();
-		}
+
 		Redraw();
 	}
 
 	private void RefreshElementList()
 	{
 		_suppressListEvents = true;
-		int prevIdx = _selectedElement != null ? _definition.Elements.IndexOf(_selectedElement) : -1;
-		ElementList.ItemsSource = _definition.Elements.Select(e => $"[{e.TypeLabel}] {e.Name}").ToList();
-		if (prevIdx >= 0 && prevIdx < _definition.Elements.Count)
-		{
+		int prevIdx = _vm.SelectedElement != null ? _vm.Definition.Elements.IndexOf(_vm.SelectedElement) : -1;
+		ElementList.ItemsSource = _vm.Definition.Elements.Select(e => $"[{e.TypeLabel}] {e.Name}").ToList();
+		if (prevIdx >= 0 && prevIdx < _vm.Definition.Elements.Count)
 			ElementList.SelectedIndex = prevIdx;
-		}
 		_suppressListEvents = false;
 	}
 
@@ -213,13 +176,12 @@ public partial class MainWindow : Window
 
 		if (point.Properties.IsLeftButtonPressed)
 		{
-			// Hit test in reverse order (front-most first)
 			GaugeElement? hit = null;
-			for (int i = _definition.Elements.Count - 1; i >= 0; i--)
+			for (int i = _vm.Definition.Elements.Count - 1; i >= 0; i--)
 			{
-				if (DesignerRenderer.HitTest(_definition.Elements[i], px, py))
+				if (DesignerRenderer.HitTest(_vm.Definition.Elements[i], px, py))
 				{
-					hit = _definition.Elements[i];
+					hit = _vm.Definition.Elements[i];
 					break;
 				}
 			}
@@ -239,13 +201,13 @@ public partial class MainWindow : Window
 
 	private void Canvas_PointerMoved(object? sender, PointerEventArgs e)
 	{
-		if (!_isDragging || _selectedElement == null) return;
+		if (!_isDragging || _vm.SelectedElement == null) return;
 
 		PointerPoint point = e.GetCurrentPoint(CanvasImage);
 		float dx = (float)point.Position.X - (float)_dragStartMouse.X;
 		float dy = (float)point.Position.Y - (float)_dragStartMouse.Y;
-		_selectedElement.X = _dragStartX + dx;
-		_selectedElement.Y = _dragStartY + dy;
+		_vm.SelectedElement.X = _dragStartX + dx;
+		_vm.SelectedElement.Y = _dragStartY + dy;
 		Redraw();
 	}
 
@@ -254,10 +216,8 @@ public partial class MainWindow : Window
 		if (_isDragging)
 		{
 			_isDragging = false;
-			if (_selectedElement != null)
-			{
-				ShowProperties(_selectedElement);
-			}
+			if (_vm.SelectedElement != null)
+				ShowProperties(_vm.SelectedElement);
 		}
 	}
 
@@ -268,14 +228,9 @@ public partial class MainWindow : Window
 		_suppressPropertyEvents = true;
 		PropertiesPanel.Children.Clear();
 		AddHeader("Canvas Properties");
-		AddColorProp("Background", _definition.BackgroundColor, v =>
-		{
-			_definition.BackgroundColor = v;
-		});
-		AddImagePathProp("Background Image", _definition.BackgroundImage ?? "", v =>
-		{
-			_definition.BackgroundImage = string.IsNullOrEmpty(v) ? null : v;
-		});
+		AddColorProp("Background", _vm.Definition.BackgroundColor, v => _vm.Definition.BackgroundColor = v);
+		AddImagePathProp("Background Image", _vm.Definition.BackgroundImage ?? "", v =>
+			_vm.Definition.BackgroundImage = string.IsNullOrEmpty(v) ? null : v);
 		_suppressPropertyEvents = false;
 	}
 
@@ -289,7 +244,6 @@ public partial class MainWindow : Window
 		AddFloatProp("X", element.X, v => element.X = v, 0, CanvasWidth);
 		AddFloatProp("Y", element.Y, v => element.Y = v, 0, CanvasHeight);
 
-		// Data binding (only for dynamic element types)
 		bool supportsData = element is ArcElement or NeedleElement or ValueDisplayElement
 			or LinearBarElement or WarningIndicatorElement;
 		if (supportsData)
@@ -457,11 +411,7 @@ public partial class MainWindow : Window
 		TextBox tb = new() { Text = value };
 		tb.TextChanged += (_, _) =>
 		{
-			if (!_suppressPropertyEvents)
-			{
-				setter(tb.Text ?? "");
-				Redraw();
-			}
+			if (!_suppressPropertyEvents) { setter(tb.Text ?? ""); Redraw(); }
 		};
 		PropertiesPanel.Children.Add(tb);
 	}
@@ -480,11 +430,7 @@ public partial class MainWindow : Window
 		};
 		nud.ValueChanged += (_, _) =>
 		{
-			if (!_suppressPropertyEvents && nud.Value.HasValue)
-			{
-				setter((float)nud.Value.Value);
-				Redraw();
-			}
+			if (!_suppressPropertyEvents && nud.Value.HasValue) { setter((float)nud.Value.Value); Redraw(); }
 		};
 		PropertiesPanel.Children.Add(nud);
 	}
@@ -502,11 +448,7 @@ public partial class MainWindow : Window
 		};
 		nud.ValueChanged += (_, _) =>
 		{
-			if (!_suppressPropertyEvents && nud.Value.HasValue)
-			{
-				setter((int)nud.Value.Value);
-				Redraw();
-			}
+			if (!_suppressPropertyEvents && nud.Value.HasValue) { setter((int)nud.Value.Value); Redraw(); }
 		};
 		PropertiesPanel.Children.Add(nud);
 	}
@@ -519,11 +461,7 @@ public partial class MainWindow : Window
 		{
 			if (_suppressPropertyEvents) return;
 			string hex = tb.Text ?? "#FFFFFF";
-			if (SKColor.TryParse(hex, out _))
-			{
-				setter(hex);
-				Redraw();
-			}
+			if (SKColor.TryParse(hex, out _)) { setter(hex); Redraw(); }
 		};
 		PropertiesPanel.Children.Add(tb);
 	}
@@ -533,11 +471,7 @@ public partial class MainWindow : Window
 		CheckBox cb = new() { Content = label, IsChecked = value, Margin = new Thickness(0, 2, 0, 0) };
 		cb.IsCheckedChanged += (_, _) =>
 		{
-			if (!_suppressPropertyEvents)
-			{
-				setter(cb.IsChecked ?? false);
-				Redraw();
-			}
+			if (!_suppressPropertyEvents) { setter(cb.IsChecked ?? false); Redraw(); }
 		};
 		PropertiesPanel.Children.Add(cb);
 	}
@@ -580,11 +514,7 @@ public partial class MainWindow : Window
 		};
 		cb.SelectionChanged += (_, _) =>
 		{
-			if (!_suppressPropertyEvents && cb.SelectedItem is string font)
-			{
-				setter(font);
-				Redraw();
-			}
+			if (!_suppressPropertyEvents && cb.SelectedItem is string font) { setter(font); Redraw(); }
 		};
 		PropertiesPanel.Children.Add(cb);
 	}
@@ -634,42 +564,37 @@ public partial class MainWindow : Window
 
 	// ──────────────────── Test Values ────────────────────
 
+	private readonly Dictionary<string, float> _testValues = new();
+
 	private void UpdateTestValueSliders()
 	{
 		TestValuesPanel.Children.Clear();
 		_testValues.Clear();
 		HashSet<string> seen = new();
 
-		foreach (GaugeElement element in _definition.Elements)
+		foreach (GaugeElement element in _vm.Definition.Elements)
 		{
 			if (string.IsNullOrEmpty(element.DataSource) || !seen.Add(element.DataSource))
 				continue;
 
 			string source = element.DataSource;
-			float minVal = _definition.Elements
-				.Where(e => e.DataSource == source).Min(e => e.MinValue);
-			float maxVal = _definition.Elements
-				.Where(e => e.DataSource == source).Max(e => e.MaxValue);
+			float minVal = _vm.Definition.Elements.Where(e => e.DataSource == source).Min(e => e.MinValue);
+			float maxVal = _vm.Definition.Elements.Where(e => e.DataSource == source).Max(e => e.MaxValue);
 
 			_testValues[source] = minVal;
 
-			TextBlock label = new() { Text = $"{source}: {minVal:F0}" };
-			Slider slider = new()
-			{
-				Minimum = minVal,
-				Maximum = maxVal,
-				Value = minVal,
-			};
+			TextBlock lbl = new() { Text = $"{source}: {minVal:F0}" };
+			Slider slider = new() { Minimum = minVal, Maximum = maxVal, Value = minVal };
 			slider.PropertyChanged += (_, e) =>
 			{
 				if (e.Property == Slider.ValueProperty)
 				{
-					label.Text = $"{source}: {slider.Value:F1}";
+					lbl.Text = $"{source}: {slider.Value:F1}";
 					_testValues[source] = (float)slider.Value;
 					Redraw();
 				}
 			};
-			TestValuesPanel.Children.Add(label);
+			TestValuesPanel.Children.Add(lbl);
 			TestValuesPanel.Children.Add(slider);
 		}
 
@@ -692,7 +617,7 @@ public partial class MainWindow : Window
 		{
 			using SKBitmap bitmap = new(CanvasWidth, CanvasHeight, SKColorType.Rgba8888, SKAlphaType.Premul);
 			using SKCanvas canvas = new(bitmap);
-			DesignerRenderer.DrawAll(canvas, _definition, _testValues, _selectedElement);
+			DesignerRenderer.DrawAll(canvas, _vm.Definition, _testValues, _vm.SelectedElement);
 
 			using SKImage image = SKImage.FromBitmap(bitmap);
 			using SKData data = image.Encode(SKEncodedImageFormat.Png, 100);
@@ -724,27 +649,24 @@ public partial class MainWindow : Window
 		{
 			string saveDir = Path.GetDirectoryName(file.Path.LocalPath) ?? ".";
 			string imagesDir = Path.Combine(saveDir, "images");
-			CustomGaugeDefinition exportDef = CopyImagesAndRewritePaths(_definition, saveDir, imagesDir);
+			CustomGaugeDefinition exportDef = CopyImagesAndRewritePaths(_vm.Definition, saveDir, imagesDir);
 			string json = JsonSerializer.Serialize(exportDef, JsonOptions);
 			await File.WriteAllTextAsync(file.Path.LocalPath, json);
 
-			// Adopt the exported paths so continued editing uses the saved relative paths
-			int selectedIdx = _selectedElement != null ? _definition.Elements.IndexOf(_selectedElement) : -1;
-			_definition = exportDef;
-			_selectedElement = selectedIdx >= 0 && selectedIdx < _definition.Elements.Count
-				? _definition.Elements[selectedIdx]
-				: null;
+			// Adopt the exported paths so continued editing uses saved relative paths
+			int selectedIdx = _vm.SelectedElement != null
+				? _vm.Definition.Elements.IndexOf(_vm.SelectedElement)
+				: -1;
+			_vm.Load(exportDef);
 			GaugeDotnet.Gauges.Custom.ElementRenderer.ClearImageCache();
 			GaugeDotnet.Gauges.Custom.ElementRenderer.SetBaseDirectory(saveDir);
+
 			RefreshElementList();
-			if (_selectedElement != null)
-			{
-				ShowProperties(_selectedElement);
-			}
-			else
-			{
-				ClearProperties();
-			}
+			GaugeElement? restored = selectedIdx >= 0 && selectedIdx < _vm.Definition.Elements.Count
+				? _vm.Definition.Elements[selectedIdx]
+				: null;
+			_vm.SelectElement(restored);
+			if (restored != null) ShowProperties(restored); else ClearProperties();
 			Redraw();
 		}
 	}
@@ -752,7 +674,6 @@ public partial class MainWindow : Window
 	private static CustomGaugeDefinition CopyImagesAndRewritePaths(
 		CustomGaugeDefinition definition, string saveDir, string imagesDir)
 	{
-		// Deep-copy via JSON round-trip
 		string tmp = JsonSerializer.Serialize(definition, JsonOptions);
 		CustomGaugeDefinition export = JsonSerializer.Deserialize<CustomGaugeDefinition>(tmp, JsonOptions)
 			?? new CustomGaugeDefinition();
@@ -765,13 +686,9 @@ public partial class MainWindow : Window
 		foreach (GaugeElement element in export.Elements)
 		{
 			if (element is ImageElement img)
-			{
 				img.ImagePath = SaveAndRelativize(img.ImagePath, imagesDir, ref dirCreated, ref imageIndex) ?? "";
-			}
 			else if (element is NeedleElement needle)
-			{
 				needle.ImagePath = SaveAndRelativize(needle.ImagePath, imagesDir, ref dirCreated, ref imageIndex);
-			}
 		}
 
 		return export;
@@ -780,20 +697,11 @@ public partial class MainWindow : Window
 	private static string? SaveAndRelativize(string? path, string imagesDir, ref bool dirCreated, ref int imageIndex)
 	{
 		if (string.IsNullOrEmpty(path)) return path;
-
-		if (!dirCreated)
-		{
-			Directory.CreateDirectory(imagesDir);
-			dirCreated = true;
-		}
-
+		if (!dirCreated) { Directory.CreateDirectory(imagesDir); dirCreated = true; }
 		imageIndex++;
-		string fileName = $"image_{imageIndex}.png";
-		string destPath = Path.Combine(imagesDir, fileName);
-
+		string destPath = Path.Combine(imagesDir, $"image_{imageIndex}.png");
 		GaugeDotnet.Gauges.Custom.ElementRenderer.SaveImageFromCache(path, destPath);
-
-		return Path.Combine("images", fileName);
+		return Path.Combine("images", $"image_{imageIndex}.png");
 	}
 
 	private async void OnLoadClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
@@ -819,9 +727,7 @@ public partial class MainWindow : Window
 		GaugeDotnet.Gauges.Custom.ElementRenderer.ClearImageCache();
 		GaugeDotnet.Gauges.Custom.ElementRenderer.SetBaseDirectory(directory);
 
-		_definition = loaded;
-		_selectedElement = null;
-		_elementCounter = _definition.Elements.Count;
+		_vm.Load(loaded);
 		RefreshElementList();
 		UpdateTestValueSliders();
 		ClearProperties();
@@ -830,79 +736,10 @@ public partial class MainWindow : Window
 
 	private void OnNewClick()
 	{
-		_definition = new CustomGaugeDefinition();
-		_selectedElement = null;
-		_elementCounter = 0;
+		_vm.New();
 		RefreshElementList();
 		UpdateTestValueSliders();
 		ClearProperties();
 		Redraw();
-	}
-
-	// ──────────────────── Default Gauge ────────────────────
-
-	private static CustomGaugeDefinition CreateDefaultGauge()
-	{
-		return new CustomGaugeDefinition
-		{
-			Elements =
-			[
-				new ArcElement
-				{
-					Name = "RPM Arc",
-					X = 320, Y = 240,
-					Radius = 200, StrokeWidth = 30,
-					StartAngleDeg = 135, SweepAngleDeg = 270,
-					Color = "#00FFFF", TrackColor = "#0A1A1A",
-					ShowTrack = true, IsDynamic = true,
-					DataSource = "Rpm", MinValue = 0, MaxValue = 8000,
-				},
-				new TickRingElement
-				{
-					Name = "RPM Ticks",
-					X = 320, Y = 240,
-					Radius = 178, StartAngleDeg = 135, SweepAngleDeg = 270,
-					MajorCount = 8, MinorPerMajor = 4,
-					MajorLength = 15, MinorLength = 8,
-					MajorWidth = 2, MinorWidth = 1,
-					Color = "#AAAAAA",
-					ShowLabels = true, LabelFontSize = 14,
-					LabelColor = "#888888", LabelOffset = 22,
-					MinValue = 0, MaxValue = 8000,
-				},
-				new NeedleElement
-				{
-					Name = "RPM Needle",
-					X = 320, Y = 240,
-					Length = 170, TailLength = 25, NeedleWidth = 4,
-					StartAngleDeg = 135, SweepAngleDeg = 270,
-					Color = "#FF3333",
-					ShowHub = true, HubRadius = 10, HubColor = "#CCCCCC",
-					DataSource = "Rpm", MinValue = 0, MaxValue = 8000,
-				},
-				new ValueDisplayElement
-				{
-					Name = "RPM Value",
-					X = 320, Y = 340,
-					FontSize = 42, Color = "#00FFFF",
-					Font = "DSEG7 Classic", Format = "F0",
-					DataSource = "Rpm", MinValue = 0, MaxValue = 8000,
-				},
-				new TextElement
-				{
-					Name = "Title",
-					X = 320, Y = 390,
-					Text = "RPM", FontSize = 20,
-					Color = "#666666", Font = "Race Sport",
-				},
-				new CircleElement
-				{
-					Name = "Hub Cap",
-					X = 320, Y = 240,
-					Radius = 8, FillColor = "#444444",
-					StrokeColor = "#666666", CircleStrokeWidth = 1,
-				},
-			]
-		};
 	}
 }

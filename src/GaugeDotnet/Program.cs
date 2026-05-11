@@ -21,7 +21,7 @@ internal class Program
 
         try
         {
-            BleManager bleManager = await BleManager.CreateAsync();
+            BleManager bleManager = BleManager.Create();
             IMeDevice? device;
 
             if (!string.IsNullOrWhiteSpace(appConfig.DeviceMacAddress))
@@ -91,15 +91,15 @@ internal class Program
             return;
         }
 
-        GameLoop gameLoop = new(appConfig, meDevice, screenWidth: 640, screenHeight: 480);
+        using GameLoop gameLoop = new(appConfig, meDevice, screenWidth: 640, screenHeight: 480);
         gameLoop.Run();
 
         exit.Cancel();
-        SDL_Quit();
         if (meDevice is IDisposable disposable)
         {
             disposable.Dispose();
         }
+        SDL_Quit();
         Console.WriteLine("Exiting program...");
         Environment.Exit(0);
     }

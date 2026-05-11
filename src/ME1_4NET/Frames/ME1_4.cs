@@ -25,7 +25,7 @@ namespace ME1_4NET.Frames
             BoostCtrlDuty = boostCtrlDuty;
         }
 
-        public static ME1_4 Decode(byte[] payload)
+        public static ME1_4 Decode(ReadOnlySpan<byte> payload)
         {
             if (payload.Length < 7)
                 throw new ArgumentException("Payload too short for Frame4");

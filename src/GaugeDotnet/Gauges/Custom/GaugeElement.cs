@@ -11,6 +11,9 @@ public class CustomGaugeDefinition
 	public string BackgroundColor { get; set; } = "#000000";
 	public string? BackgroundImage { get; set; }
 	public List<GaugeElement> Elements { get; set; } = new();
+
+	[JsonIgnore]
+	public string? BaseDirectory { get; set; }
 }
 
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "$type")]

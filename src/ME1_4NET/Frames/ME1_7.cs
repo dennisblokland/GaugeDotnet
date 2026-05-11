@@ -25,7 +25,7 @@ namespace ME1_4NET.Frames
             KnockEvsCnt = knockEvs;
         }
 
-        public static ME1_7 Decode(byte[] payload)
+        public static ME1_7 Decode(ReadOnlySpan<byte> payload)
         {
             if (payload.Length < 7)
                 throw new ArgumentException("Payload too short for Frame7");

@@ -22,7 +22,7 @@ namespace ME1_4NET.Frames
             Vbat = vbat;
         }
 
-        public static ME1_5 Decode(byte[] payload)
+        public static ME1_5 Decode(ReadOnlySpan<byte> payload)
         {
             if (payload.Length < 8)
                 throw new ArgumentException("Payload too short for Frame5");
