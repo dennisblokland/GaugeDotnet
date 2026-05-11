@@ -2,6 +2,7 @@
 using GaugeDotnet.Devices;
 using GaugeDotnet.Rendering;
 using GaugeDotnet;
+using RG35XX.Libraries;
 using static SDL2.SDL;
 
 internal class Program
@@ -84,6 +85,9 @@ internal class Program
 
         AppConfig appConfig = ConfigService.Load();
         Console.WriteLine($"Loaded {appConfig.Screens.Count} screen(s) from config");
+
+        if (!appConfig.DemoMode)
+            await BluetoothHardwareInit.InitializeAsync(exit.Token);
 
         IMeDevice? meDevice = await ConnectDeviceAsync(appConfig, exit);
         if (meDevice == null && !appConfig.DemoMode)
