@@ -7,6 +7,7 @@ namespace GaugeDotnet.Devices
     {
         private readonly BtlePeripheral _ble;
         private volatile bool _shouldTryReconnect;
+        private bool _notificationsRegistered;
         public ConnectionState ConnectionState { get; private set; }
         public bool IsConnected => ConnectionState == ConnectionState.Connected;
 
@@ -63,14 +64,18 @@ namespace GaugeDotnet.Devices
             {
                 try
                 {
-                    if (await _ble.IsConnectedAsync())
+                    if (!await _ble.IsConnectedAsync())
                     {
-                        SetConnectionState(ConnectionState.Connected);
-                        return;
+                        await _ble.ConnectAsync();
                     }
 
-                    await _ble.ConnectAsync();
+                    // Peripheral clears its CCCD subscription and stops streaming on
+                    // disconnect, so we must re-subscribe and re-send the ALLOW ALL PIDS
+                    // command on every reconnect — not just the first connect.
+                    await InitializeSessionAsync();
                     Console.WriteLine($"Device {_ble.Address} reconnected");
+
+                    SetConnectionState(ConnectionState.Connected);
                     lock (_disconnectLock)
                     {
                         _reconnectCancel = null;
@@ -94,17 +99,76 @@ namespace GaugeDotnet.Devices
 
         public async Task ConnectAsync()
         {
-            _shouldTryReconnect = true;
-            if (!await _ble.IsConnectedAsync().ConfigureAwait(false))
+            // Bluez sometimes aborts a connect that races with the scan teardown
+            // ("le-connection-abort-by-local"). Retry a few times before giving up,
+            // and only enable the auto-reconnect path once the full session is set
+            // up — otherwise a mid-init failure spawns a background reconnect loop
+            // while the caller is still trying to handle the original error.
+            const int maxAttempts = 3;
+            Exception? lastError = null;
+            for (int attempt = 1; attempt <= maxAttempts; attempt++)
             {
-                await _ble.ConnectAsync().ConfigureAwait(false);
+                try
+                {
+                    if (!await _ble.IsConnectedAsync().ConfigureAwait(false))
+                    {
+                        await _ble.ConnectAsync().ConfigureAwait(false);
+                    }
+                    await InitializeSessionAsync();
+
+                    _shouldTryReconnect = true;
+                    SetConnectionState(ConnectionState.Connected);
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    lastError = ex;
+                    Console.WriteLine($"Connect attempt {attempt}/{maxAttempts} failed: {ex.Message}");
+
+                    try { await _ble.DisconnectAsync().ConfigureAwait(false); }
+                    catch { /* already gone */ }
+
+                    if (attempt < maxAttempts)
+                    {
+                        await Task.Delay(TimeSpan.FromMilliseconds(500 * attempt)).ConfigureAwait(false);
+                    }
+                }
             }
 
+            throw lastError ?? new InvalidOperationException("Failed to connect to ME device.");
+        }
+
+        private async Task InitializeSessionAsync()
+        {
             // Retrieve the list of services to ensure the device is fully initialized before proceeding
             await _ble.GetServicesAsync();
-            await _ble.RegisterNotificationCallback(RaceChronoIds.ServiceUuid, RaceChronoIds.CanBusCharacteristicUuid, DataReceived);
+
+            // On a reconnect, the lib's _callbacks dict still holds the previous
+            // entry, so calling Register again only stacks delegates and skips the
+            // native PeripheralSubscribe. Force a clean unregister/re-register so
+            // the CCCD is re-armed on the peer.
+            if (_notificationsRegistered)
+            {
+                try
+                {
+                    await _ble.UnregisterNotificationCallback(
+                        RaceChronoIds.ServiceUuid,
+                        RaceChronoIds.CanBusCharacteristicUuid,
+                        DataReceived);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Unregister-on-reconnect failed (continuing): {ex.Message}");
+                }
+            }
+
+            await _ble.RegisterNotificationCallback(
+                RaceChronoIds.ServiceUuid,
+                RaceChronoIds.CanBusCharacteristicUuid,
+                DataReceived);
+            _notificationsRegistered = true;
+
             await SendMessage(MagicAllPidPackage).ConfigureAwait(false);
-            SetConnectionState(ConnectionState.Connected);
         }
         private async Task SendMessage(byte[] msg)
         {
