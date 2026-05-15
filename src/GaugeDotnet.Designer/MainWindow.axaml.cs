@@ -72,13 +72,19 @@ public partial class MainWindow : Window
 		SaveBtn.Click += OnSaveClick;
 		LoadBtn.Click += OnLoadClick;
 
-		// Element list
+		// Element list — index 0 is the sentinel "[Canvas] Background" entry
 		ElementList.SelectionChanged += (_, _) =>
 		{
 			if (_suppressListEvents) return;
 			int idx = ElementList.SelectedIndex;
-			GaugeElement? element = idx >= 0 && idx < _vm.Definition.Elements.Count
-				? _vm.Definition.Elements[idx]
+			if (idx == 0)
+			{
+				SelectElement(null);
+				return;
+			}
+			int elIdx = idx - 1;
+			GaugeElement? element = elIdx >= 0 && elIdx < _vm.Definition.Elements.Count
+				? _vm.Definition.Elements[elIdx]
 				: null;
 			SelectElement(element);
 		};
@@ -145,7 +151,7 @@ public partial class MainWindow : Window
 		DuplicateBtn.IsEnabled = element != null;
 
 		_suppressListEvents = true;
-		ElementList.SelectedIndex = element != null ? _vm.Definition.Elements.IndexOf(element) : -1;
+		ElementList.SelectedIndex = element != null ? _vm.Definition.Elements.IndexOf(element) + 1 : 0;
 		_suppressListEvents = false;
 
 		if (element != null)
@@ -159,9 +165,13 @@ public partial class MainWindow : Window
 	private void RefreshElementList()
 	{
 		_suppressListEvents = true;
-		int prevIdx = _vm.SelectedElement != null ? _vm.Definition.Elements.IndexOf(_vm.SelectedElement) : -1;
-		ElementList.ItemsSource = _vm.Definition.Elements.Select(e => $"[{e.TypeLabel}] {e.Name}").ToList();
-		if (prevIdx >= 0 && prevIdx < _vm.Definition.Elements.Count)
+		int prevIdx = _vm.SelectedElement != null
+			? _vm.Definition.Elements.IndexOf(_vm.SelectedElement) + 1
+			: 0;
+		var items = new List<string> { "[Canvas] Background" };
+		items.AddRange(_vm.Definition.Elements.Select(e => $"[{e.TypeLabel}] {e.Name}"));
+		ElementList.ItemsSource = items;
+		if (prevIdx >= 0 && prevIdx < items.Count)
 			ElementList.SelectedIndex = prevIdx;
 		_suppressListEvents = false;
 	}
@@ -231,6 +241,10 @@ public partial class MainWindow : Window
 		AddColorProp("Background", _vm.Definition.BackgroundColor, v => _vm.Definition.BackgroundColor = v);
 		AddImagePathProp("Background Image", _vm.Definition.BackgroundImage ?? "", v =>
 			_vm.Definition.BackgroundImage = string.IsNullOrEmpty(v) ? null : v);
+		AddEnumProp("Image Mode", _vm.Definition.BackgroundImageMode,
+			v => _vm.Definition.BackgroundImageMode = v);
+		AddByteProp("Image Opacity", _vm.Definition.BackgroundImageOpacity,
+			v => _vm.Definition.BackgroundImageOpacity = v);
 		_suppressPropertyEvents = false;
 	}
 
@@ -474,6 +488,43 @@ public partial class MainWindow : Window
 			if (!_suppressPropertyEvents) { setter(cb.IsChecked ?? false); Redraw(); }
 		};
 		PropertiesPanel.Children.Add(cb);
+	}
+
+	private void AddEnumProp<T>(string label, T value, Action<T> setter) where T : struct, Enum
+	{
+		PropertiesPanel.Children.Add(new TextBlock { Text = label, Margin = new Thickness(0, 2, 0, 0) });
+		string[] names = Enum.GetNames<T>();
+		ComboBox cb = new()
+		{
+			ItemsSource = names,
+			SelectedItem = value.ToString(),
+			HorizontalAlignment = HorizontalAlignment.Stretch,
+		};
+		cb.SelectionChanged += (_, _) =>
+		{
+			if (!_suppressPropertyEvents && cb.SelectedItem is string s &&
+				Enum.TryParse<T>(s, out T parsed)) { setter(parsed); Redraw(); }
+		};
+		PropertiesPanel.Children.Add(cb);
+	}
+
+	private void AddByteProp(string label, byte value, Action<byte> setter)
+	{
+		PropertiesPanel.Children.Add(new TextBlock { Text = label, Margin = new Thickness(0, 2, 0, 0) });
+		Slider sl = new() { Minimum = 0, Maximum = 255, Value = value, TickFrequency = 1 };
+		TextBlock display = new() { Text = value.ToString() };
+		sl.PropertyChanged += (_, e) =>
+		{
+			if (e.Property == Slider.ValueProperty && !_suppressPropertyEvents)
+			{
+				byte b = (byte)sl.Value;
+				display.Text = b.ToString();
+				setter(b);
+				Redraw();
+			}
+		};
+		PropertiesPanel.Children.Add(sl);
+		PropertiesPanel.Children.Add(display);
 	}
 
 	private void AddDataSourceProp(string? value, Action<string?> setter)

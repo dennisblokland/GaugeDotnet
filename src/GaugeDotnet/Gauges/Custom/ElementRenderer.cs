@@ -41,11 +41,11 @@ public static class ElementRenderer
 			SKBitmap? bgBitmap = LoadImage(definition.BackgroundImage, effectiveBaseDir);
 			if (bgBitmap != null)
 			{
-				SKRect dest = new(0, 0, definition.Width, definition.Height);
 				_paint.Style = SKPaintStyle.Fill;
 				_paint.MaskFilter = null;
-				_paint.Color = SKColors.White;
-				canvas.DrawBitmap(bgBitmap, dest, _paint);
+				_paint.Color = new SKColor(255, 255, 255, definition.BackgroundImageOpacity);
+				DrawBackgroundBitmap(canvas, bgBitmap, definition.Width, definition.Height,
+					definition.BackgroundImageMode);
 			}
 		}
 
@@ -470,6 +470,66 @@ public static class ElementRenderer
 			_paint.MaskFilter = null;
 			canvas.DrawText(warn.Label, warn.X, warn.Y + warn.Radius + warn.LabelFontSize + 4,
 				SKTextAlign.Center, _font, _paint);
+		}
+	}
+
+	private static void DrawBackgroundBitmap(SKCanvas canvas, SKBitmap bitmap, int canvasW, int canvasH,
+		BackgroundImageMode mode)
+	{
+		float imgW = bitmap.Width;
+		float imgH = bitmap.Height;
+
+		switch (mode)
+		{
+			case BackgroundImageMode.Stretch:
+			{
+				SKRect dest = new(0, 0, canvasW, canvasH);
+				canvas.DrawBitmap(bitmap, dest, _paint);
+				break;
+			}
+			case BackgroundImageMode.Fill:
+			{
+				float scale = Math.Max(canvasW / imgW, canvasH / imgH);
+				float drawW = imgW * scale;
+				float drawH = imgH * scale;
+				float ox = (canvasW - drawW) / 2f;
+				float oy = (canvasH - drawH) / 2f;
+				canvas.Save();
+				canvas.ClipRect(new SKRect(0, 0, canvasW, canvasH));
+				canvas.DrawBitmap(bitmap, new SKRect(ox, oy, ox + drawW, oy + drawH), _paint);
+				canvas.Restore();
+				break;
+			}
+			case BackgroundImageMode.Fit:
+			{
+				float scale = Math.Min(canvasW / imgW, canvasH / imgH);
+				float drawW = imgW * scale;
+				float drawH = imgH * scale;
+				float ox = (canvasW - drawW) / 2f;
+				float oy = (canvasH - drawH) / 2f;
+				canvas.DrawBitmap(bitmap, new SKRect(ox, oy, ox + drawW, oy + drawH), _paint);
+				break;
+			}
+			case BackgroundImageMode.Center:
+			{
+				float ox = (canvasW - imgW) / 2f;
+				float oy = (canvasH - imgH) / 2f;
+				canvas.Save();
+				canvas.ClipRect(new SKRect(0, 0, canvasW, canvasH));
+				canvas.DrawBitmap(bitmap, new SKRect(ox, oy, ox + imgW, oy + imgH), _paint);
+				canvas.Restore();
+				break;
+			}
+			case BackgroundImageMode.Tile:
+			{
+				canvas.Save();
+				canvas.ClipRect(new SKRect(0, 0, canvasW, canvasH));
+				for (float ty = 0; ty < canvasH; ty += imgH)
+					for (float tx = 0; tx < canvasW; tx += imgW)
+						canvas.DrawBitmap(bitmap, new SKRect(tx, ty, tx + imgW, ty + imgH), _paint);
+				canvas.Restore();
+				break;
+			}
 		}
 	}
 

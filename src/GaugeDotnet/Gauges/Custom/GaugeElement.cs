@@ -4,12 +4,23 @@ using System.Text.Json.Serialization;
 
 namespace GaugeDotnet.Gauges.Custom;
 
+public enum BackgroundImageMode
+{
+	Stretch,
+	Fill,
+	Fit,
+	Center,
+	Tile,
+}
+
 public class CustomGaugeDefinition
 {
 	public int Width { get; set; } = 640;
 	public int Height { get; set; } = 480;
 	public string BackgroundColor { get; set; } = "#000000";
 	public string? BackgroundImage { get; set; }
+	public BackgroundImageMode BackgroundImageMode { get; set; } = BackgroundImageMode.Stretch;
+	public byte BackgroundImageOpacity { get; set; } = 255;
 	public List<GaugeElement> Elements { get; set; } = new();
 
 	[JsonIgnore]
