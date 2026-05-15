@@ -10,7 +10,7 @@ Real-time automotive gauge display for the [RG35XX](https://anbernic.com) handhe
 - BLE connection to Motorsports Electronics ECU (CAN bus frames ME1_1–ME1_8)
 - Multiple built-in gauge styles: circular, sweep, needle, bar, digital, histogram, min/max, grid
 - **Custom gauge designer** — drag-and-drop Avalonia desktop app that exports JSON definitions for the device
-- 11 custom element types: arcs, needles (with image support), text, value displays, tick rings, bars, warning indicators, images, and more
+- 13 custom element types: arcs, zone arcs, needles (with image support), text, value displays, tick rings, bars, warning indicators, images, mini graphs, and more
 - Smooth value interpolation (lerp) for fluid needle/arc/bar animation
 - Simulated device mode for desktop development (`SimulatedMeDevice` in DEBUG builds)
 
@@ -107,6 +107,7 @@ Design gauges on your desktop, deploy JSON to the device.
 | Type | JSON `$type` | Data-Driven | Description |
 |------|-------------|-------------|-------------|
 | Arc | `arc` | Yes | Sweep arc with track, glow, dynamic fill |
+| Zone Arc | `zonearc` | Yes | Arc with up to 3 colored bands (green/yellow/red zones) + optional value pointer |
 | Needle | `needle` | Yes | Rotating needle with tail + hub (optional image) |
 | Text | `text` | No | Static label with custom font |
 | Value Display | `value` | Yes | Formatted numeric display |
@@ -117,6 +118,21 @@ Design gauges on your desktop, deploy JSON to the device.
 | Linear Bar | `linearbar` | Yes | Horizontal/vertical fill bar |
 | Warning Indicator | `warning` | Yes | Threshold-triggered color change with label |
 | Image | `image` | No | Background, logo, or overlay with opacity + rotation |
+| Graph | `graph` | Yes | Rolling time-series plot with configurable depth, line + fill |
+
+### Background Image
+
+The canvas supports a background image behind all elements. Set `BackgroundImage` to a path (relative to the JSON file or absolute). Control how it fills the canvas with `BackgroundImageMode`:
+
+| Mode | Behaviour |
+|------|-----------|
+| `Stretch` | Stretch to fill canvas, ignoring aspect ratio (default) |
+| `Fill` | Scale proportionally to cover canvas, crops edges |
+| `Fit` | Scale proportionally to fit inside canvas, letterboxes |
+| `Center` | No scaling, centered |
+| `Tile` | Tile at original size |
+
+`BackgroundImageOpacity` (0–255) controls transparency.
 
 ### Needle Image Support
 

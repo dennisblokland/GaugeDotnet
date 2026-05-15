@@ -61,6 +61,7 @@ Drag-and-drop gauge designer → JSON definition → runtime rendering on device
 | Type | `$type` | Data-Driven | Description |
 |------|---------|-------------|-------------|
 | `ArcElement` | `arc` | Yes | Sweep arc with track, glow, dynamic fill |
+| `ZoneArcElement` | `zonearc` | Yes | Arc with up to 3 colored bands + optional value pointer tick |
 | `NeedleElement` | `needle` | Yes | Rotating needle with tail + hub (optional image needle) |
 | `TextElement` | `text` | No | Static label (custom font) |
 | `ValueDisplayElement` | `value` | Yes | Formatted numeric display |
@@ -71,8 +72,12 @@ Drag-and-drop gauge designer → JSON definition → runtime rendering on device
 | `LinearBarElement` | `linearbar` | Yes | Horizontal/vertical fill bar |
 | `WarningIndicatorElement` | `warning` | Yes | Threshold-triggered color change with label |
 | `ImageElement` | `image` | No | Custom image (backgrounds, logos, overlays) with opacity + rotation |
+| `GraphElement` | `graph` | Yes | Rolling time-series plot; buffer keyed by `Id` in `ElementRenderer._graphBuffers` |
 
-`CustomGaugeDefinition` also supports `BackgroundImage` (path) drawn behind all elements.
+`CustomGaugeDefinition` also supports:
+- `BackgroundImage` — path drawn behind all elements
+- `BackgroundImageMode` — `Stretch` (default) / `Fill` / `Fit` / `Center` / `Tile`
+- `BackgroundImageOpacity` — byte 0–255
 
 ### Key Files
 
@@ -101,6 +106,14 @@ When using `ImagePath` on a `NeedleElement`, the image is rotated around the ele
 **Image orientation:** The source image should be a vertical strip with the **tip at the top** and the **pivot point at the bottom edge**. The renderer draws it into a rect from `(-ImageWidth/2, -ImageLength)` to `(ImageWidth/2, 0)` relative to the pivot, then rotates.
 
 **Recommended dimensions:** For a 640×480 gauge canvas, a needle image of roughly 20×180 px works well. Use a tall narrow PNG (e.g., 40×360 source scaled down to `ImageWidth: 20, ImageLength: 180`).
+
+### Designer Keyboard Shortcuts
+
+| Key | Action |
+|-----|--------|
+| `Delete` | Delete selected element |
+| `Arrow keys` | Move selected element ±1 px |
+| `Shift + Arrow keys` | Move selected element ±10 px |
 
 ## Tests
 
