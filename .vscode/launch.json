@@ -8,8 +8,14 @@
             "name": "C#: GaugeDotnet Debug",
             "type": "dotnet",
             "request": "launch",
-            "projectPath": "${workspaceFolder}/src/GaugeDotnet/GaugeDotnet.csproj",
+            "projectPath": "${workspaceFolder}/src/GaugeDotnet/GaugeDotnet.csproj"
+        },
+        {
+            "name": "C#: GaugeDotnet.Designer Debug",
+            "type": "dotnet",
+            "request": "launch",
+            "projectPath": "${workspaceFolder}/src/GaugeDotnet.Designer/GaugeDotnet.Designer.csproj",
+            "preLaunchTask": "",
         }
-        
     ]
 }
