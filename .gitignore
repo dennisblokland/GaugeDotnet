@@ -68,3 +68,5 @@ publish-arm64/
 # Ignore local configuration files
 **appsettings.Development.json
 **local.settings.json
+
+*.lscache
