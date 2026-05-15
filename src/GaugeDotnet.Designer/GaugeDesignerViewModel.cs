@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using GaugeDotnet.Gauges.Custom;
@@ -19,10 +20,51 @@ public class GaugeDesignerViewModel
 
     private int _elementCounter;
 
+    private readonly List<string> _undoStack = new();
+    private readonly List<string> _redoStack = new();
+    private const int MaxUndoHistory = 50;
+
+    public bool CanUndo => _undoStack.Count > 0;
+    public bool CanRedo => _redoStack.Count > 0;
+
     public GaugeDesignerViewModel()
     {
         Definition = CreateDefaultGauge();
         _elementCounter = Definition.Elements.Count;
+    }
+
+    public void Snapshot()
+    {
+        _undoStack.Add(JsonSerializer.Serialize(Definition, JsonOptions));
+        if (_undoStack.Count > MaxUndoHistory)
+            _undoStack.RemoveAt(0);
+        _redoStack.Clear();
+    }
+
+    public string? Undo()
+    {
+        if (_undoStack.Count == 0) return null;
+        _redoStack.Add(JsonSerializer.Serialize(Definition, JsonOptions));
+        string prev = _undoStack[^1];
+        _undoStack.RemoveAt(_undoStack.Count - 1);
+        string? selectedId = SelectedElement?.Id;
+        CustomGaugeDefinition? def = JsonSerializer.Deserialize<CustomGaugeDefinition>(prev, JsonOptions);
+        if (def != null) Load(def);
+        SelectedElement = selectedId != null ? Definition.Elements.FirstOrDefault(e => e.Id == selectedId) : null;
+        return SelectedElement?.Id;
+    }
+
+    public string? Redo()
+    {
+        if (_redoStack.Count == 0) return null;
+        _undoStack.Add(JsonSerializer.Serialize(Definition, JsonOptions));
+        string next = _redoStack[^1];
+        _redoStack.RemoveAt(_redoStack.Count - 1);
+        string? selectedId = SelectedElement?.Id;
+        CustomGaugeDefinition? def = JsonSerializer.Deserialize<CustomGaugeDefinition>(next, JsonOptions);
+        if (def != null) Load(def);
+        SelectedElement = selectedId != null ? Definition.Elements.FirstOrDefault(e => e.Id == selectedId) : null;
+        return SelectedElement?.Id;
     }
 
     public void New()
@@ -30,6 +72,8 @@ public class GaugeDesignerViewModel
         Definition = new CustomGaugeDefinition();
         SelectedElement = null;
         _elementCounter = 0;
+        _undoStack.Clear();
+        _redoStack.Clear();
     }
 
     public void Load(CustomGaugeDefinition definition)

@@ -12,6 +12,7 @@ public static class ElementRenderer
 	private static readonly ConcurrentDictionary<string, SKBitmap?> _imageCache = new();
 	private static readonly ConcurrentDictionary<float, SKMaskFilter> _blurCache = new();
 	private static readonly ConcurrentDictionary<string, Queue<float>> _graphBuffers = new();
+	private static readonly ConcurrentDictionary<string, (float Peak, DateTime Seen)> _peakState = new();
 	private static string? _baseDirectory;
 
 	// Reusable paint/font objects — rendering is single-threaded
@@ -91,6 +92,7 @@ public static class ElementRenderer
 			case ZoneArcElement zone: DrawZoneArc(canvas, zone, value); break;
 			case GraphElement graph: DrawGraph(canvas, graph, value); break;
 			case LabelValueElement lv: DrawLabelValue(canvas, lv, value); break;
+			case PeakMarkerElement peak: DrawPeakMarker(canvas, peak, value); break;
 		}
 
 		if (useLayer) canvas.Restore();
@@ -212,6 +214,23 @@ public static class ElementRenderer
 		SKTypeface typeface = GetTypeface(text.Font);
 		_font.Typeface = typeface;
 		_font.Size = text.FontSize;
+
+		if (text.ShowBox)
+		{
+			float textW = _font.MeasureText(text.Text);
+			float bx = text.X - textW / 2 - text.BoxPadding;
+			float by = text.Y - text.FontSize - text.BoxPadding;
+			float bw = textW + text.BoxPadding * 2;
+			float bh = text.FontSize * 1.3f + text.BoxPadding * 2;
+			_paint.Style = SKPaintStyle.Fill;
+			_paint.Color = SKColor.Parse(text.BoxColor);
+			_paint.MaskFilter = null;
+			if (text.BoxCornerRadius > 0)
+				canvas.DrawRoundRect(bx, by, bw, bh, text.BoxCornerRadius, text.BoxCornerRadius, _paint);
+			else
+				canvas.DrawRect(bx, by, bw, bh, _paint);
+		}
+
 		_paint.Style = SKPaintStyle.Fill;
 		_paint.Color = SKColor.Parse(text.Color);
 		_paint.MaskFilter = null;
@@ -498,6 +517,46 @@ public static class ElementRenderer
 			canvas.DrawText(warn.Label, warn.X, warn.Y + warn.Radius + warn.LabelFontSize + 4,
 				SKTextAlign.Center, _font, _paint);
 		}
+	}
+
+	private static void DrawPeakMarker(SKCanvas canvas, PeakMarkerElement peak, float value)
+	{
+		if (string.IsNullOrEmpty(peak.DataSource)) return;
+
+		(float peakVal, DateTime seen) = _peakState.GetOrAdd(peak.Id, _ => (value, DateTime.UtcNow));
+
+		if (peak.DecaySeconds > 0 && (DateTime.UtcNow - seen).TotalSeconds > peak.DecaySeconds)
+		{
+			peakVal = value;
+			seen = DateTime.UtcNow;
+		}
+
+		if (value > peakVal)
+		{
+			peakVal = value;
+			seen = DateTime.UtcNow;
+		}
+
+		_peakState[peak.Id] = (peakVal, seen);
+
+		float range = peak.MaxValue - peak.MinValue;
+		float t = range > 0 ? Math.Clamp((peakVal - peak.MinValue) / range, 0f, 1f) : 0f;
+		float angleDeg = peak.StartAngleDeg + t * peak.SweepAngleDeg;
+		float angleRad = angleDeg * MathF.PI / 180f;
+		float innerR = peak.Radius - peak.StrokeWidth / 2;
+		float outerR = peak.Radius + peak.StrokeWidth / 2;
+
+		_paint.Style = SKPaintStyle.Stroke;
+		_paint.StrokeWidth = peak.MarkerWidth;
+		_paint.StrokeCap = SKStrokeCap.Butt;
+		_paint.Color = SKColor.Parse(peak.MarkerColor);
+		_paint.MaskFilter = null;
+		canvas.DrawLine(
+			peak.X + MathF.Cos(angleRad) * innerR,
+			peak.Y + MathF.Sin(angleRad) * innerR,
+			peak.X + MathF.Cos(angleRad) * outerR,
+			peak.Y + MathF.Sin(angleRad) * outerR,
+			_paint);
 	}
 
 	private static void DrawLabelValue(SKCanvas canvas, LabelValueElement lv, float value)
@@ -790,6 +849,7 @@ public static class ElementRenderer
 		_blurCache.Clear();
 
 		_graphBuffers.Clear();
+		_peakState.Clear();
 	}
 
 	private static SKMaskFilter GetBlur(float sigma)

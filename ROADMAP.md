@@ -29,9 +29,9 @@ Compound element: label text above, large value below, optional background box.
 ### `PeakMarkerElement` ("peak")
 Tracks rolling peak, draws short tick at peak angle on arc.  
 **Properties**: Radius, StartAngleDeg, SweepAngleDeg, marker width/length/color, decay timeout (0 = hold forever).  
-- [ ] Add `PeakMarkerElement` to `GaugeElement.cs`
-- [ ] Add `DrawPeakMarker` + peak tracking to `ElementRenderer.cs`
-- [ ] Wire up Designer
+- [x] Add `PeakMarkerElement` to `GaugeElement.cs`
+- [x] Add `DrawPeakMarker` + peak tracking to `ElementRenderer.cs`
+- [x] Wire up Designer
 
 
 ---
@@ -59,9 +59,9 @@ Threshold-based color switching. Arc/bar turns yellow/red when value exceeds thr
 
 ### `TextElement` background box
 **Properties**: `ShowBox` (bool), `BoxColor` (hex), `BoxPadding` (float), `BoxCornerRadius` (float).  
-- [ ] Add props to `TextElement`
-- [ ] Draw filled rounded rect behind text in `DrawText`
-- [ ] Wire up Designer
+- [x] Add props to `TextElement`
+- [x] Draw filled rounded rect behind text in `DrawText`
+- [x] Wire up Designer
 
 ---
 
@@ -73,10 +73,10 @@ Arrow keys move selected element ±1px; Shift+Arrow ±10px.
 
 ### Undo / Redo
 Stack of JSON snapshots of `CustomGaugeDefinition`. Ctrl+Z / Ctrl+Y. Cap at 50 states.  
-- [ ] Add `_undoStack` / `_redoStack` (Stack<string>) to ViewModel
-- [ ] Push snapshot before every mutating operation
-- [ ] Handle Ctrl+Z / Ctrl+Y in `KeyDown`
-- [ ] Update toolbar button states
+- [x] Add `_undoStack` / `_redoStack` (`List<string>`, capped at 50) to ViewModel
+- [x] Push snapshot before: add, delete, duplicate, move, drag start
+- [x] Handle Ctrl+Z / Ctrl+Y in `KeyDown`
+- [x] Undo/Redo toolbar buttons with enabled state
 
 ### Grid snap
 Toggle (G key or toolbar checkbox). Snaps X/Y during drag and property nudge.  
@@ -120,9 +120,9 @@ Element skips draw if condition fails.
 | 4 | Opacity on base element | XS | Med | [x] |
 | 5 | LabelValueElement | S | High | [x] |
 | 6 | Conditional color (arc/bar) | S | High | [x] |
-| 8 | Undo/Redo | M | High | [ ] |
-| 9 | PeakMarkerElement | M | Med | [ ] |
-| 10 | TextElement box | S | Med | [ ] |
+| 8 | Undo/Redo | M | High | [x] |
+| 9 | PeakMarkerElement | M | Med | [x] |
+| 10 | TextElement box | S | Med | [x] |
 | 12 | Grid snap | M | Med | [ ] |
 | 13 | Calculated channels | L | Med | [ ] |
 | 14 | Conditional visibility | M | Med | [ ] |

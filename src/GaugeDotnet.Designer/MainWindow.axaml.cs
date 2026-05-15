@@ -67,7 +67,10 @@ public partial class MainWindow : Window
 		AddZoneArcBtn.Click += (_, _) => AddElement(new ZoneArcElement());
 		AddGraphBtn.Click += (_, _) => AddElement(new GraphElement());
 		AddLabelValueBtn.Click += (_, _) => AddElement(new LabelValueElement());
+		AddPeakBtn.Click += (_, _) => AddElement(new PeakMarkerElement());
 
+		UndoBtn.Click += (_, _) => PerformUndo();
+		RedoBtn.Click += (_, _) => PerformRedo();
 		DuplicateBtn.Click += (_, _) => DuplicateElement();
 		DeleteBtn.Click += (_, _) => DeleteElement();
 
@@ -103,6 +106,11 @@ public partial class MainWindow : Window
 		// Keyboard
 		KeyDown += (_, e) =>
 		{
+			bool ctrl = e.KeyModifiers.HasFlag(KeyModifiers.Control);
+
+			if (ctrl && e.Key == Key.Z) { PerformUndo(); e.Handled = true; return; }
+			if (ctrl && e.Key == Key.Y) { PerformRedo(); e.Handled = true; return; }
+
 			if (e.Key == Key.Delete && _vm.SelectedElement != null)
 			{
 				DeleteElement();
@@ -132,36 +140,72 @@ public partial class MainWindow : Window
 
 	private void AddElement(GaugeElement element)
 	{
+		_vm.Snapshot();
 		_vm.AddElement(element);
 		RefreshElementList();
 		UpdateTestValueSliders();
 		ShowProperties(_vm.SelectedElement!);
+		UpdateUndoRedoButtons();
 		Redraw();
 	}
 
 	private void DeleteElement()
 	{
+		_vm.Snapshot();
 		_vm.DeleteSelected();
 		RefreshElementList();
 		UpdateTestValueSliders();
 		ClearProperties();
+		UpdateUndoRedoButtons();
 		Redraw();
 	}
 
 	private void DuplicateElement()
 	{
+		_vm.Snapshot();
 		GaugeElement? copy = _vm.Duplicate();
 		if (copy == null) return;
 		RefreshElementList();
 		ShowProperties(copy);
+		UpdateUndoRedoButtons();
 		Redraw();
 	}
 
 	private void MoveElement(int direction)
 	{
+		_vm.Snapshot();
 		_vm.MoveElement(direction);
 		RefreshElementList();
+		UpdateUndoRedoButtons();
 		Redraw();
+	}
+
+	private void PerformUndo()
+	{
+		_vm.Undo();
+		GaugeElement? restored = _vm.SelectedElement;
+		RefreshElementList();
+		UpdateTestValueSliders();
+		if (restored != null) ShowProperties(restored); else ClearProperties();
+		UpdateUndoRedoButtons();
+		Redraw();
+	}
+
+	private void PerformRedo()
+	{
+		_vm.Redo();
+		GaugeElement? restored = _vm.SelectedElement;
+		RefreshElementList();
+		UpdateTestValueSliders();
+		if (restored != null) ShowProperties(restored); else ClearProperties();
+		UpdateUndoRedoButtons();
+		Redraw();
+	}
+
+	private void UpdateUndoRedoButtons()
+	{
+		UndoBtn.IsEnabled = _vm.CanUndo;
+		RedoBtn.IsEnabled = _vm.CanRedo;
 	}
 
 	private void SelectElement(GaugeElement? element)
@@ -220,10 +264,12 @@ public partial class MainWindow : Window
 
 			if (hit != null)
 			{
+				_vm.Snapshot();
 				_isDragging = true;
 				_dragStartMouse = new Point(px, py);
 				_dragStartX = hit.X;
 				_dragStartY = hit.Y;
+				UpdateUndoRedoButtons();
 				e.Handled = true;
 			}
 		}
@@ -280,7 +326,7 @@ public partial class MainWindow : Window
 
 		bool supportsData = element is ArcElement or NeedleElement or ValueDisplayElement
 			or LinearBarElement or WarningIndicatorElement or ZoneArcElement or GraphElement
-			or LabelValueElement;
+			or LabelValueElement or PeakMarkerElement;
 		if (supportsData)
 		{
 			AddDataSourceProp(element.DataSource, v =>
@@ -292,7 +338,7 @@ public partial class MainWindow : Window
 
 		bool hasRange = element is ArcElement or NeedleElement or ValueDisplayElement
 			or TickRingElement or LinearBarElement or WarningIndicatorElement
-			or ZoneArcElement or GraphElement or LabelValueElement;
+			or ZoneArcElement or GraphElement or LabelValueElement or PeakMarkerElement;
 		if (hasRange)
 		{
 			AddFloatProp("Min Value", element.MinValue, v => element.MinValue = v, -10000, 100000);
@@ -342,6 +388,11 @@ public partial class MainWindow : Window
 				AddFloatProp("Font Size", text.FontSize, v => text.FontSize = v, 8, 120);
 				AddColorProp("Color", text.Color, v => text.Color = v);
 				AddFontProp(text.Font, v => text.Font = v);
+				AddSeparator();
+				AddBoolProp("Show Box", text.ShowBox, v => text.ShowBox = v);
+				AddColorProp("Box Color", text.BoxColor, v => text.BoxColor = v);
+				AddFloatProp("Box Padding", text.BoxPadding, v => text.BoxPadding = v, 0, 40);
+				AddFloatProp("Box Corner Radius", text.BoxCornerRadius, v => text.BoxCornerRadius = v, 0, 30);
 				break;
 
 			case ValueDisplayElement val:
@@ -460,6 +511,16 @@ public partial class MainWindow : Window
 				AddColorProp("Fill Color", graph.FillColor, v => graph.FillColor = v);
 				AddByteProp("Fill Opacity", graph.FillOpacity, v => graph.FillOpacity = v);
 				AddColorProp("Background Color", graph.BackColor, v => graph.BackColor = v);
+				break;
+
+			case PeakMarkerElement peak:
+				AddFloatProp("Radius", peak.Radius, v => peak.Radius = v, 10, 300);
+				AddFloatProp("Stroke Width", peak.StrokeWidth, v => peak.StrokeWidth = v, 1, 80);
+				AddFloatProp("Start Angle", peak.StartAngleDeg, v => peak.StartAngleDeg = v, 0, 360);
+				AddFloatProp("Sweep Angle", peak.SweepAngleDeg, v => peak.SweepAngleDeg = v, 1, 360);
+				AddColorProp("Marker Color", peak.MarkerColor, v => peak.MarkerColor = v);
+				AddFloatProp("Marker Width", peak.MarkerWidth, v => peak.MarkerWidth = v, 1, 10, 0.5f);
+				AddFloatProp("Decay Seconds (0=hold)", peak.DecaySeconds, v => peak.DecaySeconds = v, 0, 60);
 				break;
 
 			case LabelValueElement lv:

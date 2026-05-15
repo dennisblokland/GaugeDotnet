@@ -42,6 +42,7 @@ public class CustomGaugeDefinition
 [JsonDerivedType(typeof(ZoneArcElement), "zonearc")]
 [JsonDerivedType(typeof(GraphElement), "graph")]
 [JsonDerivedType(typeof(LabelValueElement), "labelvalue")]
+[JsonDerivedType(typeof(PeakMarkerElement), "peak")]
 public abstract class GaugeElement
 {
 	public string Id { get; set; } = Guid.NewGuid().ToString("N")[..8];
@@ -102,6 +103,10 @@ public class TextElement : GaugeElement
 	public float FontSize { get; set; } = 24f;
 	public string Color { get; set; } = "#FFFFFF";
 	public string Font { get; set; } = "Race Sport";
+	public bool ShowBox { get; set; } = false;
+	public string BoxColor { get; set; } = "#1A1A1A";
+	public float BoxPadding { get; set; } = 6f;
+	public float BoxCornerRadius { get; set; } = 4f;
 
 	[JsonIgnore]
 	public override string TypeLabel => "Text";
@@ -280,4 +285,18 @@ public class GraphElement : GaugeElement
 
 	[JsonIgnore]
 	public override string TypeLabel => "Graph";
+}
+
+public class PeakMarkerElement : GaugeElement
+{
+	public float Radius { get; set; } = 200f;
+	public float StrokeWidth { get; set; } = 30f;
+	public float StartAngleDeg { get; set; } = 135f;
+	public float SweepAngleDeg { get; set; } = 270f;
+	public string MarkerColor { get; set; } = "#FFFFFF";
+	public float MarkerWidth { get; set; } = 3f;
+	public float DecaySeconds { get; set; } = 0f;
+
+	[JsonIgnore]
+	public override string TypeLabel => "Peak";
 }

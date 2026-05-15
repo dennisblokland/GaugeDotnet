@@ -74,6 +74,7 @@ Drag-and-drop gauge designer → JSON definition → runtime rendering on device
 | `ImageElement` | `image` | No | Custom image (backgrounds, logos, overlays) with opacity + rotation |
 | `GraphElement` | `graph` | Yes | Rolling time-series plot; buffer keyed by `Id` in `ElementRenderer._graphBuffers` |
 | `LabelValueElement` | `labelvalue` | Yes | Compound label + large value display; optional background box; X/Y = center |
+| `PeakMarkerElement` | `peak` | Yes | Tick at rolling peak angle; state keyed by `Id` in `ElementRenderer._peakState`; `DecaySeconds=0` holds forever |
 
 `CustomGaugeDefinition` also supports:
 - `BackgroundImage` — path drawn behind all elements
@@ -114,6 +115,8 @@ When using `ImagePath` on a `NeedleElement`, the image is rotated around the ele
 
 | Key | Action |
 |-----|--------|
+| `Ctrl+Z` | Undo (snapshots: add, delete, duplicate, move, drag start) |
+| `Ctrl+Y` | Redo |
 | `Delete` | Delete selected element |
 | `Arrow keys` | Move selected element ±1 px |
 | `Shift + Arrow keys` | Move selected element ±10 px |

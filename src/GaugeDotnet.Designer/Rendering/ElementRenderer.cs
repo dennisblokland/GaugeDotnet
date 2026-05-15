@@ -49,6 +49,14 @@ public static class ElementRenderer
 				return dist >= zone.Radius - zone.StrokeWidth - 10 &&
 					   dist <= zone.Radius + zone.StrokeWidth + 10;
 			}
+			case PeakMarkerElement peak:
+			{
+				float dx = px - peak.X;
+				float dy = py - peak.Y;
+				float dist = MathF.Sqrt(dx * dx + dy * dy);
+				return dist >= peak.Radius - peak.StrokeWidth - 10 &&
+					   dist <= peak.Radius + peak.StrokeWidth + 10;
+			}
 			case TickRingElement ticks:
 			{
 				float dx = px - ticks.X;
@@ -124,6 +132,11 @@ public static class ElementRenderer
 				lv.Y - (lv.LabelFontSize + 4 + lv.ValueFontSize) / 2 - lv.BoxPadding,
 				lv.X + lv.ValueFontSize * 3,
 				lv.Y + (lv.LabelFontSize + 4 + lv.ValueFontSize) / 2 + lv.BoxPadding),
+			PeakMarkerElement peak => new SKRect(
+				peak.X - peak.Radius - peak.StrokeWidth / 2,
+				peak.Y - peak.Radius - peak.StrokeWidth / 2,
+				peak.X + peak.Radius + peak.StrokeWidth / 2,
+				peak.Y + peak.Radius + peak.StrokeWidth / 2),
 			_ => new SKRect(element.X - 20, element.Y - 20, element.X + 20, element.Y + 20),
 		};
 	}
