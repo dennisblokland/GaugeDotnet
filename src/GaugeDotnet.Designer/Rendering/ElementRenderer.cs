@@ -41,6 +41,14 @@ public static class ElementRenderer
 				return dist >= arc.Radius - arc.StrokeWidth - 10 &&
 					   dist <= arc.Radius + arc.StrokeWidth + 10;
 			}
+			case ZoneArcElement zone:
+			{
+				float dx = px - zone.X;
+				float dy = py - zone.Y;
+				float dist = MathF.Sqrt(dx * dx + dy * dy);
+				return dist >= zone.Radius - zone.StrokeWidth - 10 &&
+					   dist <= zone.Radius + zone.StrokeWidth + 10;
+			}
 			case TickRingElement ticks:
 			{
 				float dx = px - ticks.X;
@@ -103,6 +111,14 @@ public static class ElementRenderer
 			ImageElement img => new SKRect(
 				img.X, img.Y,
 				img.X + img.Width, img.Y + img.Height),
+			ZoneArcElement zone => new SKRect(
+				zone.X - zone.Radius - zone.StrokeWidth / 2,
+				zone.Y - zone.Radius - zone.StrokeWidth / 2,
+				zone.X + zone.Radius + zone.StrokeWidth / 2,
+				zone.Y + zone.Radius + zone.StrokeWidth / 2),
+			GraphElement graph => new SKRect(
+				graph.X, graph.Y,
+				graph.X + graph.Width, graph.Y + graph.Height),
 			_ => new SKRect(element.X - 20, element.Y - 20, element.X + 20, element.Y + 20),
 		};
 	}

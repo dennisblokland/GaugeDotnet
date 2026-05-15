@@ -11,6 +11,7 @@ public static class ElementRenderer
 {
 	private static readonly ConcurrentDictionary<string, SKBitmap?> _imageCache = new();
 	private static readonly ConcurrentDictionary<float, SKMaskFilter> _blurCache = new();
+	private static readonly ConcurrentDictionary<string, Queue<float>> _graphBuffers = new();
 	private static string? _baseDirectory;
 
 	// Reusable paint/font objects — rendering is single-threaded
@@ -80,6 +81,8 @@ public static class ElementRenderer
 			case LinearBarElement bar: DrawLinearBar(canvas, bar, value); break;
 			case WarningIndicatorElement warn: DrawWarningIndicator(canvas, warn, value); break;
 			case ImageElement img: DrawImage(canvas, img, baseDirectory); break;
+			case ZoneArcElement zone: DrawZoneArc(canvas, zone, value); break;
+			case GraphElement graph: DrawGraph(canvas, graph, value); break;
 		}
 	}
 
@@ -473,6 +476,121 @@ public static class ElementRenderer
 		}
 	}
 
+	private static void DrawZoneArc(SKCanvas canvas, ZoneArcElement zone, float value)
+	{
+		SKRect rect = new(
+			zone.X - zone.Radius, zone.Y - zone.Radius,
+			zone.X + zone.Radius, zone.Y + zone.Radius);
+
+		float range = zone.MaxValue - zone.MinValue;
+		float t2 = range > 0 ? Math.Clamp((zone.Zone2Start - zone.MinValue) / range, 0f, 1f) : 0.5f;
+		float t3 = range > 0 ? Math.Clamp((zone.Zone3Start - zone.MinValue) / range, 0f, 1f) : 0.85f;
+
+		_paint.Style = SKPaintStyle.Stroke;
+		_paint.StrokeWidth = zone.StrokeWidth;
+		_paint.StrokeCap = SKStrokeCap.Butt;
+		_paint.MaskFilter = null;
+
+		// Zone 1 — start → zone2 boundary (or further if later zones disabled)
+		float z1EndT = zone.ShowZone2 ? t2 : (zone.ShowZone3 ? t3 : 1f);
+		_paint.Color = SKColor.Parse(zone.Zone1Color);
+		canvas.DrawArc(rect, zone.StartAngleDeg, zone.SweepAngleDeg * z1EndT, false, _paint);
+
+		if (zone.ShowZone2)
+		{
+			float z2EndT = zone.ShowZone3 ? t3 : 1f;
+			float z2Sweep = (z2EndT - t2) * zone.SweepAngleDeg;
+			_paint.Color = SKColor.Parse(zone.Zone2Color);
+			canvas.DrawArc(rect, zone.StartAngleDeg + t2 * zone.SweepAngleDeg, z2Sweep, false, _paint);
+		}
+
+		if (zone.ShowZone3)
+		{
+			float z3StartT = zone.ShowZone2 ? t3 : t2;
+			float z3Sweep = (1f - z3StartT) * zone.SweepAngleDeg;
+			_paint.Color = SKColor.Parse(zone.Zone3Color);
+			canvas.DrawArc(rect, zone.StartAngleDeg + z3StartT * zone.SweepAngleDeg, z3Sweep, false, _paint);
+		}
+
+		if (zone.ShowPointer && !string.IsNullOrEmpty(zone.DataSource))
+		{
+			float t = range > 0 ? Math.Clamp((value - zone.MinValue) / range, 0f, 1f) : 0f;
+			float angleDeg = zone.StartAngleDeg + t * zone.SweepAngleDeg;
+			float angleRad = angleDeg * MathF.PI / 180f;
+			float innerR = zone.Radius - zone.StrokeWidth / 2 - 4;
+			float outerR = zone.Radius + zone.StrokeWidth / 2 + 4;
+			_paint.Style = SKPaintStyle.Stroke;
+			_paint.StrokeWidth = zone.PointerWidth;
+			_paint.StrokeCap = SKStrokeCap.Round;
+			_paint.Color = SKColor.Parse(zone.PointerColor);
+			canvas.DrawLine(
+				zone.X + MathF.Cos(angleRad) * innerR,
+				zone.Y + MathF.Sin(angleRad) * innerR,
+				zone.X + MathF.Cos(angleRad) * outerR,
+				zone.Y + MathF.Sin(angleRad) * outerR,
+				_paint);
+		}
+	}
+
+	private static void DrawGraph(SKCanvas canvas, GraphElement graph, float value)
+	{
+		SKRect bounds = new(graph.X, graph.Y, graph.X + graph.Width, graph.Y + graph.Height);
+
+		_paint.Style = SKPaintStyle.Fill;
+		_paint.Color = SKColor.Parse(graph.BackColor);
+		_paint.MaskFilter = null;
+		canvas.DrawRect(bounds, _paint);
+
+		Queue<float> buffer = _graphBuffers.GetOrAdd(graph.Id, _ => new Queue<float>());
+		buffer.Enqueue(value);
+		while (buffer.Count > Math.Max(graph.HistoryDepth, 2)) buffer.Dequeue();
+
+		if (buffer.Count < 2) return;
+
+		float range = graph.MaxValue - graph.MinValue;
+		if (range <= 0) return;
+
+		float[] samples = buffer.ToArray();
+		int count = samples.Length;
+		float stepX = graph.Width / (graph.HistoryDepth - 1);
+
+		canvas.Save();
+		canvas.ClipRect(bounds);
+
+		using SKPath linePath = new();
+		for (int i = 0; i < count; i++)
+		{
+			float x = graph.X + (graph.HistoryDepth - count + i) * stepX;
+			float t = Math.Clamp((samples[i] - graph.MinValue) / range, 0f, 1f);
+			float y = graph.Y + graph.Height - t * graph.Height;
+			if (i == 0) linePath.MoveTo(x, y);
+			else linePath.LineTo(x, y);
+		}
+
+		if (graph.ShowFill)
+		{
+			using SKPath fillPath = new(linePath);
+			float lastX = graph.X + (graph.HistoryDepth - 1) * stepX;
+			float firstX = graph.X + (graph.HistoryDepth - count) * stepX;
+			fillPath.LineTo(lastX, graph.Y + graph.Height);
+			fillPath.LineTo(firstX, graph.Y + graph.Height);
+			fillPath.Close();
+			_paint.Style = SKPaintStyle.Fill;
+			_paint.Color = SKColor.Parse(graph.FillColor).WithAlpha(graph.FillOpacity);
+			canvas.DrawPath(fillPath, _paint);
+		}
+
+		_paint.Style = SKPaintStyle.Stroke;
+		_paint.StrokeWidth = graph.LineWidth;
+		_paint.StrokeCap = SKStrokeCap.Round;
+		_paint.StrokeJoin = SKStrokeJoin.Round;
+		_paint.Color = SKColor.Parse(graph.LineColor);
+		_paint.MaskFilter = null;
+		canvas.DrawPath(linePath, _paint);
+
+		canvas.Restore();
+	}
+
 	private static void DrawBackgroundBitmap(SKCanvas canvas, SKBitmap bitmap, int canvasW, int canvasH,
 		BackgroundImageMode mode)
 	{
@@ -593,16 +711,14 @@ public static class ElementRenderer
 	public static void ClearImageCache()
 	{
 		foreach (SKBitmap? bitmap in _imageCache.Values)
-		{
 			bitmap?.Dispose();
-		}
 		_imageCache.Clear();
 
 		foreach (SKMaskFilter filter in _blurCache.Values)
-		{
 			filter.Dispose();
-		}
 		_blurCache.Clear();
+
+		_graphBuffers.Clear();
 	}
 
 	private static SKMaskFilter GetBlur(float sigma)

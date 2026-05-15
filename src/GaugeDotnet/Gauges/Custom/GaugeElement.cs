@@ -39,6 +39,8 @@ public class CustomGaugeDefinition
 [JsonDerivedType(typeof(LinearBarElement), "linearbar")]
 [JsonDerivedType(typeof(WarningIndicatorElement), "warning")]
 [JsonDerivedType(typeof(ImageElement), "image")]
+[JsonDerivedType(typeof(ZoneArcElement), "zonearc")]
+[JsonDerivedType(typeof(GraphElement), "graph")]
 public abstract class GaugeElement
 {
 	public string Id { get; set; } = Guid.NewGuid().ToString("N")[..8];
@@ -210,4 +212,41 @@ public class ImageElement : GaugeElement
 
 	[JsonIgnore]
 	public override string TypeLabel => "Image";
+}
+
+public class ZoneArcElement : GaugeElement
+{
+	public float Radius { get; set; } = 200f;
+	public float StrokeWidth { get; set; } = 30f;
+	public float StartAngleDeg { get; set; } = 135f;
+	public float SweepAngleDeg { get; set; } = 270f;
+	public string Zone1Color { get; set; } = "#00CC00";
+	public float Zone2Start { get; set; } = 70f;
+	public string Zone2Color { get; set; } = "#FFCC00";
+	public bool ShowZone2 { get; set; } = true;
+	public float Zone3Start { get; set; } = 90f;
+	public string Zone3Color { get; set; } = "#FF3333";
+	public bool ShowZone3 { get; set; } = true;
+	public bool ShowPointer { get; set; } = false;
+	public string PointerColor { get; set; } = "#FFFFFF";
+	public float PointerWidth { get; set; } = 3f;
+
+	[JsonIgnore]
+	public override string TypeLabel => "ZoneArc";
+}
+
+public class GraphElement : GaugeElement
+{
+	public float Width { get; set; } = 200f;
+	public float Height { get; set; } = 100f;
+	public int HistoryDepth { get; set; } = 60;
+	public string LineColor { get; set; } = "#00FFFF";
+	public string FillColor { get; set; } = "#00FFFF";
+	public byte FillOpacity { get; set; } = 40;
+	public string BackColor { get; set; } = "#0A1A1A";
+	public float LineWidth { get; set; } = 2f;
+	public bool ShowFill { get; set; } = true;
+
+	[JsonIgnore]
+	public override string TypeLabel => "Graph";
 }

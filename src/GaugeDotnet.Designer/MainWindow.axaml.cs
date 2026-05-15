@@ -64,6 +64,8 @@ public partial class MainWindow : Window
 		AddBarBtn.Click += (_, _) => AddElement(new LinearBarElement());
 		AddWarningBtn.Click += (_, _) => AddElement(new WarningIndicatorElement());
 		AddImageBtn.Click += (_, _) => AddElement(new ImageElement());
+		AddZoneArcBtn.Click += (_, _) => AddElement(new ZoneArcElement());
+		AddGraphBtn.Click += (_, _) => AddElement(new GraphElement());
 
 		DuplicateBtn.Click += (_, _) => DuplicateElement();
 		DeleteBtn.Click += (_, _) => DeleteElement();
@@ -103,6 +105,23 @@ public partial class MainWindow : Window
 			if (e.Key == Key.Delete && _vm.SelectedElement != null)
 			{
 				DeleteElement();
+				e.Handled = true;
+				return;
+			}
+
+			if (_vm.SelectedElement != null)
+			{
+				float step = e.KeyModifiers.HasFlag(KeyModifiers.Shift) ? 10f : 1f;
+				switch (e.Key)
+				{
+					case Key.Up:    _vm.SelectedElement.Y -= step; break;
+					case Key.Down:  _vm.SelectedElement.Y += step; break;
+					case Key.Left:  _vm.SelectedElement.X -= step; break;
+					case Key.Right: _vm.SelectedElement.X += step; break;
+					default: return;
+				}
+				ShowProperties(_vm.SelectedElement);
+				Redraw();
 				e.Handled = true;
 			}
 		};
@@ -259,7 +278,7 @@ public partial class MainWindow : Window
 		AddFloatProp("Y", element.Y, v => element.Y = v, 0, CanvasHeight);
 
 		bool supportsData = element is ArcElement or NeedleElement or ValueDisplayElement
-			or LinearBarElement or WarningIndicatorElement;
+			or LinearBarElement or WarningIndicatorElement or ZoneArcElement or GraphElement;
 		if (supportsData)
 		{
 			AddDataSourceProp(element.DataSource, v =>
@@ -270,7 +289,8 @@ public partial class MainWindow : Window
 		}
 
 		bool hasRange = element is ArcElement or NeedleElement or ValueDisplayElement
-			or TickRingElement or LinearBarElement or WarningIndicatorElement;
+			or TickRingElement or LinearBarElement or WarningIndicatorElement
+			or ZoneArcElement or GraphElement;
 		if (hasRange)
 		{
 			AddFloatProp("Min Value", element.MinValue, v => element.MinValue = v, -10000, 100000);
@@ -395,6 +415,37 @@ public partial class MainWindow : Window
 				AddFloatProp("Height", img.Height, v => img.Height = v, 1, 960);
 				AddIntProp("Opacity", img.Opacity, v => img.Opacity = (byte)v, 0, 255);
 				AddFloatProp("Rotation", img.Rotation, v => img.Rotation = v, -360, 360);
+				break;
+
+			case ZoneArcElement zone:
+				AddFloatProp("Radius", zone.Radius, v => zone.Radius = v, 10, 300);
+				AddFloatProp("Stroke Width", zone.StrokeWidth, v => zone.StrokeWidth = v, 1, 80);
+				AddFloatProp("Start Angle", zone.StartAngleDeg, v => zone.StartAngleDeg = v, 0, 360);
+				AddFloatProp("Sweep Angle", zone.SweepAngleDeg, v => zone.SweepAngleDeg = v, 1, 360);
+				AddSeparator();
+				AddColorProp("Zone 1 Color", zone.Zone1Color, v => zone.Zone1Color = v);
+				AddBoolProp("Show Zone 2", zone.ShowZone2, v => zone.ShowZone2 = v);
+				AddFloatProp("Zone 2 Start (value)", zone.Zone2Start, v => zone.Zone2Start = v, -10000, 100000);
+				AddColorProp("Zone 2 Color", zone.Zone2Color, v => zone.Zone2Color = v);
+				AddBoolProp("Show Zone 3", zone.ShowZone3, v => zone.ShowZone3 = v);
+				AddFloatProp("Zone 3 Start (value)", zone.Zone3Start, v => zone.Zone3Start = v, -10000, 100000);
+				AddColorProp("Zone 3 Color", zone.Zone3Color, v => zone.Zone3Color = v);
+				AddSeparator();
+				AddBoolProp("Show Pointer", zone.ShowPointer, v => zone.ShowPointer = v);
+				AddColorProp("Pointer Color", zone.PointerColor, v => zone.PointerColor = v);
+				AddFloatProp("Pointer Width", zone.PointerWidth, v => zone.PointerWidth = v, 1, 10, 0.5f);
+				break;
+
+			case GraphElement graph:
+				AddFloatProp("Width", graph.Width, v => graph.Width = v, 20, 640);
+				AddFloatProp("Height", graph.Height, v => graph.Height = v, 20, 480);
+				AddIntProp("History Depth", graph.HistoryDepth, v => graph.HistoryDepth = v, 5, 300);
+				AddColorProp("Line Color", graph.LineColor, v => graph.LineColor = v);
+				AddFloatProp("Line Width", graph.LineWidth, v => graph.LineWidth = v, 0.5f, 10, 0.5f);
+				AddBoolProp("Show Fill", graph.ShowFill, v => graph.ShowFill = v);
+				AddColorProp("Fill Color", graph.FillColor, v => graph.FillColor = v);
+				AddByteProp("Fill Opacity", graph.FillOpacity, v => graph.FillOpacity = v);
+				AddColorProp("Background Color", graph.BackColor, v => graph.BackColor = v);
 				break;
 		}
 
