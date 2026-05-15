@@ -65,7 +65,7 @@
         <!-- Element list -->
         <StackPanel Spacing="4">
           <TextBlock Text="Elements" FontWeight="Bold" FontSize="14"/>
-          <ListBox x:Name="ElementList" MaxHeight="180" SelectionMode="Single"/>
+          <ListBox x:Name="ElementList" MaxHeight="180" SelectionMode="Multiple"/>
         </StackPanel>
 
         <!-- Properties (scrollable) -->

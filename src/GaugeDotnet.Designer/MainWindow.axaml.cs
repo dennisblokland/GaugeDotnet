@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -89,20 +90,47 @@ public partial class MainWindow : Window
 		LoadBtn.Click += OnLoadClick;
 
 		// Element list — index 0 is the sentinel "[Canvas] Background" entry
+		// SelectionMode="Multiple": Ctrl+click to add/remove, Shift+click for range
 		ElementList.SelectionChanged += (_, _) =>
 		{
 			if (_suppressListEvents) return;
-			int idx = ElementList.SelectedIndex;
-			if (idx == 0)
+
+			IList? selectedItems = ElementList.SelectedItems;
+			List<string>? allItems = ElementList.ItemsSource as List<string>;
+			if (selectedItems == null || allItems == null) return;
+
+			_multiSelection.Clear();
+			GaugeElement? primary = null;
+			int focusedListIdx = ElementList.SelectedIndex;
+
+			foreach (object? obj in selectedItems)
 			{
-				SelectElement(null, clearMulti: true);
-				return;
+				if (obj is not string s) continue;
+				int listIdx = allItems.IndexOf(s);
+				if (listIdx <= 0) continue; // skip background sentinel and not-found
+
+				int elIdx = listIdx - 1;
+				if (elIdx < 0 || elIdx >= _vm.Definition.Elements.Count) continue;
+
+				GaugeElement el = _vm.Definition.Elements[elIdx];
+				if (listIdx == focusedListIdx)
+					primary = el;
+				else
+					_multiSelection.Add(el);
 			}
-			int elIdx = idx - 1;
-			GaugeElement? element = elIdx >= 0 && elIdx < _vm.Definition.Elements.Count
-				? _vm.Definition.Elements[elIdx]
-				: null;
-			SelectElement(element, clearMulti: true);
+
+			// Fallback: if focused index wasn't among selected strings, pick first
+			if (primary == null && _multiSelection.Count > 0)
+			{
+				primary = _multiSelection.First();
+				_multiSelection.Remove(primary);
+			}
+
+			_vm.SelectElement(primary);
+			DeleteBtn.IsEnabled = primary != null || _multiSelection.Count > 0;
+			DuplicateBtn.IsEnabled = primary != null && _multiSelection.Count == 0;
+			if (primary != null) ShowProperties(primary); else ClearProperties();
+			Redraw();
 		};
 
 		MoveUpBtn.Click += (_, _) => MoveElement(-1);
@@ -139,15 +167,22 @@ public partial class MainWindow : Window
 			if (_vm.SelectedElement != null)
 			{
 				float step = e.KeyModifiers.HasFlag(KeyModifiers.Shift) ? 10f : 1f;
+				float dx = 0, dy = 0;
 				switch (e.Key)
 				{
-					case Key.Up:    _vm.SelectedElement.Y = Snap(_vm.SelectedElement.Y - step); break;
-					case Key.Down:  _vm.SelectedElement.Y = Snap(_vm.SelectedElement.Y + step); break;
-					case Key.Left:  _vm.SelectedElement.X = Snap(_vm.SelectedElement.X - step); break;
-					case Key.Right: _vm.SelectedElement.X = Snap(_vm.SelectedElement.X + step); break;
+					case Key.Up:    dy = -step; break;
+					case Key.Down:  dy = +step; break;
+					case Key.Left:  dx = -step; break;
+					case Key.Right: dx = +step; break;
 					default: return;
 				}
-				ShowProperties(_vm.SelectedElement);
+				_vm.SelectedElement.X = Snap(_vm.SelectedElement.X + dx);
+				_vm.SelectedElement.Y = Snap(_vm.SelectedElement.Y + dy);
+				foreach (GaugeElement el in _multiSelection)
+				{
+					el.X = Snap(el.X + dx);
+					el.Y = Snap(el.Y + dy);
+				}
 				Redraw();
 				e.Handled = true;
 			}
@@ -246,7 +281,7 @@ public partial class MainWindow : Window
 		DuplicateBtn.IsEnabled = element != null && _multiSelection.Count == 0;
 
 		_suppressListEvents = true;
-		ElementList.SelectedIndex = element != null ? _vm.Definition.Elements.IndexOf(element) + 1 : 0;
+		SyncListSelection();
 		_suppressListEvents = false;
 
 		if (element != null)
@@ -260,15 +295,40 @@ public partial class MainWindow : Window
 	private void RefreshElementList()
 	{
 		_suppressListEvents = true;
-		int prevIdx = _vm.SelectedElement != null
-			? _vm.Definition.Elements.IndexOf(_vm.SelectedElement) + 1
-			: 0;
 		var items = new List<string> { "[Canvas] Background" };
 		items.AddRange(_vm.Definition.Elements.Select(e => $"[{e.TypeLabel}] {e.Name}"));
 		ElementList.ItemsSource = items;
-		if (prevIdx >= 0 && prevIdx < items.Count)
-			ElementList.SelectedIndex = prevIdx;
+		SyncListSelection();
 		_suppressListEvents = false;
+	}
+
+	private void SyncListSelection()
+	{
+		// Must be called inside _suppressListEvents = true block
+		List<string>? items = ElementList.ItemsSource as List<string>;
+		if (items == null) return;
+
+		ElementList.SelectedItems?.Clear();
+
+		// Add multi-selected items
+		foreach (GaugeElement el in _multiSelection)
+		{
+			int listIdx = _vm.Definition.Elements.IndexOf(el) + 1;
+			if (listIdx > 0 && listIdx < items.Count)
+				ElementList.SelectedItems?.Add(items[listIdx]);
+		}
+
+		// Add primary last so it becomes the focused item
+		if (_vm.SelectedElement != null)
+		{
+			int listIdx = _vm.Definition.Elements.IndexOf(_vm.SelectedElement) + 1;
+			if (listIdx > 0 && listIdx < items.Count)
+				ElementList.SelectedItems?.Add(items[listIdx]);
+		}
+		else if (_multiSelection.Count == 0)
+		{
+			ElementList.SelectedIndex = 0;
+		}
 	}
 
 	// ──────────────────── Canvas Interaction ────────────────────
@@ -294,10 +354,13 @@ public partial class MainWindow : Window
 			bool shift = e.KeyModifiers.HasFlag(KeyModifiers.Shift);
 			if (shift && hit != null)
 			{
-				// Toggle element in multi-selection; keep primary selected element as-is
 				if (!_multiSelection.Add(hit))
 					_multiSelection.Remove(hit);
-				SelectElement(_vm.SelectedElement); // refresh highlight
+				SelectElement(_vm.SelectedElement);
+			}
+			else if (hit != null && (hit == _vm.SelectedElement || _multiSelection.Contains(hit)))
+			{
+				// Clicking an already-selected element — keep selection, just start drag
 			}
 			else
 			{
@@ -310,11 +373,10 @@ public partial class MainWindow : Window
 				_vm.Snapshot();
 				_isDragging = true;
 				_dragStartMouse = new Point(px, py);
-				// Record start positions for all elements that will move
 				IEnumerable<GaugeElement> toMove = _multiSelection.Count > 0
-					? _multiSelection.Append(hit).Distinct()
+					? _multiSelection.Append(_vm.SelectedElement!).Distinct()
 					: new[] { hit };
-				_dragOffsets = toMove.Select(el => (el, el.X, el.Y)).ToList();
+				_dragOffsets = toMove.Where(el => el != null).Select(el => (el, el.X, el.Y)).ToList();
 				UpdateUndoRedoButtons();
 				e.Handled = true;
 			}
