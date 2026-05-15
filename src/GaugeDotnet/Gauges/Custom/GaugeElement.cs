@@ -97,6 +97,7 @@ public class NeedleElement : GaugeElement
 	public float NeedleWidth { get; set; } = 4f;
 	public float StartAngleDeg { get; set; } = 135f;
 	public float SweepAngleDeg { get; set; } = 270f;
+	public bool AntiClockwise { get; set; } = false;
 	public string Color { get; set; } = "#FF3333";
 	public bool ShowHub { get; set; } = true;
 	public float HubRadius { get; set; } = 10f;
@@ -141,6 +142,7 @@ public class TickRingElement : GaugeElement
 	public float Radius { get; set; } = 200f;
 	public float StartAngleDeg { get; set; } = 135f;
 	public float SweepAngleDeg { get; set; } = 270f;
+	public bool AntiClockwise { get; set; } = false;
 	public int MajorCount { get; set; } = 8;
 	public int MinorPerMajor { get; set; } = 4;
 	public float MajorLength { get; set; } = 20f;
@@ -268,6 +270,7 @@ public class ZoneArcElement : GaugeElement
 	public float StrokeWidth { get; set; } = 30f;
 	public float StartAngleDeg { get; set; } = 135f;
 	public float SweepAngleDeg { get; set; } = 270f;
+	public bool AntiClockwise { get; set; } = false;
 	public string Zone1Color { get; set; } = "#00CC00";
 	public float Zone2Start { get; set; } = 70f;
 	public string Zone2Color { get; set; } = "#FFCC00";
@@ -305,6 +308,7 @@ public class PeakMarkerElement : GaugeElement
 	public float StrokeWidth { get; set; } = 30f;
 	public float StartAngleDeg { get; set; } = 135f;
 	public float SweepAngleDeg { get; set; } = 270f;
+	public bool AntiClockwise { get; set; } = false;
 	public string MarkerColor { get; set; } = "#FFFFFF";
 	public float MarkerWidth { get; set; } = 3f;
 	public float DecaySeconds { get; set; } = 0f;

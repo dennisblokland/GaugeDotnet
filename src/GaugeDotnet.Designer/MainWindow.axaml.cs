@@ -552,6 +552,7 @@ public partial class MainWindow : Window
 				AddFloatProp("Width", needle.NeedleWidth, v => needle.NeedleWidth = v, 1, 20, 0.5f);
 				AddFloatProp("Start Angle", needle.StartAngleDeg, v => needle.StartAngleDeg = v, 0, 360);
 				AddFloatProp("Sweep Angle", needle.SweepAngleDeg, v => needle.SweepAngleDeg = v, 1, 360);
+				AddBoolProp("Anti-clockwise", needle.AntiClockwise, v => needle.AntiClockwise = v);
 				AddColorProp("Color", needle.Color, v => needle.Color = v);
 				AddBoolProp("Show Hub", needle.ShowHub, v => needle.ShowHub = v);
 				AddFloatProp("Hub Radius", needle.HubRadius, v => needle.HubRadius = v, 2, 30);
@@ -586,6 +587,7 @@ public partial class MainWindow : Window
 				AddFloatProp("Radius", ticks.Radius, v => ticks.Radius = v, 10, 300);
 				AddFloatProp("Start Angle", ticks.StartAngleDeg, v => ticks.StartAngleDeg = v, 0, 360);
 				AddFloatProp("Sweep Angle", ticks.SweepAngleDeg, v => ticks.SweepAngleDeg = v, 1, 360);
+				AddBoolProp("Anti-clockwise", ticks.AntiClockwise, v => ticks.AntiClockwise = v);
 				AddIntProp("Major Ticks", ticks.MajorCount, v => ticks.MajorCount = v, 2, 30);
 				AddIntProp("Minor Per Major", ticks.MinorPerMajor, v => ticks.MinorPerMajor = v, 0, 10);
 				AddFloatProp("Major Length", ticks.MajorLength, v => ticks.MajorLength = v, 2, 50);
@@ -666,6 +668,7 @@ public partial class MainWindow : Window
 				AddFloatProp("Stroke Width", zone.StrokeWidth, v => zone.StrokeWidth = v, 1, 80);
 				AddFloatProp("Start Angle", zone.StartAngleDeg, v => zone.StartAngleDeg = v, 0, 360);
 				AddFloatProp("Sweep Angle", zone.SweepAngleDeg, v => zone.SweepAngleDeg = v, 1, 360);
+				AddBoolProp("Anti-clockwise", zone.AntiClockwise, v => zone.AntiClockwise = v);
 				AddSeparator();
 				AddColorProp("Zone 1 Color", zone.Zone1Color, v => zone.Zone1Color = v);
 				AddBoolProp("Show Zone 2", zone.ShowZone2, v => zone.ShowZone2 = v);
@@ -697,6 +700,7 @@ public partial class MainWindow : Window
 				AddFloatProp("Stroke Width", peak.StrokeWidth, v => peak.StrokeWidth = v, 1, 80);
 				AddFloatProp("Start Angle", peak.StartAngleDeg, v => peak.StartAngleDeg = v, 0, 360);
 				AddFloatProp("Sweep Angle", peak.SweepAngleDeg, v => peak.SweepAngleDeg = v, 1, 360);
+				AddBoolProp("Anti-clockwise", peak.AntiClockwise, v => peak.AntiClockwise = v);
 				AddColorProp("Marker Color", peak.MarkerColor, v => peak.MarkerColor = v);
 				AddFloatProp("Marker Width", peak.MarkerWidth, v => peak.MarkerWidth = v, 1, 10, 0.5f);
 				AddFloatProp("Decay Seconds (0=hold)", peak.DecaySeconds, v => peak.DecaySeconds = v, 0, 60);

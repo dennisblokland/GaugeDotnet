@@ -185,7 +185,8 @@ public static class ElementRenderer
 			t = range > 0 ? Math.Clamp((value - needle.MinValue) / range, 0f, 1f) : 0f;
 		}
 
-		float angleDeg = needle.StartAngleDeg + t * needle.SweepAngleDeg;
+		float sign = needle.AntiClockwise ? -1f : 1f;
+		float angleDeg = needle.StartAngleDeg + t * needle.SweepAngleDeg * sign;
 
 		if (!string.IsNullOrEmpty(needle.ImagePath))
 		{
@@ -283,6 +284,7 @@ public static class ElementRenderer
 	private static void DrawTickRing(SKCanvas canvas, TickRingElement ticks)
 	{
 		int totalMajor = ticks.MajorCount;
+		float sign = ticks.AntiClockwise ? -1f : 1f;
 
 		_paint.Style = SKPaintStyle.Stroke;
 		_paint.MaskFilter = null;
@@ -290,7 +292,7 @@ public static class ElementRenderer
 		for (int i = 0; i <= totalMajor; i++)
 		{
 			float t = (float)i / totalMajor;
-			float angleDeg = ticks.StartAngleDeg + t * ticks.SweepAngleDeg;
+			float angleDeg = ticks.StartAngleDeg + t * ticks.SweepAngleDeg * sign;
 			float angleRad = angleDeg * MathF.PI / 180f;
 
 			float cos = MathF.Cos(angleRad);
@@ -357,7 +359,7 @@ public static class ElementRenderer
 				for (int j = 1; j <= ticks.MinorPerMajor; j++)
 				{
 					float mt = t + ((float)j / (ticks.MinorPerMajor + 1)) / totalMajor;
-					float mAngleRad = (ticks.StartAngleDeg + mt * ticks.SweepAngleDeg) * MathF.PI / 180f;
+					float mAngleRad = (ticks.StartAngleDeg + mt * ticks.SweepAngleDeg * sign) * MathF.PI / 180f;
 					float mCos = MathF.Cos(mAngleRad);
 					float mSin = MathF.Sin(mAngleRad);
 
@@ -572,7 +574,8 @@ public static class ElementRenderer
 
 		float range = peak.MaxValue - peak.MinValue;
 		float t = range > 0 ? Math.Clamp((peakVal - peak.MinValue) / range, 0f, 1f) : 0f;
-		float angleDeg = peak.StartAngleDeg + t * peak.SweepAngleDeg;
+		float sign = peak.AntiClockwise ? -1f : 1f;
+		float angleDeg = peak.StartAngleDeg + t * peak.SweepAngleDeg * sign;
 		float angleRad = angleDeg * MathF.PI / 180f;
 		float innerR = peak.Radius - peak.StrokeWidth / 2;
 		float outerR = peak.Radius + peak.StrokeWidth / 2;
@@ -643,6 +646,8 @@ public static class ElementRenderer
 			zone.X - zone.Radius, zone.Y - zone.Radius,
 			zone.X + zone.Radius, zone.Y + zone.Radius);
 
+		float sign = zone.AntiClockwise ? -1f : 1f;
+		float sweepDeg = zone.SweepAngleDeg * sign;
 		float range = zone.MaxValue - zone.MinValue;
 		float t2 = range > 0 ? Math.Clamp((zone.Zone2Start - zone.MinValue) / range, 0f, 1f) : 0.5f;
 		float t3 = range > 0 ? Math.Clamp((zone.Zone3Start - zone.MinValue) / range, 0f, 1f) : 0.85f;
@@ -655,28 +660,28 @@ public static class ElementRenderer
 		// Zone 1 — start → zone2 boundary (or further if later zones disabled)
 		float z1EndT = zone.ShowZone2 ? t2 : (zone.ShowZone3 ? t3 : 1f);
 		_paint.Color = SKColor.Parse(zone.Zone1Color);
-		canvas.DrawArc(rect, zone.StartAngleDeg, zone.SweepAngleDeg * z1EndT, false, _paint);
+		canvas.DrawArc(rect, zone.StartAngleDeg, sweepDeg * z1EndT, false, _paint);
 
 		if (zone.ShowZone2)
 		{
 			float z2EndT = zone.ShowZone3 ? t3 : 1f;
-			float z2Sweep = (z2EndT - t2) * zone.SweepAngleDeg;
+			float z2Sweep = (z2EndT - t2) * sweepDeg;
 			_paint.Color = SKColor.Parse(zone.Zone2Color);
-			canvas.DrawArc(rect, zone.StartAngleDeg + t2 * zone.SweepAngleDeg, z2Sweep, false, _paint);
+			canvas.DrawArc(rect, zone.StartAngleDeg + t2 * sweepDeg, z2Sweep, false, _paint);
 		}
 
 		if (zone.ShowZone3)
 		{
 			float z3StartT = zone.ShowZone2 ? t3 : t2;
-			float z3Sweep = (1f - z3StartT) * zone.SweepAngleDeg;
+			float z3Sweep = (1f - z3StartT) * sweepDeg;
 			_paint.Color = SKColor.Parse(zone.Zone3Color);
-			canvas.DrawArc(rect, zone.StartAngleDeg + z3StartT * zone.SweepAngleDeg, z3Sweep, false, _paint);
+			canvas.DrawArc(rect, zone.StartAngleDeg + z3StartT * sweepDeg, z3Sweep, false, _paint);
 		}
 
 		if (zone.ShowPointer && !string.IsNullOrEmpty(zone.DataSource))
 		{
 			float t = range > 0 ? Math.Clamp((value - zone.MinValue) / range, 0f, 1f) : 0f;
-			float angleDeg = zone.StartAngleDeg + t * zone.SweepAngleDeg;
+			float angleDeg = zone.StartAngleDeg + t * sweepDeg;
 			float angleRad = angleDeg * MathF.PI / 180f;
 			float innerR = zone.Radius - zone.StrokeWidth / 2 - 4;
 			float outerR = zone.Radius + zone.StrokeWidth / 2 + 4;
