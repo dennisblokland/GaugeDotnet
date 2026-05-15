@@ -4,6 +4,12 @@ using System.Text.Json.Serialization;
 
 namespace GaugeDotnet.Gauges.Custom;
 
+public class CalculatedChannel
+{
+	public string Name { get; set; } = "";
+	public string Expression { get; set; } = "";
+}
+
 public enum BackgroundImageMode
 {
 	Stretch,
@@ -22,6 +28,7 @@ public class CustomGaugeDefinition
 	public BackgroundImageMode BackgroundImageMode { get; set; } = BackgroundImageMode.Stretch;
 	public byte BackgroundImageOpacity { get; set; } = 255;
 	public List<GaugeElement> Elements { get; set; } = new();
+	public List<CalculatedChannel> CalculatedChannels { get; set; } = new();
 
 	[JsonIgnore]
 	public string? BaseDirectory { get; set; }
@@ -53,6 +60,10 @@ public abstract class GaugeElement
 	public float MinValue { get; set; }
 	public float MaxValue { get; set; } = 100f;
 	public byte Opacity { get; set; } = 255;
+	public bool UseVisibility { get; set; } = false;
+	public string? VisibilitySource { get; set; }
+	public float VisibleAbove { get; set; } = float.MinValue;
+	public float VisibleBelow { get; set; } = float.MaxValue;
 
 	[JsonIgnore]
 	public abstract string TypeLabel { get; }

@@ -36,6 +36,10 @@ public partial class MainWindow : Window
 	private float _dragStartX;
 	private float _dragStartY;
 
+	// Grid snap
+	private bool _gridSnapEnabled;
+	private const float GridSize = 10f;
+
 	private bool _suppressPropertyEvents;
 	private bool _suppressListEvents;
 
@@ -68,6 +72,8 @@ public partial class MainWindow : Window
 		AddGraphBtn.Click += (_, _) => AddElement(new GraphElement());
 		AddLabelValueBtn.Click += (_, _) => AddElement(new LabelValueElement());
 		AddPeakBtn.Click += (_, _) => AddElement(new PeakMarkerElement());
+
+		GridSnapBtn.IsCheckedChanged += (_, _) => _gridSnapEnabled = GridSnapBtn.IsChecked ?? false;
 
 		UndoBtn.Click += (_, _) => PerformUndo();
 		RedoBtn.Click += (_, _) => PerformRedo();
@@ -111,6 +117,14 @@ public partial class MainWindow : Window
 			if (ctrl && e.Key == Key.Z) { PerformUndo(); e.Handled = true; return; }
 			if (ctrl && e.Key == Key.Y) { PerformRedo(); e.Handled = true; return; }
 
+			if (!ctrl && e.Key == Key.G)
+			{
+				_gridSnapEnabled = !_gridSnapEnabled;
+				GridSnapBtn.IsChecked = _gridSnapEnabled;
+				e.Handled = true;
+				return;
+			}
+
 			if (e.Key == Key.Delete && _vm.SelectedElement != null)
 			{
 				DeleteElement();
@@ -123,10 +137,10 @@ public partial class MainWindow : Window
 				float step = e.KeyModifiers.HasFlag(KeyModifiers.Shift) ? 10f : 1f;
 				switch (e.Key)
 				{
-					case Key.Up:    _vm.SelectedElement.Y -= step; break;
-					case Key.Down:  _vm.SelectedElement.Y += step; break;
-					case Key.Left:  _vm.SelectedElement.X -= step; break;
-					case Key.Right: _vm.SelectedElement.X += step; break;
+					case Key.Up:    _vm.SelectedElement.Y = Snap(_vm.SelectedElement.Y - step); break;
+					case Key.Down:  _vm.SelectedElement.Y = Snap(_vm.SelectedElement.Y + step); break;
+					case Key.Left:  _vm.SelectedElement.X = Snap(_vm.SelectedElement.X - step); break;
+					case Key.Right: _vm.SelectedElement.X = Snap(_vm.SelectedElement.X + step); break;
 					default: return;
 				}
 				ShowProperties(_vm.SelectedElement);
@@ -208,6 +222,8 @@ public partial class MainWindow : Window
 		RedoBtn.IsEnabled = _vm.CanRedo;
 	}
 
+	private float Snap(float v) => _gridSnapEnabled ? MathF.Round(v / GridSize) * GridSize : v;
+
 	private void SelectElement(GaugeElement? element)
 	{
 		_vm.SelectElement(element);
@@ -282,8 +298,8 @@ public partial class MainWindow : Window
 		PointerPoint point = e.GetCurrentPoint(CanvasImage);
 		float dx = (float)point.Position.X - (float)_dragStartMouse.X;
 		float dy = (float)point.Position.Y - (float)_dragStartMouse.Y;
-		_vm.SelectedElement.X = _dragStartX + dx;
-		_vm.SelectedElement.Y = _dragStartY + dy;
+		_vm.SelectedElement.X = Snap(_dragStartX + dx);
+		_vm.SelectedElement.Y = Snap(_dragStartY + dy);
 		Redraw();
 	}
 
@@ -311,7 +327,54 @@ public partial class MainWindow : Window
 			v => _vm.Definition.BackgroundImageMode = v);
 		AddByteProp("Image Opacity", _vm.Definition.BackgroundImageOpacity,
 			v => _vm.Definition.BackgroundImageOpacity = v);
+		AddSeparator();
+		AddCalculatedChannelsSection();
 		_suppressPropertyEvents = false;
+	}
+
+	private void AddCalculatedChannelsSection()
+	{
+		AddHeader("Calculated Channels");
+		List<GaugeDotnet.Gauges.Custom.CalculatedChannel> channels = _vm.Definition.CalculatedChannels;
+		for (int i = 0; i < channels.Count; i++)
+		{
+			int idx = i;
+			GaugeDotnet.Gauges.Custom.CalculatedChannel ch = channels[i];
+			StackPanel row = new() { Orientation = Orientation.Horizontal, Spacing = 4 };
+			TextBox nameTb = new() { Text = ch.Name, Width = 90, PlaceholderText = "Name" };
+			TextBox exprTb = new() { Text = ch.Expression, Width = 150, PlaceholderText = "Expression" };
+			Button removeBtn = new() { Content = "X", Padding = new Thickness(6, 2) };
+			nameTb.TextChanged += (_, _) =>
+			{
+				if (!_suppressPropertyEvents) { ch.Name = nameTb.Text ?? ""; UpdateTestValueSliders(); }
+			};
+			exprTb.TextChanged += (_, _) =>
+			{
+				if (!_suppressPropertyEvents) { ch.Expression = exprTb.Text ?? ""; Redraw(); }
+			};
+			removeBtn.Click += (_, _) =>
+			{
+				_vm.Snapshot();
+				_vm.Definition.CalculatedChannels.RemoveAt(idx);
+				ClearProperties();
+				UpdateTestValueSliders();
+				UpdateUndoRedoButtons();
+				Redraw();
+			};
+			row.Children.Add(nameTb);
+			row.Children.Add(exprTb);
+			row.Children.Add(removeBtn);
+			PropertiesPanel.Children.Add(row);
+		}
+		Button addBtn = new() { Content = "+ Add Channel", Padding = new Thickness(10, 4), Margin = new Thickness(0, 4, 0, 0) };
+		addBtn.Click += (_, _) =>
+		{
+			_vm.Snapshot();
+			_vm.Definition.CalculatedChannels.Add(new GaugeDotnet.Gauges.Custom.CalculatedChannel());
+			ClearProperties();
+			UpdateUndoRedoButtons();
+		};
+		PropertiesPanel.Children.Add(addBtn);
 	}
 
 	private void ShowProperties(GaugeElement element)
@@ -346,6 +409,13 @@ public partial class MainWindow : Window
 		}
 
 		AddByteProp("Opacity", element.Opacity, v => element.Opacity = v);
+		AddSeparator();
+		AddBoolProp("Use Visibility Condition", element.UseVisibility, v => element.UseVisibility = v);
+		AddDataSourceProp(element.VisibilitySource, v => element.VisibilitySource = v, "Visibility Source");
+		AddFloatProp("Visible Above", element.VisibleAbove == float.MinValue ? 0f : element.VisibleAbove,
+			v => element.VisibleAbove = v, -100000, 100000);
+		AddFloatProp("Visible Below", element.VisibleBelow == float.MaxValue ? 100f : element.VisibleBelow,
+			v => element.VisibleBelow = v, -100000, 100000);
 		AddSeparator();
 
 		switch (element)
@@ -671,16 +741,19 @@ public partial class MainWindow : Window
 		PropertiesPanel.Children.Add(display);
 	}
 
-	private void AddDataSourceProp(string? value, Action<string?> setter)
+	private void AddDataSourceProp(string? value, Action<string?> setter, string label = "Data Source")
 	{
 		PropertiesPanel.Children.Add(new TextBlock
 		{
-			Text = "Data Source",
+			Text = label,
 			FontWeight = Avalonia.Media.FontWeight.SemiBold,
 			Margin = new Thickness(0, 4, 0, 0),
 		});
 		List<string> items = ["(none)"];
 		items.AddRange(DataSourceMapper.DataSourceNames);
+		items.AddRange(_vm.Definition.CalculatedChannels
+			.Where(c => !string.IsNullOrEmpty(c.Name))
+			.Select(c => c.Name));
 		ComboBox cb = new()
 		{
 			ItemsSource = items,

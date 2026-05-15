@@ -81,9 +81,9 @@ Stack of JSON snapshots of `CustomGaugeDefinition`. Ctrl+Z / Ctrl+Y. Cap at 50 s
 ### Grid snap
 Toggle (G key or toolbar checkbox). Snaps X/Y during drag and property nudge.  
 **Default grid**: 10px.  
-- [ ] Add `GridSnapEnabled` + `GridSize` to Designer state
-- [ ] Snap in `Canvas_PointerMoved` and `AddFloatProp` nudge
-- [ ] Toggle button in toolbar
+- [x] Add `_gridSnapEnabled` + `GridSize` const to Designer state
+- [x] Snap in `Canvas_PointerMoved` and arrow key nudge
+- [x] `ToggleButton` in toolbar; G key toggles
 
 ### Multi-select + group move
 Shift+click adds to selection. Drag moves all. Delete removes all.  
@@ -96,17 +96,19 @@ Shift+click adds to selection. Drag moves all. Delete removes all.
 
 ### Calculated channels
 Virtual data sources defined as simple expressions (`"Rpm / 1000"`, `"OilTemp - Iat"`).  
-Parsed at load into compiled lambdas; appear in DataSource dropdowns like real channels.  
-- [ ] Add `CalculatedChannel` class to config (`Name`, `Expression`)
-- [ ] Extend `DataSourceMapper` to evaluate expressions
-- [ ] Surface channel definitions in Designer and `gauges.json`
+Evaluated each frame via `ExpressionEvaluator`; appear in DataSource dropdowns.  
+- [x] Add `CalculatedChannel` class (`Name`, `Expression`) + `CalculatedChannels` list to `CustomGaugeDefinition`
+- [x] `ExpressionEvaluator` — recursive descent (+/-/*/÷/parens/identifiers)
+- [x] Evaluate in `ElementRenderer.Render()`, merged into local value dict
+- [x] Channel names included in Designer DataSource dropdowns
+- [x] Add/remove/edit channels in Canvas Properties panel
 
 ### Conditional element visibility
-`GaugeElement` base gets `VisibilitySource`, `VisibleAbove`, `VisibleBelow`.  
+`GaugeElement` base gets `UseVisibility`, `VisibilitySource`, `VisibleAbove`, `VisibleBelow`.  
 Element skips draw if condition fails.  
-- [ ] Add props to `GaugeElement` base
-- [ ] Skip `DrawElement` when condition not met
-- [ ] Add props to Designer property panel
+- [x] Add props to `GaugeElement` base
+- [x] Skip `DrawElement` when `value < VisibleAbove || value > VisibleBelow`
+- [x] Add props to Designer property panel (common section)
 
 ---
 
@@ -123,8 +125,8 @@ Element skips draw if condition fails.
 | 8 | Undo/Redo | M | High | [x] |
 | 9 | PeakMarkerElement | M | Med | [x] |
 | 10 | TextElement box | S | Med | [x] |
-| 12 | Grid snap | M | Med | [ ] |
-| 13 | Calculated channels | L | Med | [ ] |
-| 14 | Conditional visibility | M | Med | [ ] |
+| 12 | Grid snap | M | Med | [x] |
+| 13 | Calculated channels | L | Med | [x] |
+| 14 | Conditional visibility | M | Med | [x] |
 | 15 | ArcElement anti-clockwise | XS | Low | [ ] |
 | 16 | Multi-select + group move | L | Med | [ ] |

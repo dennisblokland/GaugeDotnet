@@ -80,8 +80,13 @@ Drag-and-drop gauge designer → JSON definition → runtime rendering on device
 - `BackgroundImage` — path drawn behind all elements
 - `BackgroundImageMode` — `Stretch` (default) / `Fill` / `Fit` / `Center` / `Tile`
 - `BackgroundImageOpacity` — byte 0–255
+- `CalculatedChannels` — list of `CalculatedChannel` (`Name`, `Expression`); evaluated each frame by `ExpressionEvaluator` before drawing; names appear in all DataSource dropdowns
 
-All `GaugeElement` subclasses have `Opacity` (byte, 0–255). The renderer wraps `DrawElement` in `canvas.SaveLayer` when `Opacity < 255`, compositing the whole element at that alpha. `ArcElement` and `LinearBarElement` have `UseConditionalColor` + `WarnThreshold`/`WarnColor`/`DangerThreshold`/`DangerColor` for threshold-based color switching.
+All `GaugeElement` subclasses have:
+- `Opacity` (byte, 0–255) — renderer wraps `DrawElement` in `canvas.SaveLayer` when `< 255`
+- `UseVisibility` / `VisibilitySource` / `VisibleAbove` / `VisibleBelow` — element is skipped when the named source value is outside `[VisibleAbove, VisibleBelow]`
+
+`ArcElement` and `LinearBarElement` have `UseConditionalColor` + `WarnThreshold`/`WarnColor`/`DangerThreshold`/`DangerColor` for threshold-based color switching.
 
 ### Key Files
 
@@ -118,8 +123,9 @@ When using `ImagePath` on a `NeedleElement`, the image is rotated around the ele
 | `Ctrl+Z` | Undo (snapshots: add, delete, duplicate, move, drag start) |
 | `Ctrl+Y` | Redo |
 | `Delete` | Delete selected element |
-| `Arrow keys` | Move selected element ±1 px |
-| `Shift + Arrow keys` | Move selected element ±10 px |
+| `Arrow keys` | Move selected element ±1 px (snapped if grid snap on) |
+| `Shift + Arrow keys` | Move selected element ±10 px (snapped if grid snap on) |
+| `G` | Toggle grid snap (10 px grid) |
 
 ## Tests
 

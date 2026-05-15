@@ -29,6 +29,8 @@
         <Button x:Name="AddLabelValueBtn" Content="LabelVal" Padding="10,4"/>
         <Button x:Name="AddPeakBtn" Content="Peak" Padding="10,4"/>
         <Separator Margin="8,0"/>
+        <ToggleButton x:Name="GridSnapBtn" Content="Grid Snap" Padding="10,4"/>
+        <Separator Margin="8,0"/>
         <Button x:Name="UndoBtn" Content="Undo" Padding="10,4" IsEnabled="False"/>
         <Button x:Name="RedoBtn" Content="Redo" Padding="10,4" IsEnabled="False"/>
         <Separator Margin="8,0"/>

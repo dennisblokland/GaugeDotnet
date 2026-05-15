@@ -51,11 +51,39 @@ public static class ElementRenderer
 			}
 		}
 
+		// Merge calculated channels into local copies so the caller's dicts are not mutated
+		Dictionary<string, float> allValues = values;
+		Dictionary<string, float>? allTargetValues = targetValues;
+		if (definition.CalculatedChannels.Count > 0)
+		{
+			allValues = new Dictionary<string, float>(values, System.StringComparer.OrdinalIgnoreCase);
+			if (targetValues != null)
+				allTargetValues = new Dictionary<string, float>(targetValues, System.StringComparer.OrdinalIgnoreCase);
+			foreach (CalculatedChannel ch in definition.CalculatedChannels)
+			{
+				if (string.IsNullOrEmpty(ch.Name) || string.IsNullOrEmpty(ch.Expression)) continue;
+				try
+				{
+					float result = ExpressionEvaluator.Evaluate(ch.Expression, allValues);
+					allValues[ch.Name] = result;
+					if (allTargetValues != null) allTargetValues[ch.Name] = result;
+				}
+				catch { }
+			}
+		}
+
 		foreach (GaugeElement element in definition.Elements)
 		{
-			bool useTarget = targetValues is not null
+			// Visibility check
+			if (element.UseVisibility && !string.IsNullOrEmpty(element.VisibilitySource))
+			{
+				allValues.TryGetValue(element.VisibilitySource, out float visVal);
+				if (visVal < element.VisibleAbove || visVal > element.VisibleBelow) continue;
+			}
+
+			bool useTarget = allTargetValues is not null
 				&& (element is ValueDisplayElement or TextElement or WarningIndicatorElement);
-			Dictionary<string, float> source = useTarget ? targetValues! : values;
+			Dictionary<string, float> source = useTarget ? allTargetValues! : allValues;
 
 			float value = 0f;
 			if (!string.IsNullOrEmpty(element.DataSource) &&

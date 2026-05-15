@@ -11,6 +11,9 @@ Real-time automotive gauge display for the [RG35XX](https://anbernic.com) handhe
 - Multiple built-in gauge styles: circular, sweep, needle, bar, digital, histogram, min/max, grid
 - **Custom gauge designer** — drag-and-drop Avalonia desktop app that exports JSON definitions for the device
 - 15 custom element types: arcs, zone arcs, needles (with image support), text, value displays, label+value boxes, tick rings, bars, warning indicators, images, mini graphs, peak markers, and more
+- **Calculated channels** — define virtual data sources as math expressions (`Rpm / 1000`, `OilTemp - Iat`) evaluated each frame
+- **Conditional element visibility** — show/hide elements based on a data source value range
+- **Grid snap** in designer (G key toggle, 10 px grid)
 - Smooth value interpolation (lerp) for fluid needle/arc/bar animation
 - Simulated device mode for desktop development (`SimulatedMeDevice` in DEBUG builds)
 
