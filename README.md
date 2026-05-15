@@ -13,7 +13,8 @@ Real-time automotive gauge display for the [RG35XX](https://anbernic.com) handhe
 - 15 custom element types: arcs, zone arcs, needles (with image support), text, value displays, label+value boxes, tick rings, bars, warning indicators, images, mini graphs, peak markers, and more
 - **Calculated channels** — define virtual data sources as math expressions (`Rpm / 1000`, `OilTemp - Iat`) evaluated each frame
 - **Conditional element visibility** — show/hide elements based on a data source value range
-- **Grid snap** in designer (G key toggle, 10 px grid)
+- **Grid snap** in designer (G key toggle, 10 px grid); **multi-select** with Shift+click for group drag/delete
+- Arc elements support anti-clockwise fill direction
 - Smooth value interpolation (lerp) for fluid needle/arc/bar animation
 - Simulated device mode for desktop development (`SimulatedMeDevice` in DEBUG builds)
 

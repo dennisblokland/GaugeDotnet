@@ -53,9 +53,9 @@ Threshold-based color switching. Arc/bar turns yellow/red when value exceeds thr
 
 ### `ArcElement` anti-clockwise flag
 **Properties**: `AntiClockwise` (bool). Negates sweep direction.  
-- [ ] Add `AntiClockwise` to `ArcElement`
-- [ ] Flip sweep sign in `DrawArc`
-- [ ] Add checkbox in Designer
+- [x] Add `AntiClockwise` to `ArcElement`
+- [x] Flip sweep sign in `DrawArc`
+- [x] Add checkbox in Designer
 
 ### `TextElement` background box
 **Properties**: `ShowBox` (bool), `BoxColor` (hex), `BoxPadding` (float), `BoxCornerRadius` (float).  
@@ -87,8 +87,10 @@ Toggle (G key or toolbar checkbox). Snaps X/Y during drag and property nudge.
 
 ### Multi-select + group move
 Shift+click adds to selection. Drag moves all. Delete removes all.  
-- [ ] Add `_selection: HashSet<GaugeElement>` to ViewModel
-- [ ] Update hit-test, drag, delete, property panel logic
+- [x] Add `_multiSelection: HashSet<GaugeElement>` to MainWindow
+- [x] Shift+click toggles element in multi-selection; drag moves all selected
+- [x] Delete removes all multi-selected elements
+- [x] Secondary highlight (amber dashes) for multi-selected elements
 
 ---
 
@@ -128,5 +130,5 @@ Element skips draw if condition fails.
 | 12 | Grid snap | M | Med | [x] |
 | 13 | Calculated channels | L | Med | [x] |
 | 14 | Conditional visibility | M | Med | [x] |
-| 15 | ArcElement anti-clockwise | XS | Low | [ ] |
-| 16 | Multi-select + group move | L | Med | [ ] |
+| 15 | ArcElement anti-clockwise | XS | Low | [x] |
+| 16 | Multi-select + group move | L | Med | [x] |

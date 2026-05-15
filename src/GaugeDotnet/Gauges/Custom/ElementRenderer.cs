@@ -132,6 +132,8 @@ public static class ElementRenderer
 			arc.X - arc.Radius, arc.Y - arc.Radius,
 			arc.X + arc.Radius, arc.Y + arc.Radius);
 
+		float sign = arc.AntiClockwise ? -1f : 1f;
+
 		if (arc.ShowTrack)
 		{
 			_paint.Style = SKPaintStyle.Stroke;
@@ -139,7 +141,7 @@ public static class ElementRenderer
 			_paint.StrokeCap = SKStrokeCap.Butt;
 			_paint.Color = SKColor.Parse(arc.TrackColor);
 			_paint.MaskFilter = null;
-			canvas.DrawArc(rect, arc.StartAngleDeg, arc.SweepAngleDeg, false, _paint);
+			canvas.DrawArc(rect, arc.StartAngleDeg, arc.SweepAngleDeg * sign, false, _paint);
 		}
 
 		float fillSweep = arc.SweepAngleDeg;
@@ -149,6 +151,7 @@ public static class ElementRenderer
 			float t = range > 0 ? Math.Clamp((value - arc.MinValue) / range, 0f, 1f) : 0f;
 			fillSweep = arc.SweepAngleDeg * t;
 		}
+		fillSweep *= sign;
 
 		string fillColor = arc.Color;
 		if (arc.UseConditionalColor && !string.IsNullOrEmpty(arc.DataSource))
@@ -164,7 +167,7 @@ public static class ElementRenderer
 		_paint.MaskFilter = null;
 		canvas.DrawArc(rect, arc.StartAngleDeg, fillSweep, false, _paint);
 
-		if (fillSweep > 0)
+		if (fillSweep != 0)
 		{
 			_paint.StrokeWidth = arc.StrokeWidth + 12;
 			_paint.Color = SKColor.Parse(fillColor).WithAlpha(60);

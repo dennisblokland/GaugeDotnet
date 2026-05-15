@@ -86,7 +86,7 @@ All `GaugeElement` subclasses have:
 - `Opacity` (byte, 0–255) — renderer wraps `DrawElement` in `canvas.SaveLayer` when `< 255`
 - `UseVisibility` / `VisibilitySource` / `VisibleAbove` / `VisibleBelow` — element is skipped when the named source value is outside `[VisibleAbove, VisibleBelow]`
 
-`ArcElement` and `LinearBarElement` have `UseConditionalColor` + `WarnThreshold`/`WarnColor`/`DangerThreshold`/`DangerColor` for threshold-based color switching.
+`ArcElement` and `LinearBarElement` have `UseConditionalColor` + `WarnThreshold`/`WarnColor`/`DangerThreshold`/`DangerColor` for threshold-based color switching. `ArcElement` also has `AntiClockwise` (bool) to reverse sweep direction.
 
 ### Key Files
 
@@ -126,6 +126,7 @@ When using `ImagePath` on a `NeedleElement`, the image is rotated around the ele
 | `Arrow keys` | Move selected element ±1 px (snapped if grid snap on) |
 | `Shift + Arrow keys` | Move selected element ±10 px (snapped if grid snap on) |
 | `G` | Toggle grid snap (10 px grid) |
+| `Shift+click` | Add/remove element from multi-selection (amber outline); drag/delete operates on all |
 
 ## Tests
 

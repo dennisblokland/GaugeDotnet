@@ -79,6 +79,7 @@ public class ArcElement : GaugeElement
 	public string TrackColor { get; set; } = "#0A1A1A";
 	public bool ShowTrack { get; set; } = true;
 	public bool IsDynamic { get; set; } = true;
+	public bool AntiClockwise { get; set; } = false;
 	public bool UseConditionalColor { get; set; } = false;
 	public float WarnThreshold { get; set; } = 80f;
 	public string WarnColor { get; set; } = "#FFCC00";

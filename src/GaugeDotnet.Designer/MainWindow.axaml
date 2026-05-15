@@ -10,36 +10,44 @@
 
   <DockPanel>
     <!-- Toolbar -->
-    <Border DockPanel.Dock="Top" BorderBrush="#333333" BorderThickness="0,0,0,1" Padding="8,6">
-      <StackPanel Orientation="Horizontal" Spacing="6">
-        <TextBlock Text="Add:" VerticalAlignment="Center" FontWeight="SemiBold" Margin="0,0,4,0"/>
-        <Button x:Name="AddArcBtn" Content="Arc" Padding="10,4"/>
-        <Button x:Name="AddNeedleBtn" Content="Needle" Padding="10,4"/>
-        <Button x:Name="AddTicksBtn" Content="Ticks" Padding="10,4"/>
-        <Button x:Name="AddTextBtn" Content="Text" Padding="10,4"/>
-        <Button x:Name="AddValueBtn" Content="Value" Padding="10,4"/>
-        <Button x:Name="AddCircleBtn" Content="Circle" Padding="10,4"/>
-        <Button x:Name="AddRectBtn" Content="Rect" Padding="10,4"/>
-        <Button x:Name="AddLineBtn" Content="Line" Padding="10,4"/>
-        <Button x:Name="AddBarBtn" Content="Bar" Padding="10,4"/>
-        <Button x:Name="AddWarningBtn" Content="Warning" Padding="10,4"/>
-        <Button x:Name="AddImageBtn" Content="Image" Padding="10,4"/>
-        <Button x:Name="AddZoneArcBtn" Content="ZoneArc" Padding="10,4"/>
-        <Button x:Name="AddGraphBtn" Content="Graph" Padding="10,4"/>
-        <Button x:Name="AddLabelValueBtn" Content="LabelVal" Padding="10,4"/>
-        <Button x:Name="AddPeakBtn" Content="Peak" Padding="10,4"/>
-        <Separator Margin="8,0"/>
-        <ToggleButton x:Name="GridSnapBtn" Content="Grid Snap" Padding="10,4"/>
-        <Separator Margin="8,0"/>
-        <Button x:Name="UndoBtn" Content="Undo" Padding="10,4" IsEnabled="False"/>
-        <Button x:Name="RedoBtn" Content="Redo" Padding="10,4" IsEnabled="False"/>
-        <Separator Margin="8,0"/>
-        <Button x:Name="DuplicateBtn" Content="Duplicate" Padding="10,4" IsEnabled="False"/>
-        <Button x:Name="DeleteBtn" Content="Delete" Padding="10,4" IsEnabled="False"/>
-        <Separator Margin="8,0"/>
-        <Button x:Name="NewBtn" Content="New" Padding="10,4"/>
-        <Button x:Name="SaveBtn" Content="Save" Padding="10,4"/>
-        <Button x:Name="LoadBtn" Content="Load" Padding="10,4"/>
+    <Border DockPanel.Dock="Top" BorderBrush="#333333" BorderThickness="0,0,0,1" Padding="8,4">
+      <StackPanel Spacing="4">
+        <!-- Row 1: File + Edit actions -->
+        <StackPanel Orientation="Horizontal" Spacing="6">
+          <Button x:Name="NewBtn" Content="New" Padding="10,4"/>
+          <Button x:Name="SaveBtn" Content="Save" Padding="10,4"/>
+          <Button x:Name="LoadBtn" Content="Load" Padding="10,4"/>
+          <Separator Margin="6,0"/>
+          <Button x:Name="UndoBtn" Content="Undo" Padding="10,4" IsEnabled="False"/>
+          <Button x:Name="RedoBtn" Content="Redo" Padding="10,4" IsEnabled="False"/>
+          <Separator Margin="6,0"/>
+          <ToggleButton x:Name="GridSnapBtn" Content="Grid Snap (G)" Padding="10,4"/>
+          <Separator Margin="6,0"/>
+          <Button x:Name="DuplicateBtn" Content="Duplicate" Padding="10,4" IsEnabled="False"/>
+          <Button x:Name="DeleteBtn" Content="Delete" Padding="10,4" IsEnabled="False"/>
+          <Separator Margin="6,0"/>
+          <Button x:Name="MoveUpBtn" Content="▲" Padding="8,4" ToolTip.Tip="Move Up"/>
+          <Button x:Name="MoveDownBtn" Content="▼" Padding="8,4" ToolTip.Tip="Move Down"/>
+        </StackPanel>
+        <!-- Row 2: Add elements -->
+        <StackPanel Orientation="Horizontal" Spacing="6">
+          <TextBlock Text="Add:" VerticalAlignment="Center" FontWeight="SemiBold" Margin="0,0,4,0"/>
+          <Button x:Name="AddArcBtn" Content="Arc" Padding="10,4"/>
+          <Button x:Name="AddNeedleBtn" Content="Needle" Padding="10,4"/>
+          <Button x:Name="AddTicksBtn" Content="Ticks" Padding="10,4"/>
+          <Button x:Name="AddTextBtn" Content="Text" Padding="10,4"/>
+          <Button x:Name="AddValueBtn" Content="Value" Padding="10,4"/>
+          <Button x:Name="AddCircleBtn" Content="Circle" Padding="10,4"/>
+          <Button x:Name="AddRectBtn" Content="Rect" Padding="10,4"/>
+          <Button x:Name="AddLineBtn" Content="Line" Padding="10,4"/>
+          <Button x:Name="AddBarBtn" Content="Bar" Padding="10,4"/>
+          <Button x:Name="AddWarningBtn" Content="Warning" Padding="10,4"/>
+          <Button x:Name="AddImageBtn" Content="Image" Padding="10,4"/>
+          <Button x:Name="AddZoneArcBtn" Content="ZoneArc" Padding="10,4"/>
+          <Button x:Name="AddGraphBtn" Content="Graph" Padding="10,4"/>
+          <Button x:Name="AddLabelValueBtn" Content="LabelVal" Padding="10,4"/>
+          <Button x:Name="AddPeakBtn" Content="Peak" Padding="10,4"/>
+        </StackPanel>
       </StackPanel>
     </Border>
 
@@ -58,10 +66,6 @@
         <StackPanel Spacing="4">
           <TextBlock Text="Elements" FontWeight="Bold" FontSize="14"/>
           <ListBox x:Name="ElementList" MaxHeight="180" SelectionMode="Single"/>
-          <StackPanel Orientation="Horizontal" Spacing="4">
-            <Button x:Name="MoveUpBtn" Content="Move Up" Padding="8,4"/>
-            <Button x:Name="MoveDownBtn" Content="Move Down" Padding="8,4"/>
-          </StackPanel>
         </StackPanel>
 
         <!-- Properties (scrollable) -->

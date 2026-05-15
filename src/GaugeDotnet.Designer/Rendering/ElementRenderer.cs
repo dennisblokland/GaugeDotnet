@@ -17,14 +17,19 @@ public static class ElementRenderer
 		SKCanvas canvas,
 		CustomGaugeDefinition definition,
 		Dictionary<string, float> testValues,
-		GaugeElement? selected)
+		GaugeElement? selected,
+		IReadOnlySet<GaugeElement>? multiSelected = null)
 	{
 		CoreRenderer.Render(canvas, definition, testValues);
 
-		if (selected != null)
+		if (multiSelected != null)
 		{
-			DrawSelectionHighlight(canvas, selected);
+			foreach (GaugeElement el in multiSelected)
+				DrawSelectionHighlight(canvas, el, secondary: true);
 		}
+
+		if (selected != null)
+			DrawSelectionHighlight(canvas, selected, secondary: false);
 	}
 
 	// --- Hit testing ---
@@ -143,31 +148,38 @@ public static class ElementRenderer
 
 	// --- Selection highlight ---
 
-	private static void DrawSelectionHighlight(SKCanvas canvas, GaugeElement element)
+	private static void DrawSelectionHighlight(SKCanvas canvas, GaugeElement element, bool secondary = false)
 	{
 		SKRect bounds = GetBounds(element);
 		bounds.Inflate(6, 6);
 
+		SKColor lineColor = secondary
+			? new SKColor(255, 200, 0, 160)
+			: new SKColor(255, 255, 255, 180);
+
 		using SKPaint dashPaint = new()
 		{
 			Style = SKPaintStyle.Stroke,
-			Color = new SKColor(255, 255, 255, 180),
+			Color = lineColor,
 			StrokeWidth = 1.5f,
 			PathEffect = SKPathEffect.CreateDash([6f, 4f], 0),
 			IsAntialias = true,
 		};
 		canvas.DrawRect(bounds, dashPaint);
 
-		float hs = 5f;
-		using SKPaint handlePaint = new()
+		if (!secondary)
 		{
-			Style = SKPaintStyle.Fill,
-			Color = SKColors.White,
-		};
-		canvas.DrawRect(bounds.Left - hs / 2, bounds.Top - hs / 2, hs, hs, handlePaint);
-		canvas.DrawRect(bounds.Right - hs / 2, bounds.Top - hs / 2, hs, hs, handlePaint);
-		canvas.DrawRect(bounds.Left - hs / 2, bounds.Bottom - hs / 2, hs, hs, handlePaint);
-		canvas.DrawRect(bounds.Right - hs / 2, bounds.Bottom - hs / 2, hs, hs, handlePaint);
+			float hs = 5f;
+			using SKPaint handlePaint = new()
+			{
+				Style = SKPaintStyle.Fill,
+				Color = SKColors.White,
+			};
+			canvas.DrawRect(bounds.Left - hs / 2, bounds.Top - hs / 2, hs, hs, handlePaint);
+			canvas.DrawRect(bounds.Right - hs / 2, bounds.Top - hs / 2, hs, hs, handlePaint);
+			canvas.DrawRect(bounds.Left - hs / 2, bounds.Bottom - hs / 2, hs, hs, handlePaint);
+			canvas.DrawRect(bounds.Right - hs / 2, bounds.Bottom - hs / 2, hs, hs, handlePaint);
+		}
 	}
 
 	// --- Helpers ---

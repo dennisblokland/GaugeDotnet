@@ -100,6 +100,13 @@ public class GaugeDesignerViewModel
         SelectedElement = null;
     }
 
+    public void DeleteElements(IEnumerable<GaugeElement> elements)
+    {
+        foreach (GaugeElement e in elements.ToList())
+            Definition.Elements.Remove(e);
+        SelectedElement = null;
+    }
+
     public GaugeElement? Duplicate()
     {
         if (SelectedElement == null) return null;

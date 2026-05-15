@@ -40,6 +40,10 @@ public partial class MainWindow : Window
 	private bool _gridSnapEnabled;
 	private const float GridSize = 10f;
 
+	// Multi-select
+	private readonly HashSet<GaugeElement> _multiSelection = new();
+	private List<(GaugeElement Element, float StartX, float StartY)> _dragOffsets = new();
+
 	private bool _suppressPropertyEvents;
 	private bool _suppressListEvents;
 
@@ -91,14 +95,14 @@ public partial class MainWindow : Window
 			int idx = ElementList.SelectedIndex;
 			if (idx == 0)
 			{
-				SelectElement(null);
+				SelectElement(null, clearMulti: true);
 				return;
 			}
 			int elIdx = idx - 1;
 			GaugeElement? element = elIdx >= 0 && elIdx < _vm.Definition.Elements.Count
 				? _vm.Definition.Elements[elIdx]
 				: null;
-			SelectElement(element);
+			SelectElement(element, clearMulti: true);
 		};
 
 		MoveUpBtn.Click += (_, _) => MoveElement(-1);
@@ -166,7 +170,15 @@ public partial class MainWindow : Window
 	private void DeleteElement()
 	{
 		_vm.Snapshot();
-		_vm.DeleteSelected();
+		if (_multiSelection.Count > 0)
+		{
+			_vm.DeleteElements(_multiSelection);
+			_multiSelection.Clear();
+		}
+		else
+		{
+			_vm.DeleteSelected();
+		}
 		RefreshElementList();
 		UpdateTestValueSliders();
 		ClearProperties();
@@ -196,6 +208,7 @@ public partial class MainWindow : Window
 
 	private void PerformUndo()
 	{
+		_multiSelection.Clear();
 		_vm.Undo();
 		GaugeElement? restored = _vm.SelectedElement;
 		RefreshElementList();
@@ -207,6 +220,7 @@ public partial class MainWindow : Window
 
 	private void PerformRedo()
 	{
+		_multiSelection.Clear();
 		_vm.Redo();
 		GaugeElement? restored = _vm.SelectedElement;
 		RefreshElementList();
@@ -224,11 +238,12 @@ public partial class MainWindow : Window
 
 	private float Snap(float v) => _gridSnapEnabled ? MathF.Round(v / GridSize) * GridSize : v;
 
-	private void SelectElement(GaugeElement? element)
+	private void SelectElement(GaugeElement? element, bool clearMulti = false)
 	{
+		if (clearMulti) _multiSelection.Clear();
 		_vm.SelectElement(element);
-		DeleteBtn.IsEnabled = element != null;
-		DuplicateBtn.IsEnabled = element != null;
+		DeleteBtn.IsEnabled = element != null || _multiSelection.Count > 0;
+		DuplicateBtn.IsEnabled = element != null && _multiSelection.Count == 0;
 
 		_suppressListEvents = true;
 		ElementList.SelectedIndex = element != null ? _vm.Definition.Elements.IndexOf(element) + 1 : 0;
@@ -276,15 +291,30 @@ public partial class MainWindow : Window
 				}
 			}
 
-			SelectElement(hit);
+			bool shift = e.KeyModifiers.HasFlag(KeyModifiers.Shift);
+			if (shift && hit != null)
+			{
+				// Toggle element in multi-selection; keep primary selected element as-is
+				if (!_multiSelection.Add(hit))
+					_multiSelection.Remove(hit);
+				SelectElement(_vm.SelectedElement); // refresh highlight
+			}
+			else
+			{
+				_multiSelection.Clear();
+				SelectElement(hit);
+			}
 
 			if (hit != null)
 			{
 				_vm.Snapshot();
 				_isDragging = true;
 				_dragStartMouse = new Point(px, py);
-				_dragStartX = hit.X;
-				_dragStartY = hit.Y;
+				// Record start positions for all elements that will move
+				IEnumerable<GaugeElement> toMove = _multiSelection.Count > 0
+					? _multiSelection.Append(hit).Distinct()
+					: new[] { hit };
+				_dragOffsets = toMove.Select(el => (el, el.X, el.Y)).ToList();
 				UpdateUndoRedoButtons();
 				e.Handled = true;
 			}
@@ -293,13 +323,16 @@ public partial class MainWindow : Window
 
 	private void Canvas_PointerMoved(object? sender, PointerEventArgs e)
 	{
-		if (!_isDragging || _vm.SelectedElement == null) return;
+		if (!_isDragging || _dragOffsets.Count == 0) return;
 
 		PointerPoint point = e.GetCurrentPoint(CanvasImage);
 		float dx = (float)point.Position.X - (float)_dragStartMouse.X;
 		float dy = (float)point.Position.Y - (float)_dragStartMouse.Y;
-		_vm.SelectedElement.X = Snap(_dragStartX + dx);
-		_vm.SelectedElement.Y = Snap(_dragStartY + dy);
+		foreach ((GaugeElement element, float startX, float startY) in _dragOffsets)
+		{
+			element.X = Snap(startX + dx);
+			element.Y = Snap(startY + dy);
+		}
 		Redraw();
 	}
 
@@ -382,6 +415,19 @@ public partial class MainWindow : Window
 		_suppressPropertyEvents = true;
 		PropertiesPanel.Children.Clear();
 
+		if (_multiSelection.Count > 0)
+		{
+			int total = _multiSelection.Count + (_multiSelection.Contains(element) ? 0 : 1);
+			PropertiesPanel.Children.Add(new TextBlock
+			{
+				Text = $"{total} elements selected — drag to move all, Delete to remove all",
+				Foreground = Avalonia.Media.Brushes.Yellow,
+				FontStyle = Avalonia.Media.FontStyle.Italic,
+				TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+				Margin = new Thickness(0, 0, 0, 6),
+			});
+		}
+
 		AddHeader($"{element.TypeLabel} Properties");
 		AddTextProp("Name", element.Name, v => { element.Name = v; RefreshElementList(); });
 		AddFloatProp("X", element.X, v => element.X = v, 0, CanvasWidth);
@@ -428,6 +474,7 @@ public partial class MainWindow : Window
 				AddColorProp("Color", arc.Color, v => arc.Color = v);
 				AddColorProp("Track Color", arc.TrackColor, v => arc.TrackColor = v);
 				AddBoolProp("Show Track", arc.ShowTrack, v => arc.ShowTrack = v);
+				AddBoolProp("Anti-clockwise", arc.AntiClockwise, v => arc.AntiClockwise = v);
 				AddBoolProp("Dynamic (value-driven)", arc.IsDynamic, v => arc.IsDynamic = v);
 				AddSeparator();
 				AddBoolProp("Conditional Color", arc.UseConditionalColor, v => arc.UseConditionalColor = v);
@@ -885,7 +932,8 @@ public partial class MainWindow : Window
 		{
 			using SKBitmap bitmap = new(CanvasWidth, CanvasHeight, SKColorType.Rgba8888, SKAlphaType.Premul);
 			using SKCanvas canvas = new(bitmap);
-			DesignerRenderer.DrawAll(canvas, _vm.Definition, _testValues, _vm.SelectedElement);
+			DesignerRenderer.DrawAll(canvas, _vm.Definition, _testValues, _vm.SelectedElement,
+				_multiSelection.Count > 0 ? _multiSelection : null);
 
 			using SKImage image = SKImage.FromBitmap(bitmap);
 			using SKData data = image.Encode(SKEncodedImageFormat.Png, 100);
