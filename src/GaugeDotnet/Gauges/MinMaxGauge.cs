@@ -214,12 +214,11 @@ namespace GaugeDotnet.Gauges
             _markerPaint.MaskFilter = _blur;
 
             float dir = pointDown ? 1f : -1f;
-            using SKPathBuilder pathBuilder = new();
-            pathBuilder.MoveTo(x, y + dir * 12f);
-            pathBuilder.LineTo(x - 6f, y);
-            pathBuilder.LineTo(x + 6f, y);
-            pathBuilder.Close();
-            using SKPath path = pathBuilder.Detach();
+            using SKPath path = new();
+            path.MoveTo(x, y + dir * 12f);
+            path.LineTo(x - 6f, y);
+            path.LineTo(x + 6f, y);
+            path.Close();
 
             canvas.DrawPath(path, _markerPaint);
             _markerPaint.MaskFilter = null;

@@ -16,9 +16,7 @@
     <PackageReference Include="SkiaSharp" />
     <PackageReference Include="SkiaSharp.NativeAssets.Linux" /> 
     <PackageReference Include="ppy.SDL2-CS" />
-    <PackageReference Include="VaettirNet.Btleplug"/> 
-    <PackageReference Include="Tmds.DBus"/>
-    <PackageReference Include="Tmds.DBus.Protocol"/>
+    <PackageReference Include="VaettirNet.Btleplug"/>
   </ItemGroup>
 <ItemGroup>
   <None Include="fonts\**\*.ttf">

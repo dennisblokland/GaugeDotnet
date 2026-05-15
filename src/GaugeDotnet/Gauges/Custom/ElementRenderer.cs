@@ -409,9 +409,8 @@ public static class ElementRenderer
 			canvas.Save();
 			if (bar.CornerRadius > 0)
 			{
-				using SKPathBuilder clipPathBuilder = new();
-				clipPathBuilder.AddRoundRect(trackRect, bar.CornerRadius, bar.CornerRadius);
-				using SKPath clipPath = clipPathBuilder.Detach();
+				using SKPath clipPath = new();
+				clipPath.AddRoundRect(trackRect, bar.CornerRadius, bar.CornerRadius);
 				canvas.ClipPath(clipPath);
 			}
 
