@@ -73,11 +73,14 @@ Drag-and-drop gauge designer → JSON definition → runtime rendering on device
 | `WarningIndicatorElement` | `warning` | Yes | Threshold-triggered color change with label |
 | `ImageElement` | `image` | No | Custom image (backgrounds, logos, overlays) with opacity + rotation |
 | `GraphElement` | `graph` | Yes | Rolling time-series plot; buffer keyed by `Id` in `ElementRenderer._graphBuffers` |
+| `LabelValueElement` | `labelvalue` | Yes | Compound label + large value display; optional background box; X/Y = center |
 
 `CustomGaugeDefinition` also supports:
 - `BackgroundImage` — path drawn behind all elements
 - `BackgroundImageMode` — `Stretch` (default) / `Fill` / `Fit` / `Center` / `Tile`
 - `BackgroundImageOpacity` — byte 0–255
+
+All `GaugeElement` subclasses have `Opacity` (byte, 0–255). The renderer wraps `DrawElement` in `canvas.SaveLayer` when `Opacity < 255`, compositing the whole element at that alpha. `ArcElement` and `LinearBarElement` have `UseConditionalColor` + `WarnThreshold`/`WarnColor`/`DangerThreshold`/`DangerColor` for threshold-based color switching.
 
 ### Key Files
 

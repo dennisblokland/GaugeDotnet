@@ -66,6 +66,7 @@ public partial class MainWindow : Window
 		AddImageBtn.Click += (_, _) => AddElement(new ImageElement());
 		AddZoneArcBtn.Click += (_, _) => AddElement(new ZoneArcElement());
 		AddGraphBtn.Click += (_, _) => AddElement(new GraphElement());
+		AddLabelValueBtn.Click += (_, _) => AddElement(new LabelValueElement());
 
 		DuplicateBtn.Click += (_, _) => DuplicateElement();
 		DeleteBtn.Click += (_, _) => DeleteElement();
@@ -278,7 +279,8 @@ public partial class MainWindow : Window
 		AddFloatProp("Y", element.Y, v => element.Y = v, 0, CanvasHeight);
 
 		bool supportsData = element is ArcElement or NeedleElement or ValueDisplayElement
-			or LinearBarElement or WarningIndicatorElement or ZoneArcElement or GraphElement;
+			or LinearBarElement or WarningIndicatorElement or ZoneArcElement or GraphElement
+			or LabelValueElement;
 		if (supportsData)
 		{
 			AddDataSourceProp(element.DataSource, v =>
@@ -290,13 +292,14 @@ public partial class MainWindow : Window
 
 		bool hasRange = element is ArcElement or NeedleElement or ValueDisplayElement
 			or TickRingElement or LinearBarElement or WarningIndicatorElement
-			or ZoneArcElement or GraphElement;
+			or ZoneArcElement or GraphElement or LabelValueElement;
 		if (hasRange)
 		{
 			AddFloatProp("Min Value", element.MinValue, v => element.MinValue = v, -10000, 100000);
 			AddFloatProp("Max Value", element.MaxValue, v => element.MaxValue = v, -10000, 100000);
 		}
 
+		AddByteProp("Opacity", element.Opacity, v => element.Opacity = v);
 		AddSeparator();
 
 		switch (element)
@@ -310,6 +313,12 @@ public partial class MainWindow : Window
 				AddColorProp("Track Color", arc.TrackColor, v => arc.TrackColor = v);
 				AddBoolProp("Show Track", arc.ShowTrack, v => arc.ShowTrack = v);
 				AddBoolProp("Dynamic (value-driven)", arc.IsDynamic, v => arc.IsDynamic = v);
+				AddSeparator();
+				AddBoolProp("Conditional Color", arc.UseConditionalColor, v => arc.UseConditionalColor = v);
+				AddFloatProp("Warn Threshold", arc.WarnThreshold, v => arc.WarnThreshold = v, -10000, 100000);
+				AddColorProp("Warn Color", arc.WarnColor, v => arc.WarnColor = v);
+				AddFloatProp("Danger Threshold", arc.DangerThreshold, v => arc.DangerThreshold = v, -10000, 100000);
+				AddColorProp("Danger Color", arc.DangerColor, v => arc.DangerColor = v);
 				break;
 
 			case NeedleElement needle:
@@ -395,6 +404,12 @@ public partial class MainWindow : Window
 				AddColorProp("Border Color", bar.BorderColor, v => bar.BorderColor = v);
 				AddFloatProp("Border Width", bar.BorderWidth, v => bar.BorderWidth = v, 0, 5, 0.5f);
 				AddFloatProp("Corner Radius", bar.CornerRadius, v => bar.CornerRadius = v, 0, 20);
+				AddSeparator();
+				AddBoolProp("Conditional Color", bar.UseConditionalColor, v => bar.UseConditionalColor = v);
+				AddFloatProp("Warn Threshold", bar.WarnThreshold, v => bar.WarnThreshold = v, -10000, 100000);
+				AddColorProp("Warn Color", bar.WarnColor, v => bar.WarnColor = v);
+				AddFloatProp("Danger Threshold", bar.DangerThreshold, v => bar.DangerThreshold = v, -10000, 100000);
+				AddColorProp("Danger Color", bar.DangerColor, v => bar.DangerColor = v);
 				break;
 
 			case WarningIndicatorElement warn:
@@ -413,7 +428,6 @@ public partial class MainWindow : Window
 				AddImagePathProp("Image Path", img.ImagePath, v => img.ImagePath = v);
 				AddFloatProp("Width", img.Width, v => img.Width = v, 1, 1280);
 				AddFloatProp("Height", img.Height, v => img.Height = v, 1, 960);
-				AddIntProp("Opacity", img.Opacity, v => img.Opacity = (byte)v, 0, 255);
 				AddFloatProp("Rotation", img.Rotation, v => img.Rotation = v, -360, 360);
 				break;
 
@@ -446,6 +460,24 @@ public partial class MainWindow : Window
 				AddColorProp("Fill Color", graph.FillColor, v => graph.FillColor = v);
 				AddByteProp("Fill Opacity", graph.FillOpacity, v => graph.FillOpacity = v);
 				AddColorProp("Background Color", graph.BackColor, v => graph.BackColor = v);
+				break;
+
+			case LabelValueElement lv:
+				AddTextProp("Label", lv.Label, v => lv.Label = v);
+				AddFloatProp("Label Size", lv.LabelFontSize, v => lv.LabelFontSize = v, 8, 60);
+				AddColorProp("Label Color", lv.LabelColor, v => lv.LabelColor = v);
+				AddFontProp(lv.LabelFont, v => lv.LabelFont = v);
+				AddSeparator();
+				AddFloatProp("Value Size", lv.ValueFontSize, v => lv.ValueFontSize = v, 12, 120);
+				AddColorProp("Value Color", lv.ValueColor, v => lv.ValueColor = v);
+				AddFontProp(lv.ValueFont, v => lv.ValueFont = v);
+				AddTextProp("Format", lv.ValueFormat, v => lv.ValueFormat = v);
+				AddTextProp("Suffix", lv.ValueSuffix, v => lv.ValueSuffix = v);
+				AddSeparator();
+				AddBoolProp("Show Box", lv.ShowBox, v => lv.ShowBox = v);
+				AddColorProp("Box Color", lv.BoxColor, v => lv.BoxColor = v);
+				AddFloatProp("Box Padding", lv.BoxPadding, v => lv.BoxPadding = v, 0, 40);
+				AddFloatProp("Box Corner Radius", lv.BoxCornerRadius, v => lv.BoxCornerRadius = v, 0, 30);
 				break;
 		}
 

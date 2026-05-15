@@ -119,6 +119,11 @@ public static class ElementRenderer
 			GraphElement graph => new SKRect(
 				graph.X, graph.Y,
 				graph.X + graph.Width, graph.Y + graph.Height),
+			LabelValueElement lv => new SKRect(
+				lv.X - lv.ValueFontSize * 3,
+				lv.Y - (lv.LabelFontSize + 4 + lv.ValueFontSize) / 2 - lv.BoxPadding,
+				lv.X + lv.ValueFontSize * 3,
+				lv.Y + (lv.LabelFontSize + 4 + lv.ValueFontSize) / 2 + lv.BoxPadding),
 			_ => new SKRect(element.X - 20, element.Y - 20, element.X + 20, element.Y + 20),
 		};
 	}

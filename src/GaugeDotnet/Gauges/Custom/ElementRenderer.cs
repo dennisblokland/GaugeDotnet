@@ -68,6 +68,13 @@ public static class ElementRenderer
 
 	public static void DrawElement(SKCanvas canvas, GaugeElement element, float value, string? baseDirectory = null)
 	{
+		bool useLayer = element.Opacity < 255;
+		if (useLayer)
+		{
+			using SKPaint layerPaint = new() { Color = SKColors.White.WithAlpha(element.Opacity) };
+			canvas.SaveLayer(layerPaint);
+		}
+
 		switch (element)
 		{
 			case ArcElement arc: DrawArc(canvas, arc, value); break;
@@ -83,7 +90,10 @@ public static class ElementRenderer
 			case ImageElement img: DrawImage(canvas, img, baseDirectory); break;
 			case ZoneArcElement zone: DrawZoneArc(canvas, zone, value); break;
 			case GraphElement graph: DrawGraph(canvas, graph, value); break;
+			case LabelValueElement lv: DrawLabelValue(canvas, lv, value); break;
 		}
+
+		if (useLayer) canvas.Restore();
 	}
 
 	private static void DrawArc(SKCanvas canvas, ArcElement arc, float value)
@@ -110,17 +120,24 @@ public static class ElementRenderer
 			fillSweep = arc.SweepAngleDeg * t;
 		}
 
+		string fillColor = arc.Color;
+		if (arc.UseConditionalColor && !string.IsNullOrEmpty(arc.DataSource))
+		{
+			if (value >= arc.DangerThreshold) fillColor = arc.DangerColor;
+			else if (value >= arc.WarnThreshold) fillColor = arc.WarnColor;
+		}
+
 		_paint.Style = SKPaintStyle.Stroke;
 		_paint.StrokeWidth = arc.StrokeWidth;
 		_paint.StrokeCap = SKStrokeCap.Butt;
-		_paint.Color = SKColor.Parse(arc.Color);
+		_paint.Color = SKColor.Parse(fillColor);
 		_paint.MaskFilter = null;
 		canvas.DrawArc(rect, arc.StartAngleDeg, fillSweep, false, _paint);
 
 		if (fillSweep > 0)
 		{
 			_paint.StrokeWidth = arc.StrokeWidth + 12;
-			_paint.Color = SKColor.Parse(arc.Color).WithAlpha(60);
+			_paint.Color = SKColor.Parse(fillColor).WithAlpha(60);
 			_paint.MaskFilter = GetBlur(8);
 			canvas.DrawArc(rect, arc.StartAngleDeg, fillSweep, false, _paint);
 		}
@@ -407,6 +424,13 @@ public static class ElementRenderer
 			fillRect = new SKRect(bar.X, bar.Y, bar.X + fillW, bar.Y + bar.Height);
 		}
 
+		string barFillColor = bar.FillColor;
+		if (bar.UseConditionalColor && !string.IsNullOrEmpty(bar.DataSource))
+		{
+			if (value >= bar.DangerThreshold) barFillColor = bar.DangerColor;
+			else if (value >= bar.WarnThreshold) barFillColor = bar.WarnColor;
+		}
+
 		if (fillRect.Width > 0 && fillRect.Height > 0)
 		{
 			canvas.Save();
@@ -417,11 +441,11 @@ public static class ElementRenderer
 				canvas.ClipPath(clipPath);
 			}
 
-			_paint.Color = SKColor.Parse(bar.FillColor);
+			_paint.Color = SKColor.Parse(barFillColor);
 			canvas.DrawRect(fillRect, _paint);
 
 			// Glow
-			_paint.Color = SKColor.Parse(bar.FillColor).WithAlpha(60);
+			_paint.Color = SKColor.Parse(barFillColor).WithAlpha(60);
 			_paint.MaskFilter = GetBlur(6);
 			canvas.DrawRect(fillRect, _paint);
 			canvas.Restore();
@@ -474,6 +498,53 @@ public static class ElementRenderer
 			canvas.DrawText(warn.Label, warn.X, warn.Y + warn.Radius + warn.LabelFontSize + 4,
 				SKTextAlign.Center, _font, _paint);
 		}
+	}
+
+	private static void DrawLabelValue(SKCanvas canvas, LabelValueElement lv, float value)
+	{
+		string valueText = value.ToString(lv.ValueFormat) + lv.ValueSuffix;
+
+		SKTypeface labelTypeface = GetTypeface(lv.LabelFont);
+		SKTypeface valueTypeface = GetTypeface(lv.ValueFont);
+
+		using SKFont measureFont = new(labelTypeface, lv.LabelFontSize);
+		using SKFont measureValueFont = new(valueTypeface, lv.ValueFontSize);
+		float labelW = measureFont.MeasureText(lv.Label);
+		float valueW = measureValueFont.MeasureText(valueText);
+
+		float gap = 4f;
+		float totalH = lv.LabelFontSize + gap + lv.ValueFontSize;
+		float totalW = MathF.Max(labelW, valueW);
+
+		if (lv.ShowBox)
+		{
+			float bx = lv.X - totalW / 2 - lv.BoxPadding;
+			float by = lv.Y - totalH / 2 - lv.BoxPadding;
+			float bw = totalW + lv.BoxPadding * 2;
+			float bh = totalH + lv.BoxPadding * 2;
+			_paint.Style = SKPaintStyle.Fill;
+			_paint.Color = SKColor.Parse(lv.BoxColor);
+			_paint.MaskFilter = null;
+			if (lv.BoxCornerRadius > 0)
+				canvas.DrawRoundRect(bx, by, bw, bh, lv.BoxCornerRadius, lv.BoxCornerRadius, _paint);
+			else
+				canvas.DrawRect(bx, by, bw, bh, _paint);
+		}
+
+		float labelY = lv.Y - totalH / 2 + lv.LabelFontSize;
+		float valueY = lv.Y + totalH / 2;
+
+		_font.Typeface = labelTypeface;
+		_font.Size = lv.LabelFontSize;
+		_paint.Style = SKPaintStyle.Fill;
+		_paint.Color = SKColor.Parse(lv.LabelColor);
+		_paint.MaskFilter = null;
+		canvas.DrawText(lv.Label, lv.X, labelY, SKTextAlign.Center, _font, _paint);
+
+		_font.Typeface = valueTypeface;
+		_font.Size = lv.ValueFontSize;
+		_paint.Color = SKColor.Parse(lv.ValueColor);
+		canvas.DrawText(valueText, lv.X, valueY, SKTextAlign.Center, _font, _paint);
 	}
 
 	private static void DrawZoneArc(SKCanvas canvas, ZoneArcElement zone, float value)
@@ -669,7 +740,7 @@ public static class ElementRenderer
 
 		SKRect dest = new(img.X, img.Y, img.X + img.Width, img.Y + img.Height);
 		_paint.Style = SKPaintStyle.Fill;
-		_paint.Color = new SKColor(255, 255, 255, img.Opacity);
+		_paint.Color = SKColors.White;
 		_paint.MaskFilter = null;
 		canvas.DrawBitmap(bitmap, dest, _paint);
 		canvas.Restore();

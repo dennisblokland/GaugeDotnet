@@ -22,9 +22,9 @@ Mini time-series plot as an element. Rolls a per-source float buffer each frame.
 Compound element: label text above, large value below, optional background box.  
 **Properties**: label text, label font size, value font size, colors, box bg color, padding, format string, suffix.  
 **Why**: Replaces 2–3 manually positioned elements. Very common dashboard pattern.  
-- [ ] Add `LabelValueElement` to `GaugeElement.cs`
-- [ ] Add `DrawLabelValue` to `ElementRenderer.cs`
-- [ ] Wire up Designer
+- [x] Add `LabelValueElement` to `GaugeElement.cs`
+- [x] Add `DrawLabelValue` to `ElementRenderer.cs`
+- [x] Wire up Designer
 
 ### `PeakMarkerElement` ("peak")
 Tracks rolling peak, draws short tick at peak angle on arc.  
@@ -40,16 +40,16 @@ Tracks rolling peak, draws short tick at peak angle on arc.
 
 ### Opacity on base `GaugeElement`
 Move `Opacity` (byte) from `ImageElement` up to the base class. Renderer applies universally.  
-- [ ] Add `Opacity` to `GaugeElement` base, remove from `ImageElement`
-- [ ] Apply opacity in each `Draw*` method via `_paint.Color.WithAlpha()`
-- [ ] Add `AddByteProp("Opacity", ...)` to all element property panels in Designer
+- [x] Add `Opacity` to `GaugeElement` base, remove from `ImageElement`
+- [x] Apply opacity via `SaveLayer` in `DrawElement` (covers all element types)
+- [x] Add `Opacity` slider to common props section in Designer
 
 ### Conditional color — Arc + LinearBar
 Threshold-based color switching. Arc/bar turns yellow/red when value exceeds thresholds.  
 **Properties**: `WarnThreshold`, `WarnColor`, `DangerThreshold`, `DangerColor` on `ArcElement` + `LinearBarElement`.  
-- [ ] Add threshold props to `ArcElement` and `LinearBarElement`
-- [ ] Update `DrawArc` and `DrawLinearBar` to pick color based on value
-- [ ] Wire up Designer property panels
+- [x] Add threshold props to `ArcElement` and `LinearBarElement`
+- [x] Update `DrawArc` and `DrawLinearBar` to pick color based on value
+- [x] Wire up Designer property panels
 
 ### `ArcElement` anti-clockwise flag
 **Properties**: `AntiClockwise` (bool). Negates sweep direction.  
@@ -114,12 +114,12 @@ Element skips draw if condition fails.
 
 | # | Item | Effort | Impact | Status |
 |---|------|--------|--------|--------|
-| 1 | ZoneArcElement | M | High | [ ] |
-| 2 | GraphElement | M | High | [ ] |
-| 3 | Keyboard nudge | XS | High | [ ] |
-| 4 | Opacity on base element | XS | Med | [ ] |
-| 5 | LabelValueElement | S | High | [ ] |
-| 6 | Conditional color (arc/bar) | S | High | [ ] |
+| 1 | ZoneArcElement | M | High | [X] |
+| 2 | GraphElement | M | High | [X] |
+| 3 | Keyboard nudge | XS | High | [X] |
+| 4 | Opacity on base element | XS | Med | [x] |
+| 5 | LabelValueElement | S | High | [x] |
+| 6 | Conditional color (arc/bar) | S | High | [x] |
 | 8 | Undo/Redo | M | High | [ ] |
 | 9 | PeakMarkerElement | M | Med | [ ] |
 | 10 | TextElement box | S | Med | [ ] |

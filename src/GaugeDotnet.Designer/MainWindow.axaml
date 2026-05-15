@@ -26,6 +26,7 @@
         <Button x:Name="AddImageBtn" Content="Image" Padding="10,4"/>
         <Button x:Name="AddZoneArcBtn" Content="ZoneArc" Padding="10,4"/>
         <Button x:Name="AddGraphBtn" Content="Graph" Padding="10,4"/>
+        <Button x:Name="AddLabelValueBtn" Content="LabelVal" Padding="10,4"/>
         <Separator Margin="8,0"/>
         <Button x:Name="DuplicateBtn" Content="Duplicate" Padding="10,4" IsEnabled="False"/>
         <Button x:Name="DeleteBtn" Content="Delete" Padding="10,4" IsEnabled="False"/>

@@ -41,6 +41,7 @@ public class CustomGaugeDefinition
 [JsonDerivedType(typeof(ImageElement), "image")]
 [JsonDerivedType(typeof(ZoneArcElement), "zonearc")]
 [JsonDerivedType(typeof(GraphElement), "graph")]
+[JsonDerivedType(typeof(LabelValueElement), "labelvalue")]
 public abstract class GaugeElement
 {
 	public string Id { get; set; } = Guid.NewGuid().ToString("N")[..8];
@@ -50,6 +51,7 @@ public abstract class GaugeElement
 	public string? DataSource { get; set; }
 	public float MinValue { get; set; }
 	public float MaxValue { get; set; } = 100f;
+	public byte Opacity { get; set; } = 255;
 
 	[JsonIgnore]
 	public abstract string TypeLabel { get; }
@@ -65,6 +67,11 @@ public class ArcElement : GaugeElement
 	public string TrackColor { get; set; } = "#0A1A1A";
 	public bool ShowTrack { get; set; } = true;
 	public bool IsDynamic { get; set; } = true;
+	public bool UseConditionalColor { get; set; } = false;
+	public float WarnThreshold { get; set; } = 80f;
+	public string WarnColor { get; set; } = "#FFCC00";
+	public float DangerThreshold { get; set; } = 95f;
+	public string DangerColor { get; set; } = "#FF3333";
 
 	[JsonIgnore]
 	public override string TypeLabel => "Arc";
@@ -181,6 +188,11 @@ public class LinearBarElement : GaugeElement
 	public string BorderColor { get; set; } = "#444444";
 	public float BorderWidth { get; set; } = 1f;
 	public float CornerRadius { get; set; } = 2f;
+	public bool UseConditionalColor { get; set; } = false;
+	public float WarnThreshold { get; set; } = 80f;
+	public string WarnColor { get; set; } = "#FFCC00";
+	public float DangerThreshold { get; set; } = 95f;
+	public string DangerColor { get; set; } = "#FF3333";
 
 	[JsonIgnore]
 	public override string TypeLabel => "Bar";
@@ -207,11 +219,30 @@ public class ImageElement : GaugeElement
 	public string ImagePath { get; set; } = "";
 	public float Width { get; set; } = 100f;
 	public float Height { get; set; } = 100f;
-	public byte Opacity { get; set; } = 255;
 	public float Rotation { get; set; }
 
 	[JsonIgnore]
 	public override string TypeLabel => "Image";
+}
+
+public class LabelValueElement : GaugeElement
+{
+	public string Label { get; set; } = "LABEL";
+	public float LabelFontSize { get; set; } = 14f;
+	public string LabelColor { get; set; } = "#888888";
+	public string LabelFont { get; set; } = "Race Sport";
+	public float ValueFontSize { get; set; } = 48f;
+	public string ValueColor { get; set; } = "#00FFFF";
+	public string ValueFont { get; set; } = "DSEG7 Classic";
+	public string ValueFormat { get; set; } = "F0";
+	public string ValueSuffix { get; set; } = "";
+	public bool ShowBox { get; set; } = false;
+	public string BoxColor { get; set; } = "#1A1A1A";
+	public float BoxPadding { get; set; } = 8f;
+	public float BoxCornerRadius { get; set; } = 4f;
+
+	[JsonIgnore]
+	public override string TypeLabel => "LabelValue";
 }
 
 public class ZoneArcElement : GaugeElement
