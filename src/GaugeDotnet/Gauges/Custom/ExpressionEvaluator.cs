@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-
 namespace GaugeDotnet.Gauges.Custom;
 
 internal static class ExpressionEvaluator

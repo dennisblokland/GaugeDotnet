@@ -1,4 +1,3 @@
-using System;
 using GaugeDotnet.Rendering;
 using SkiaSharp;
 

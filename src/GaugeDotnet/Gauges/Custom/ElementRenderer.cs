@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using GaugeDotnet.Gauges.Custom.Rendering;
 using SkiaSharp;
 

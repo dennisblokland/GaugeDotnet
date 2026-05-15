@@ -1,6 +1,4 @@
-﻿using System.Diagnostics;
-
-namespace RG35XX.Libraries
+﻿namespace RG35XX.Libraries
 {
     /// <summary>
     /// Only supported on handheld devices. Launches the specified command and exits the current process.
