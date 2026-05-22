@@ -4,6 +4,9 @@ namespace ME1_4NET
 {
     public class MEData
     {
+        private readonly object _lock = new();
+        public object SyncRoot => _lock;
+
         // ME1_1
         public ushort Rpm { get; set; }
         public float ThrottlePosition { get; set; }
@@ -56,8 +59,31 @@ namespace ME1_4NET
         public short Gpt1 { get; set; }
         public short Gpt2 { get; set; }
 
+        public MEData Snapshot()
+        {
+            lock (_lock)
+            {
+                return new MEData
+                {
+                    Rpm = Rpm, ThrottlePosition = ThrottlePosition, Map = Map, Iat = Iat,
+                    RpmHardLimit = RpmHardLimit, AfrCurr1 = AfrCurr1, AfrCurr2 = AfrCurr2,
+                    LambdaTrim = LambdaTrim, AfrTarget = AfrTarget, FuelEthPerc = FuelEthPerc,
+                    IgnAdvAngle = IgnAdvAngle, IgnDwell = IgnDwell, PriInjAngle = PriInjAngle, PriInjPw = PriInjPw,
+                    PriInjDuty = PriInjDuty, SecInjDuty = SecInjDuty, SecInjAngle = SecInjAngle,
+                    SecInjPw = SecInjPw, BoostCtrlDuty = BoostCtrlDuty,
+                    OilTemp = OilTemp, OilPressure = OilPressure, Clt = Clt, Vbat = Vbat,
+                    GearPos = GearPos, MapTarget = MapTarget, VehicleSpeed = VehicleSpeed, EpsEvMsk = EpsEvMsk,
+                    KnockPeakReading = KnockPeakReading, KnockIgnAdvMod = KnockIgnAdvMod,
+                    FuelPressure = FuelPressure, FuelTemp = FuelTemp, KnockEvsCnt = KnockEvsCnt,
+                    Egt1 = Egt1, Egt2 = Egt2, Gpt1 = Gpt1, Gpt2 = Gpt2,
+                };
+            }
+        }
+
         public void Apply(ICanFrame frame)
         {
+            lock (_lock)
+            {
             switch (frame)
             {
                 case ME1_1 f:
@@ -113,6 +139,8 @@ namespace ME1_4NET
                     Gpt2 = f.Gpt2;
                     break;
             }
+            }
         }
     }
 }
+

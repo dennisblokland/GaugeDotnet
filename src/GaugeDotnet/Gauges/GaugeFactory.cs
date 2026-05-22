@@ -150,22 +150,23 @@ namespace GaugeDotnet.Gauges
 
         public static void UpdateGaugeValues(BaseGauge gauge, string dataSource, IMeDevice device)
         {
+            ME1_4NET.MEData data = device.Data.Snapshot();
             if (gauge is CustomGauge customGauge)
             {
-                customGauge.UpdateFromDevice(device.Data);
+                customGauge.UpdateFromDevice(data);
             }
             else if (gauge is GridGauge gridGauge)
             {
                 for (int i = 0; i < gridGauge.CellCount; i++)
                 {
                     GridCellConfig cell = gridGauge.GetCellConfig(i);
-                    float cellValue = DataSourceMapper.ReadValue(device.Data, cell.DataSource);
+                    float cellValue = DataSourceMapper.ReadValue(data, cell.DataSource);
                     gridGauge.SetCellValue(i, cellValue);
                 }
             }
             else
             {
-                float value = DataSourceMapper.ReadValue(device.Data, dataSource);
+                float value = DataSourceMapper.ReadValue(data, dataSource);
                 gauge.SetValue(value);
             }
         }
