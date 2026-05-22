@@ -70,3 +70,7 @@ publish-arm64/
 **local.settings.json
 
 *.lscache
+
+graphify-out/manifest.json    # mtime-based, breaks after git clone
+graphify-out/cost.json        # local only
+graphify-out/cache/       
