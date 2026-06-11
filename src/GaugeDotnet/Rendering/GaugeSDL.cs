@@ -134,10 +134,7 @@ namespace GaugeDotnet.Rendering
 
         internal void FlushAndSwap()
         {
-            // Flush Skia → GL
-            _skSurface?.Flush();
             _grContext?.Flush();
-            // Swap the SDL window buffers
             SDL.SDL_GL_SwapWindow(_window);
         }
 
