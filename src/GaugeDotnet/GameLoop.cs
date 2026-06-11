@@ -20,6 +20,7 @@ namespace GaugeDotnet
 		private readonly GaugeSDL _gaugeSDL;
 		private readonly InputHandler _input;
 		private readonly FpsCounter _fps;
+		private readonly BatteryOverlay _batteryOverlay;
 		private readonly Stopwatch _stopwatch;
 
 		private List<(BaseGauge Gauge, string DataSource)> _screens;
@@ -38,6 +39,7 @@ namespace GaugeDotnet
 			_gaugeSDL = gaugeSDL;
 			_input = new InputHandler();
 			_fps = new FpsCounter();
+			_batteryOverlay = new BatteryOverlay(appConfig, screenWidth);
 			_stopwatch = Stopwatch.StartNew();
 
 			_screens = GaugeFactory.BuildScreens(appConfig, screenWidth, screenHeight);
@@ -227,6 +229,7 @@ namespace GaugeDotnet
 		{
 			_input.Dispose();
 			_gaugeSDL.Dispose();
+			_batteryOverlay.Dispose();
 		}
 
 		private void Render()
@@ -244,6 +247,7 @@ namespace GaugeDotnet
 
 			_fps.Tick();
 			_fps.Draw(canvas);
+			_batteryOverlay.Draw(canvas);
 
 			_gaugeSDL.FlushAndSwap();
 		}
