@@ -13,20 +13,24 @@ internal static class GraphRenderer
 		SKRect bounds = new(graph.X, graph.Y, graph.X + graph.Width, graph.Y + graph.Height);
 
 		paint.Style = SKPaintStyle.Fill;
-		paint.Color = SKColor.Parse(graph.BackColor);
+		paint.Color = ColorCache.Get(graph.BackColor);
 		paint.MaskFilter = null;
 		canvas.DrawRect(bounds, paint);
 
 		Queue<float> buffer = _graphBuffers.GetOrAdd(graph.Id, _ => new Queue<float>());
-		buffer.Enqueue(value);
-		while (buffer.Count > Math.Max(graph.HistoryDepth, 2)) buffer.Dequeue();
 
-		if (buffer.Count < 2) return;
+		float[] samples;
+		lock (buffer)
+		{
+			buffer.Enqueue(value);
+			while (buffer.Count > Math.Max(graph.HistoryDepth, 2)) buffer.Dequeue();
+			if (buffer.Count < 2) return;
+			samples = buffer.ToArray();
+		}
 
 		float range = graph.MaxValue - graph.MinValue;
 		if (range <= 0) return;
 
-		float[] samples = buffer.ToArray();
 		int count = samples.Length;
 		float stepX = graph.Width / (graph.HistoryDepth - 1);
 
@@ -52,7 +56,7 @@ internal static class GraphRenderer
 			fillPath.LineTo(firstX, graph.Y + graph.Height);
 			fillPath.Close();
 			paint.Style = SKPaintStyle.Fill;
-			paint.Color = SKColor.Parse(graph.FillColor).WithAlpha(graph.FillOpacity);
+			paint.Color = ColorCache.Get(graph.FillColor).WithAlpha(graph.FillOpacity);
 			canvas.DrawPath(fillPath, paint);
 		}
 
@@ -60,7 +64,7 @@ internal static class GraphRenderer
 		paint.StrokeWidth = graph.LineWidth;
 		paint.StrokeCap = SKStrokeCap.Round;
 		paint.StrokeJoin = SKStrokeJoin.Round;
-		paint.Color = SKColor.Parse(graph.LineColor);
+		paint.Color = ColorCache.Get(graph.LineColor);
 		paint.MaskFilter = null;
 		canvas.DrawPath(linePath, paint);
 

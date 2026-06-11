@@ -19,6 +19,17 @@ internal static class RenderContext
 		catch { return FontHelper.Default; }
 	}
 
+	internal static void ResetPaint()
+	{
+		Paint.Style = SKPaintStyle.Fill;
+		Paint.StrokeWidth = 1f;
+		Paint.StrokeCap = SKStrokeCap.Butt;
+		Paint.StrokeJoin = SKStrokeJoin.Miter;
+		Paint.MaskFilter = null;
+		Paint.Color = SKColors.White;
+		Paint.IsAntialias = true;
+	}
+
 	internal static void ClearBlurCache()
 	{
 		foreach (SKMaskFilter filter in _blurCache.Values)

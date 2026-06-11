@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using GaugeDotnet.Gauges.Custom.Rendering;
 using SkiaSharp;
 
@@ -18,7 +19,7 @@ public static class ElementRenderer
 		string? baseDirectory = null)
 	{
 		string? effectiveBaseDir = baseDirectory ?? ImageCache.BaseDirectory;
-		canvas.Clear(SKColor.Parse(definition.BackgroundColor));
+		canvas.Clear(ColorCache.Get(definition.BackgroundColor));
 
 		if (!string.IsNullOrEmpty(definition.BackgroundImage))
 		{
@@ -50,7 +51,7 @@ public static class ElementRenderer
 					allValues[ch.Name] = result;
 					if (allTargetValues != null) allTargetValues[ch.Name] = result;
 				}
-				catch { }
+				catch (Exception ex) { Debug.WriteLine($"[ElementRenderer] calculated channel '{ch.Name}': {ex.Message}"); }
 			}
 		}
 
@@ -102,6 +103,7 @@ public static class ElementRenderer
 			case GraphElement graph:         GraphRenderer.Draw(canvas, graph, value); break;
 			case LabelValueElement lv:       TextRenderer.DrawLabelValue(canvas, lv, value); break;
 			case PeakMarkerElement peak:     PeakMarkerRenderer.Draw(canvas, peak, value); break;
+			default: Debug.Fail($"No renderer for element type: {element.GetType().Name}"); break;
 		}
 
 		if (useLayer) canvas.Restore();
@@ -116,6 +118,7 @@ public static class ElementRenderer
 	public static void ClearImageCache()
 	{
 		ImageCache.Clear();
+		ColorCache.Clear();
 		RenderContext.ClearBlurCache();
 		GraphRenderer.ClearBuffers();
 		PeakMarkerRenderer.ClearState();

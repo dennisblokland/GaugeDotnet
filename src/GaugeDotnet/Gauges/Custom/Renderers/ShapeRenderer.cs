@@ -8,7 +8,7 @@ internal static class ShapeRenderer
 	{
 		SKPaint paint = RenderContext.Paint;
 		paint.Style = SKPaintStyle.Fill;
-		paint.Color = SKColor.Parse(circle.FillColor);
+		paint.Color = ColorCache.Get(circle.FillColor);
 		paint.MaskFilter = null;
 		canvas.DrawCircle(circle.X, circle.Y, circle.Radius, paint);
 
@@ -16,7 +16,7 @@ internal static class ShapeRenderer
 		{
 			paint.Style = SKPaintStyle.Stroke;
 			paint.StrokeWidth = circle.CircleStrokeWidth;
-			paint.Color = SKColor.Parse(circle.StrokeColor);
+			paint.Color = ColorCache.Get(circle.StrokeColor);
 			canvas.DrawCircle(circle.X, circle.Y, circle.Radius, paint);
 		}
 	}
@@ -27,7 +27,7 @@ internal static class ShapeRenderer
 		SKRect bounds = new(rect.X, rect.Y, rect.X + rect.Width, rect.Y + rect.Height);
 
 		paint.Style = SKPaintStyle.Fill;
-		paint.Color = SKColor.Parse(rect.FillColor);
+		paint.Color = ColorCache.Get(rect.FillColor);
 		paint.MaskFilter = null;
 
 		if (rect.CornerRadius > 0)
@@ -39,7 +39,7 @@ internal static class ShapeRenderer
 		{
 			paint.Style = SKPaintStyle.Stroke;
 			paint.StrokeWidth = rect.RectStrokeWidth;
-			paint.Color = SKColor.Parse(rect.StrokeColor);
+			paint.Color = ColorCache.Get(rect.StrokeColor);
 
 			if (rect.CornerRadius > 0)
 				canvas.DrawRoundRect(bounds, rect.CornerRadius, rect.CornerRadius, paint);
@@ -54,7 +54,7 @@ internal static class ShapeRenderer
 		paint.Style = SKPaintStyle.Stroke;
 		paint.StrokeWidth = line.LineWidth;
 		paint.StrokeCap = SKStrokeCap.Round;
-		paint.Color = SKColor.Parse(line.Color);
+		paint.Color = ColorCache.Get(line.Color);
 		paint.MaskFilter = null;
 		canvas.DrawLine(line.X, line.Y, line.X2, line.Y2, paint);
 	}

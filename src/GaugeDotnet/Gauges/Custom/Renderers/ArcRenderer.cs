@@ -4,6 +4,10 @@ namespace GaugeDotnet.Gauges.Custom.Rendering;
 
 internal static class ArcRenderer
 {
+	private const byte GlowAlpha = 60;
+	private const float GlowSigma = 8f;
+	private const float GlowStrokeExtra = 12f;
+
 	internal static void Draw(SKCanvas canvas, ArcElement arc, float value)
 	{
 		SKPaint paint = RenderContext.Paint;
@@ -15,7 +19,7 @@ internal static class ArcRenderer
 			paint.Style = SKPaintStyle.Stroke;
 			paint.StrokeWidth = arc.StrokeWidth;
 			paint.StrokeCap = SKStrokeCap.Butt;
-			paint.Color = SKColor.Parse(arc.TrackColor);
+			paint.Color = ColorCache.Get(arc.TrackColor);
 			paint.MaskFilter = null;
 			canvas.DrawArc(rect, arc.StartAngleDeg, arc.SweepAngleDeg * sign, false, paint);
 		}
@@ -36,19 +40,22 @@ internal static class ArcRenderer
 			else if (value >= arc.WarnThreshold) fillColor = arc.WarnColor;
 		}
 
+		SKColor fillSKColor = ColorCache.Get(fillColor);
+
 		paint.Style = SKPaintStyle.Stroke;
 		paint.StrokeWidth = arc.StrokeWidth;
 		paint.StrokeCap = SKStrokeCap.Butt;
-		paint.Color = SKColor.Parse(fillColor);
+		paint.Color = fillSKColor;
 		paint.MaskFilter = null;
 		canvas.DrawArc(rect, arc.StartAngleDeg, fillSweep, false, paint);
 
 		if (fillSweep != 0)
 		{
-			paint.StrokeWidth = arc.StrokeWidth + 12;
-			paint.Color = SKColor.Parse(fillColor).WithAlpha(60);
-			paint.MaskFilter = RenderContext.GetBlur(8);
+			paint.StrokeWidth = arc.StrokeWidth + GlowStrokeExtra;
+			paint.Color = fillSKColor.WithAlpha(GlowAlpha);
+			paint.MaskFilter = RenderContext.GetBlur(GlowSigma);
 			canvas.DrawArc(rect, arc.StartAngleDeg, fillSweep, false, paint);
+			paint.MaskFilter = null;
 		}
 	}
 
@@ -68,14 +75,14 @@ internal static class ArcRenderer
 		paint.MaskFilter = null;
 
 		float z1EndT = zone.ShowZone2 ? t2 : (zone.ShowZone3 ? t3 : 1f);
-		paint.Color = SKColor.Parse(zone.Zone1Color);
+		paint.Color = ColorCache.Get(zone.Zone1Color);
 		canvas.DrawArc(rect, zone.StartAngleDeg, sweepDeg * z1EndT, false, paint);
 
 		if (zone.ShowZone2)
 		{
 			float z2EndT = zone.ShowZone3 ? t3 : 1f;
 			float z2Sweep = (z2EndT - t2) * sweepDeg;
-			paint.Color = SKColor.Parse(zone.Zone2Color);
+			paint.Color = ColorCache.Get(zone.Zone2Color);
 			canvas.DrawArc(rect, zone.StartAngleDeg + t2 * sweepDeg, z2Sweep, false, paint);
 		}
 
@@ -83,7 +90,7 @@ internal static class ArcRenderer
 		{
 			float z3StartT = zone.ShowZone2 ? t3 : t2;
 			float z3Sweep = (1f - z3StartT) * sweepDeg;
-			paint.Color = SKColor.Parse(zone.Zone3Color);
+			paint.Color = ColorCache.Get(zone.Zone3Color);
 			canvas.DrawArc(rect, zone.StartAngleDeg + z3StartT * sweepDeg, z3Sweep, false, paint);
 		}
 
@@ -97,7 +104,7 @@ internal static class ArcRenderer
 			paint.Style = SKPaintStyle.Stroke;
 			paint.StrokeWidth = zone.PointerWidth;
 			paint.StrokeCap = SKStrokeCap.Round;
-			paint.Color = SKColor.Parse(zone.PointerColor);
+			paint.Color = ColorCache.Get(zone.PointerColor);
 			canvas.DrawLine(
 				zone.X + MathF.Cos(angleRad) * innerR,
 				zone.Y + MathF.Sin(angleRad) * innerR,

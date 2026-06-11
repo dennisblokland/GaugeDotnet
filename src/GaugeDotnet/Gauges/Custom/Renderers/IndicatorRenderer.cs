@@ -5,30 +5,35 @@ namespace GaugeDotnet.Gauges.Custom.Rendering;
 
 internal static class IndicatorRenderer
 {
+	private const byte GlowAlpha = 80;
+	private const float GlowSigma = 10f;
+	private const float GlowRadiusExtra = 4f;
+
 	internal static void Draw(SKCanvas canvas, WarningIndicatorElement warn, float value)
 	{
 		SKPaint paint = RenderContext.Paint;
 		SKFont font = RenderContext.Font;
 		bool active = warn.TriggerAbove ? value >= warn.Threshold : value <= warn.Threshold;
-		string color = active ? warn.ActiveColor : warn.InactiveColor;
+		SKColor color = ColorCache.Get(active ? warn.ActiveColor : warn.InactiveColor);
 
 		paint.Style = SKPaintStyle.Fill;
-		paint.Color = SKColor.Parse(color);
+		paint.Color = color;
 		paint.MaskFilter = null;
 		canvas.DrawCircle(warn.X, warn.Y, warn.Radius, paint);
 
 		if (active)
 		{
-			paint.Color = SKColor.Parse(warn.ActiveColor).WithAlpha(80);
-			paint.MaskFilter = RenderContext.GetBlur(10);
-			canvas.DrawCircle(warn.X, warn.Y, warn.Radius + 4, paint);
+			paint.Color = ColorCache.Get(warn.ActiveColor).WithAlpha(GlowAlpha);
+			paint.MaskFilter = RenderContext.GetBlur(GlowSigma);
+			canvas.DrawCircle(warn.X, warn.Y, warn.Radius + GlowRadiusExtra, paint);
+			paint.MaskFilter = null;
 		}
 
 		if (warn.ShowLabel)
 		{
 			font.Typeface = FontHelper.Default;
 			font.Size = warn.LabelFontSize;
-			paint.Color = SKColor.Parse(warn.LabelColor);
+			paint.Color = ColorCache.Get(warn.LabelColor);
 			paint.MaskFilter = null;
 			canvas.DrawText(warn.Label, warn.X, warn.Y + warn.Radius + warn.LabelFontSize + 4,
 				SKTextAlign.Center, font, paint);

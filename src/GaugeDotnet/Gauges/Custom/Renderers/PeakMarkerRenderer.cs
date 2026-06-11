@@ -11,12 +11,13 @@ internal static class PeakMarkerRenderer
 	{
 		if (string.IsNullOrEmpty(peak.DataSource)) return;
 
-		(float peakVal, DateTime seen) = _peakState.GetOrAdd(peak.Id, _ => (value, DateTime.UtcNow));
+		DateTime now = DateTime.UtcNow;
+		(float peakVal, DateTime seen) = _peakState.GetOrAdd(peak.Id, _ => (value, now));
 
-		if (peak.DecaySeconds > 0 && (DateTime.UtcNow - seen).TotalSeconds > peak.DecaySeconds)
+		if (peak.DecaySeconds > 0 && (now - seen).TotalSeconds > peak.DecaySeconds)
 		{
 			peakVal = value;
-			seen = DateTime.UtcNow;
+			seen = now;
 		}
 
 		if (value > peakVal)
@@ -39,7 +40,7 @@ internal static class PeakMarkerRenderer
 		paint.Style = SKPaintStyle.Stroke;
 		paint.StrokeWidth = peak.MarkerWidth;
 		paint.StrokeCap = SKStrokeCap.Butt;
-		paint.Color = SKColor.Parse(peak.MarkerColor);
+		paint.Color = ColorCache.Get(peak.MarkerColor);
 		paint.MaskFilter = null;
 		canvas.DrawLine(
 			peak.X + MathF.Cos(angleRad) * innerR,

@@ -19,7 +19,7 @@ internal static class TextRenderer
 			float bw = textW + text.BoxPadding * 2;
 			float bh = text.FontSize * 1.3f + text.BoxPadding * 2;
 			paint.Style = SKPaintStyle.Fill;
-			paint.Color = SKColor.Parse(text.BoxColor);
+			paint.Color = ColorCache.Get(text.BoxColor);
 			paint.MaskFilter = null;
 			if (text.BoxCornerRadius > 0)
 				canvas.DrawRoundRect(bx, by, bw, bh, text.BoxCornerRadius, text.BoxCornerRadius, paint);
@@ -28,7 +28,7 @@ internal static class TextRenderer
 		}
 
 		paint.Style = SKPaintStyle.Fill;
-		paint.Color = SKColor.Parse(text.Color);
+		paint.Color = ColorCache.Get(text.Color);
 		paint.MaskFilter = null;
 		canvas.DrawText(text.Text, text.X, text.Y, SKTextAlign.Center, font, paint);
 	}
@@ -41,7 +41,7 @@ internal static class TextRenderer
 		font.Typeface = RenderContext.GetTypeface(display.Font);
 		font.Size = display.FontSize;
 		paint.Style = SKPaintStyle.Fill;
-		paint.Color = SKColor.Parse(display.Color);
+		paint.Color = ColorCache.Get(display.Color);
 		paint.MaskFilter = null;
 		canvas.DrawText(formatted, display.X, display.Y, SKTextAlign.Center, font, paint);
 	}
@@ -71,7 +71,7 @@ internal static class TextRenderer
 			float bw = totalW + lv.BoxPadding * 2;
 			float bh = totalH + lv.BoxPadding * 2;
 			paint.Style = SKPaintStyle.Fill;
-			paint.Color = SKColor.Parse(lv.BoxColor);
+			paint.Color = ColorCache.Get(lv.BoxColor);
 			paint.MaskFilter = null;
 			if (lv.BoxCornerRadius > 0)
 				canvas.DrawRoundRect(bx, by, bw, bh, lv.BoxCornerRadius, lv.BoxCornerRadius, paint);
@@ -85,13 +85,13 @@ internal static class TextRenderer
 		font.Typeface = labelTypeface;
 		font.Size = lv.LabelFontSize;
 		paint.Style = SKPaintStyle.Fill;
-		paint.Color = SKColor.Parse(lv.LabelColor);
+		paint.Color = ColorCache.Get(lv.LabelColor);
 		paint.MaskFilter = null;
 		canvas.DrawText(lv.Label, lv.X, labelY, SKTextAlign.Center, font, paint);
 
 		font.Typeface = valueTypeface;
 		font.Size = lv.ValueFontSize;
-		paint.Color = SKColor.Parse(lv.ValueColor);
+		paint.Color = ColorCache.Get(lv.ValueColor);
 		canvas.DrawText(valueText, lv.X, valueY, SKTextAlign.Center, font, paint);
 	}
 }

@@ -4,6 +4,10 @@ namespace GaugeDotnet.Gauges.Custom.Rendering;
 
 internal static class NeedleRenderer
 {
+	private const byte GlowAlpha = 50;
+	private const float GlowSigma = 6f;
+	private const float GlowStrokeExtra = 6f;
+
 	internal static void Draw(SKCanvas canvas, NeedleElement needle, float value, string? baseDirectory = null)
 	{
 		SKPaint paint = RenderContext.Paint;
@@ -34,7 +38,7 @@ internal static class NeedleRenderer
 
 				if (needle.ShowHub)
 				{
-					paint.Color = SKColor.Parse(needle.HubColor);
+					paint.Color = ColorCache.Get(needle.HubColor);
 					canvas.DrawCircle(needle.X, needle.Y, needle.HubRadius, paint);
 				}
 				return;
@@ -47,22 +51,24 @@ internal static class NeedleRenderer
 		float tailX = needle.X - MathF.Cos(angleRad) * needle.TailLength;
 		float tailY = needle.Y - MathF.Sin(angleRad) * needle.TailLength;
 
+		SKColor needleColor = ColorCache.Get(needle.Color);
+
 		paint.Style = SKPaintStyle.Stroke;
-		paint.StrokeWidth = needle.NeedleWidth + 6;
+		paint.StrokeWidth = needle.NeedleWidth + GlowStrokeExtra;
 		paint.StrokeCap = SKStrokeCap.Round;
-		paint.Color = SKColor.Parse(needle.Color).WithAlpha(50);
-		paint.MaskFilter = RenderContext.GetBlur(6);
+		paint.Color = needleColor.WithAlpha(GlowAlpha);
+		paint.MaskFilter = RenderContext.GetBlur(GlowSigma);
 		canvas.DrawLine(tailX, tailY, tipX, tipY, paint);
 
 		paint.StrokeWidth = needle.NeedleWidth;
-		paint.Color = SKColor.Parse(needle.Color);
+		paint.Color = needleColor;
 		paint.MaskFilter = null;
 		canvas.DrawLine(tailX, tailY, tipX, tipY, paint);
 
 		if (needle.ShowHub)
 		{
 			paint.Style = SKPaintStyle.Fill;
-			paint.Color = SKColor.Parse(needle.HubColor);
+			paint.Color = ColorCache.Get(needle.HubColor);
 			canvas.DrawCircle(needle.X, needle.Y, needle.HubRadius, paint);
 		}
 	}

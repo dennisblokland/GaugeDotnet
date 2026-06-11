@@ -4,6 +4,9 @@ namespace GaugeDotnet.Gauges.Custom.Rendering;
 
 internal static class LinearBarRenderer
 {
+	private const byte GlowAlpha = 60;
+	private const float GlowSigma = 6f;
+
 	internal static void Draw(SKCanvas canvas, LinearBarElement bar, float value)
 	{
 		SKPaint paint = RenderContext.Paint;
@@ -13,7 +16,7 @@ internal static class LinearBarRenderer
 		SKRect trackRect = new(bar.X, bar.Y, bar.X + bar.Width, bar.Y + bar.Height);
 
 		paint.Style = SKPaintStyle.Fill;
-		paint.Color = SKColor.Parse(bar.TrackColor);
+		paint.Color = ColorCache.Get(bar.TrackColor);
 		paint.MaskFilter = null;
 		if (bar.CornerRadius > 0)
 			canvas.DrawRoundRect(trackRect, bar.CornerRadius, bar.CornerRadius, paint);
@@ -41,6 +44,8 @@ internal static class LinearBarRenderer
 
 		if (fillRect.Width > 0 && fillRect.Height > 0)
 		{
+			SKColor fillSKColor = ColorCache.Get(barFillColor);
+
 			canvas.Save();
 			if (bar.CornerRadius > 0)
 			{
@@ -49,12 +54,13 @@ internal static class LinearBarRenderer
 				canvas.ClipPath(clipPath);
 			}
 
-			paint.Color = SKColor.Parse(barFillColor);
+			paint.Color = fillSKColor;
 			canvas.DrawRect(fillRect, paint);
 
-			paint.Color = SKColor.Parse(barFillColor).WithAlpha(60);
-			paint.MaskFilter = RenderContext.GetBlur(6);
+			paint.Color = fillSKColor.WithAlpha(GlowAlpha);
+			paint.MaskFilter = RenderContext.GetBlur(GlowSigma);
 			canvas.DrawRect(fillRect, paint);
+			paint.MaskFilter = null;
 			canvas.Restore();
 		}
 
@@ -62,7 +68,7 @@ internal static class LinearBarRenderer
 		{
 			paint.Style = SKPaintStyle.Stroke;
 			paint.StrokeWidth = bar.BorderWidth;
-			paint.Color = SKColor.Parse(bar.BorderColor);
+			paint.Color = ColorCache.Get(bar.BorderColor);
 			paint.MaskFilter = null;
 			if (bar.CornerRadius > 0)
 				canvas.DrawRoundRect(trackRect, bar.CornerRadius, bar.CornerRadius, paint);

@@ -12,7 +12,6 @@ internal static class TickRingRenderer
 		int totalMajor = ticks.MajorCount;
 		float sign = ticks.AntiClockwise ? -1f : 1f;
 
-		paint.Style = SKPaintStyle.Stroke;
 		paint.MaskFilter = null;
 
 		for (int i = 0; i <= totalMajor; i++)
@@ -40,9 +39,10 @@ internal static class TickRingRenderer
 
 			if (ticks.ShowTicks)
 			{
+				paint.Style = SKPaintStyle.Stroke;
 				paint.StrokeWidth = ticks.MajorWidth;
 				paint.StrokeCap = SKStrokeCap.Butt;
-				paint.Color = SKColor.Parse(ticks.Color);
+				paint.Color = ColorCache.Get(ticks.Color);
 				canvas.DrawLine(outerX, outerY, innerX, innerY, paint);
 			}
 
@@ -59,7 +59,7 @@ internal static class TickRingRenderer
 				font.Typeface = FontHelper.Default;
 				font.Size = ticks.LabelFontSize;
 				paint.Style = SKPaintStyle.Fill;
-				paint.Color = SKColor.Parse(ticks.LabelColor);
+				paint.Color = ColorCache.Get(ticks.LabelColor);
 
 				if (ticks.RadialLabels)
 				{
@@ -73,14 +73,14 @@ internal static class TickRingRenderer
 				{
 					canvas.DrawText(label, labelX, labelY + ticks.LabelFontSize / 3f, SKTextAlign.Center, font, paint);
 				}
-
-				paint.Style = SKPaintStyle.Stroke;
 			}
 
 			if (i < totalMajor && ticks.MinorPerMajor > 0 && ticks.ShowTicks)
 			{
+				paint.Style = SKPaintStyle.Stroke;
 				paint.StrokeWidth = ticks.MinorWidth;
-				paint.Color = SKColor.Parse(ticks.Color);
+				paint.StrokeCap = SKStrokeCap.Butt;
+				paint.Color = ColorCache.Get(ticks.Color);
 
 				for (int j = 1; j <= ticks.MinorPerMajor; j++)
 				{
