@@ -138,6 +138,9 @@ namespace GaugeDotnet.Rendering
             SDL.SDL_GL_SwapWindow(_window);
         }
 
+        internal void PurgeGpuResources() =>
+            _grContext?.PurgeUnlockedResources(scratchResourcesOnly: false);
+
         internal SKCanvas GetCanvas()
         {
             if (_skSurface == null)

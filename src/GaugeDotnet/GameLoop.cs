@@ -151,10 +151,10 @@ namespace GaugeDotnet
 				canvas.DrawText("Goodbye", cx, cy + 58, SKTextAlign.Center,  subFont, subPaint);
 
 				_gaugeSDL.FlushAndSwap();
-				Thread.Sleep(18);
+				SDL_Delay(18);
 			}
 
-			Thread.Sleep(600);
+			SDL_Delay(600);
 		}
 
 		private bool HandleConfigEditor(GamepadKey key, SDL_Keycode? sdlKey)
@@ -205,7 +205,8 @@ namespace GaugeDotnet
 			if (now - _lastKeepAlive >= 3.0)
 			{
 				_lastKeepAlive = now;
-				ScreenKeepAlive.Poke();
+				Task.Run(ScreenKeepAlive.Poke);
+				_gaugeSDL.PurgeGpuResources();
 			}
 
 			if (now - _lastUpdate < 0.05)
@@ -231,11 +232,14 @@ namespace GaugeDotnet
 		private void Render()
 		{
 			SKCanvas canvas = _gaugeSDL.GetCanvas();
-			canvas.Clear(SKColors.Black);
 
 			if (_screens.Count > 0 && _currentScreen < _screens.Count)
 			{
 				_screens[_currentScreen].Gauge.Draw(canvas);
+			}
+			else
+			{
+				canvas.Clear(SKColors.Black);
 			}
 
 			_fps.Tick();
