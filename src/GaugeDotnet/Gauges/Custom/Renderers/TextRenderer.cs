@@ -33,6 +33,40 @@ internal static class TextRenderer
 		canvas.DrawText(text.Text, text.X, text.Y, SKTextAlign.Center, font, paint);
 	}
 
+	internal static void DrawClock(SKCanvas canvas, ClockElement clock)
+	{
+		DateTime now = clock.UseUtc ? DateTime.UtcNow : DateTime.Now;
+		string text;
+		try { text = now.ToString(clock.Format); }
+		catch { text = now.ToString("HH:mm:ss"); }
+
+		SKPaint paint = RenderContext.Paint;
+		SKFont font = RenderContext.Font;
+		font.Typeface = RenderContext.GetTypeface(clock.Font);
+		font.Size = clock.FontSize;
+
+		if (clock.ShowBox)
+		{
+			float textW = font.MeasureText(text);
+			float bx = clock.X - textW / 2 - clock.BoxPadding;
+			float by = clock.Y - clock.FontSize - clock.BoxPadding;
+			float bw = textW + clock.BoxPadding * 2;
+			float bh = clock.FontSize * 1.3f + clock.BoxPadding * 2;
+			paint.Style = SKPaintStyle.Fill;
+			paint.Color = ColorCache.Get(clock.BoxColor);
+			paint.MaskFilter = null;
+			if (clock.BoxCornerRadius > 0)
+				canvas.DrawRoundRect(bx, by, bw, bh, clock.BoxCornerRadius, clock.BoxCornerRadius, paint);
+			else
+				canvas.DrawRect(bx, by, bw, bh, paint);
+		}
+
+		paint.Style = SKPaintStyle.Fill;
+		paint.Color = ColorCache.Get(clock.Color);
+		paint.MaskFilter = null;
+		canvas.DrawText(text, clock.X, clock.Y, SKTextAlign.Center, font, paint);
+	}
+
 	internal static void DrawValueDisplay(SKCanvas canvas, ValueDisplayElement display, float value)
 	{
 		SKPaint paint = RenderContext.Paint;

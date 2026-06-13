@@ -1,16 +1,16 @@
 # Graph Report - GaugeDotnet  (2026-06-13)
 
 ## Corpus Check
-- 123 files · ~38,526 words
+- 123 files · ~38,099 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 850 nodes · 1143 edges · 98 communities (31 shown, 67 thin omitted)
+- 847 nodes · 1136 edges · 100 communities (32 shown, 68 thin omitted)
 - Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 16 edges (avg confidence: 0.91)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `c844bbf0`
+- Built from commit: `475426d8`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -76,6 +76,7 @@
 - [[_COMMUNITY_Arc Renderer|Arc Renderer]]
 - [[_COMMUNITY_Image Renderer|Image Renderer]]
 - [[_COMMUNITY_IMeDevice Interface|IMeDevice Interface]]
+- [[_COMMUNITY_MEData Model|MEData Model]]
 - [[_COMMUNITY_IStorageProvider Interface|IStorageProvider Interface]]
 - [[_COMMUNITY_Local Settings|Local Settings]]
 - [[_COMMUNITY_ME1_3 Frame|ME1_3 Frame]]
@@ -110,6 +111,7 @@
 - [[_COMMUNITY_Line Element|Line Element]]
 - [[_COMMUNITY_Image Element|Image Element]]
 - [[_COMMUNITY_Community 97|Community 97]]
+- [[_COMMUNITY_Community 98|Community 98]]
 - [[_COMMUNITY_Community 99|Community 99]]
 
 ## God Nodes (most connected - your core abstractions)
@@ -118,8 +120,8 @@
 3. `GameLoop` - 21 edges
 4. `MeDevice` - 19 edges
 5. `BluetoothHardwareInit` - 19 edges
-6. `GaugeElement` - 18 edges
-7. `MinMaxGauge` - 17 edges
+6. `MinMaxGauge` - 17 edges
+7. `GaugeElement` - 17 edges
 8. `float` - 16 edges
 9. `GridGauge` - 16 edges
 10. `HistogramGauge` - 16 edges
@@ -141,15 +143,15 @@
 - **BLE to CAN Data Aggregation Flow** — gaugedotnet_agents_medevice, gaugedotnet_agents_candecoder, gaugedotnet_agents_medata [EXTRACTED 1.00]
 - **CI Build, Restore, Test Pipeline** — workflows_ci_yml_ci_workflow, workflows_ci_yml_build_job, workflows_ci_yml_pat_read_packages [EXTRACTED 1.00]
 
-## Communities (98 total, 67 thin omitted)
+## Communities (100 total, 68 thin omitted)
 
 ### Community 0 - "Gauge Designer UI"
 Cohesion: 0.15
 Nodes (5): GaugeDesignerViewModel, MainWindow, HashSet, Point, Window
 
 ### Community 1 - "BLE Device Connection"
-Cohesion: 0.05
-Nodes (19): BtlePeripheral, CancellationTokenSource, GaugeDotnet.Devices, MeDevice, GaugeDotnet.Devices, SimulatedMeDevice, GRContext, IDisposable (+11 more)
+Cohesion: 0.07
+Nodes (14): BtlePeripheral, CancellationTokenSource, GaugeDotnet.Devices, MeDevice, GaugeDotnet.Devices, SimulatedMeDevice, IDisposable, IMeDevice (+6 more)
 
 ### Community 2 - "Core App & Input"
 Cohesion: 0.10
@@ -168,8 +170,8 @@ Cohesion: 0.08
 Nodes (17): BaseGaugeSettings, BarGaugeSettings, GaugeDotnet.Gauges.Models, CircularGaugeSettings, GaugeDotnet.Gauges.Models, DigitalGaugeSettings, GaugeDotnet.Gauges.Models, GaugeDotnet.Gauges.Models (+9 more)
 
 ### Community 6 - "Game Loop & Config"
-Cohesion: 0.08
-Nodes (14): AppConfig, BatteryOverlay, ConfigEditor, DateTime, double, FpsCounter, GameLoop, GaugeDotnet (+6 more)
+Cohesion: 0.06
+Nodes (21): AppConfig, BatteryOverlay, ConfigEditor, AppConfig, GaugeDotnet.Configuration, DateTime, double, FpsCounter (+13 more)
 
 ### Community 7 - "Config Editor Screen"
 Cohesion: 0.19
@@ -177,11 +179,11 @@ Nodes (3): EditorScreen, ConfigEditor, GaugeDotnet
 
 ### Community 9 - "Custom Gauge Elements"
 Cohesion: 0.18
-Nodes (20): ArcElement, CalculatedChannel, CircleElement, ClockElement, CustomGaugeDefinition, GaugeElement, GifElement, GraphElement (+12 more)
+Nodes (19): ArcElement, CalculatedChannel, CircleElement, CustomGaugeDefinition, GaugeElement, GifElement, GraphElement, ImageElement (+11 more)
 
 ### Community 10 - "Built-in Gauges"
-Cohesion: 0.16
-Nodes (9): DigitalGauge, GaugeDotnet.Gauges, GaugeDotnet.Gauges, NeedleGauge, GaugeDotnet.Gauges, SweepGauge, SegmentDisplay, SKBitmap (+1 more)
+Cohesion: 0.21
+Nodes (6): DigitalGauge, GaugeDotnet.Gauges, GaugeDotnet.Gauges, SweepGauge, SegmentDisplay, SKCanvas
 
 ### Community 11 - "Data Source & Expression"
 Cohesion: 0.21
@@ -191,13 +193,9 @@ Nodes (5): DataSourceMapper, GaugeDotnet.Configuration, ExpressionEvaluator, Exp
 Cohesion: 0.09
 Nodes (6): ConcurrentDictionary, ColorCache, GifCache, GraphRenderer, ImageCache, PeakMarkerRenderer
 
-### Community 13 - "Render Context & FPS"
-Cohesion: 0.14
-Nodes (6): RenderContext, FpsCounter, GaugeDotnet.Rendering, SKFont, SKPaint, Stopwatch
-
 ### Community 14 - "Custom & Histogram Gauge"
-Cohesion: 0.14
-Nodes (8): BaseGauge, CustomGauge, CustomGaugeDefinition, float, GaugeDotnet.Gauges, HistogramGauge, long, IndicatorRenderer
+Cohesion: 0.18
+Nodes (6): BaseGauge, CustomGauge, CustomGaugeDefinition, GaugeDotnet.Gauges, HistogramGauge, long
 
 ### Community 16 - "Grid Gauge & Config"
 Cohesion: 0.28
@@ -233,7 +231,7 @@ Nodes (4): BarGauge, GaugeDotnet.Gauges, SKRectExtensions, SKMaskFilter
 
 ### Community 34 - "Circular Gauge"
 Cohesion: 0.22
-Nodes (6): AppConfig, GaugeDotnet.Configuration, CircularGauge, GaugeDotnet.Gauges, int, SKRect
+Nodes (5): float, CircularGauge, GaugeDotnet.Gauges, LinearBarRenderer, SKRect
 
 ### Community 35 - "WSL Launch Config"
 Cohesion: 0.29
@@ -249,11 +247,19 @@ Nodes (15): Architecture Notes, Build & Test, code:shell (dotnet build          
 
 ### Community 58 - "Arc Renderer"
 Cohesion: 0.07
-Nodes (11): byte, ConcurrentQueue, FileStream, ArcRenderer, LinearBarRenderer, NeedleRenderer, KeyBus, RG35XX.Libraries (+3 more)
+Nodes (11): byte, ConcurrentQueue, FileStream, ArcRenderer, IndicatorRenderer, NeedleRenderer, KeyBus, RG35XX.Libraries (+3 more)
+
+### Community 61 - "MEData Model"
+Cohesion: 0.20
+Nodes (5): GRContext, IntPtr, GaugeDotnet.Rendering, GaugeSDL, SKSurface
 
 ### Community 97 - "Community 97"
 Cohesion: 0.29
 Nodes (4): GaugeDotnet.Configuration, TolerantGaugeTypeConverter, GaugeType, JsonConverter
+
+### Community 98 - "Community 98"
+Cohesion: 0.40
+Nodes (3): GaugeDotnet.Gauges, NeedleGauge, SKBitmap
 
 ### Community 99 - "Community 99"
 Cohesion: 0.33
@@ -262,21 +268,21 @@ Nodes (3): FontHelper, GaugeDotnet.Rendering, SKTypeface
 ## Knowledge Gaps
 - **181 isolated node(s):** `LANG`, `LC_ALL`, `PATH`, `DOTNET_SYSTEM_GLOBALIZATION_INVARIANT`, `DBUS_SYSTEM_BUS_ADDRESS` (+176 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **67 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **68 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `bool` connect `BLE Types & Keep-Alive` to `Gauge Designer UI`, `BLE Device Connection`, `Circular Gauge`, `Config Editor Screen`, `Built-in Gauges`, `Arc Renderer`, `Bar Gauge`, `MinMax Gauge`?**
+- **Why does `bool` connect `BLE Types & Keep-Alive` to `Gauge Designer UI`, `BLE Device Connection`, `Circular Gauge`, `Community 98`, `Config Editor Screen`, `Built-in Gauges`, `Arc Renderer`, `Bar Gauge`, `MinMax Gauge`?**
   _High betweenness centrality (0.059) - this node is a cross-community bridge._
-- **Why does `int` connect `Circular Gauge` to `Gauge Designer UI`, `Configuration & JSON`, `Game Loop & Config`, `Config Editor Screen`, `Data Source & Expression`, `Render Context & FPS`, `Custom & Histogram Gauge`, `Grid Gauge & Config`, `BLE Types & Keep-Alive`, `Bar Gauge`, `MinMax Gauge`?**
+- **Why does `int` connect `Game Loop & Config` to `Gauge Designer UI`, `Circular Gauge`, `Configuration & JSON`, `Config Editor Screen`, `Data Source & Expression`, `Custom & Histogram Gauge`, `Grid Gauge & Config`, `BLE Types & Keep-Alive`, `Bar Gauge`, `MinMax Gauge`?**
   _High betweenness centrality (0.056) - this node is a cross-community bridge._
-- **Why does `MainWindow` connect `Gauge Designer UI` to `Circular Gauge`, `Configuration & JSON`, `Data Source & Expression`, `Custom & Histogram Gauge`, `Grid Gauge & Config`, `BLE Types & Keep-Alive`?**
+- **Why does `MainWindow` connect `Gauge Designer UI` to `Circular Gauge`, `Configuration & JSON`, `Game Loop & Config`, `Data Source & Expression`, `Grid Gauge & Config`, `BLE Types & Keep-Alive`?**
   _High betweenness centrality (0.055) - this node is a cross-community bridge._
 - **What connects `LANG`, `LC_ALL`, `PATH` to the rest of the system?**
   _182 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `BLE Device Connection` be split into smaller, more focused modules?**
-  _Cohesion score 0.0545790934320074 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.0746031746031746 - nodes in this community are weakly interconnected._
 - **Should `Core App & Input` be split into smaller, more focused modules?**
   _Cohesion score 0.1 - nodes in this community are weakly interconnected._
 - **Should `Gauge Architecture` be split into smaller, more focused modules?**

@@ -49,6 +49,7 @@ public class CustomGaugeDefinition
 [JsonDerivedType(typeof(LabelValueElement), "labelvalue")]
 [JsonDerivedType(typeof(PeakMarkerElement), "peak")]
 [JsonDerivedType(typeof(GifElement), "gif")]
+[JsonDerivedType(typeof(ClockElement), "clock")]
 public abstract class GaugeElement
 {
 	public string Id { get; set; } = Guid.NewGuid().ToString("N")[..8];
@@ -325,4 +326,20 @@ public class GifElement : GaugeElement
 
 	[JsonIgnore]
 	public override string TypeLabel => "Gif";
+}
+
+public class ClockElement : GaugeElement
+{
+	public string Format { get; set; } = "HH:mm:ss";
+	public bool UseUtc { get; set; } = false;
+	public float FontSize { get; set; } = 32f;
+	public string Color { get; set; } = "#FFFFFF";
+	public string Font { get; set; } = "DSEG7 Classic";
+	public bool ShowBox { get; set; } = false;
+	public string BoxColor { get; set; } = "#1A1A1A";
+	public float BoxPadding { get; set; } = 6f;
+	public float BoxCornerRadius { get; set; } = 4f;
+
+	[JsonIgnore]
+	public override string TypeLabel => "Clock";
 }

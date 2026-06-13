@@ -76,6 +76,7 @@ Drag-and-drop gauge designer → JSON definition → runtime rendering on device
 | `LabelValueElement` | `labelvalue` | Yes | Compound label + large value display; optional background box; X/Y = center |
 | `PeakMarkerElement` | `peak` | Yes | Tick at rolling peak angle; state keyed by `Id` in `ElementRenderer._peakState`; `DecaySeconds=0` holds forever |
 | `GifElement` | `gif` | Yes | Multi-frame image; value maps `MinValue`→`MaxValue` to frame `0`→`N-1`. Frames decoded by `GifCache` (honours per-frame blending); exported via raw file copy (not PNG re-encode) to preserve frames |
+| `ClockElement` | `clock` | No | System time via `DateTime.Now`/`UtcNow`, formatted by `Format` (.NET format string); rendered by `TextRenderer.DrawClock`. Ticks live in the running app (per-frame redraw), static in the designer preview |
 
 `CustomGaugeDefinition` also supports:
 - `BackgroundImage` — path drawn behind all elements

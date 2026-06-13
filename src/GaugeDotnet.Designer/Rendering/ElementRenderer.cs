@@ -94,6 +94,7 @@ public static class ElementRenderer
 				needle.X + needle.Length,
 				needle.Y + needle.Length),
 			TextElement text => GetTextBounds(text),
+			ClockElement clock => GetClockBounds(clock),
 			ValueDisplayElement val => GetValueBounds(val),
 			TickRingElement ticks => new SKRect(
 				ticks.X - ticks.Radius,
@@ -198,6 +199,20 @@ public static class ElementRenderer
 			text.Y - height,
 			text.X + width / 2,
 			text.Y + height * 0.3f);
+	}
+
+	private static SKRect GetClockBounds(ClockElement clock)
+	{
+		SKTypeface typeface = GetTypeface(clock.Font);
+		using SKFont font = new(typeface, clock.FontSize);
+		string sample = DateTime.Now.ToString("HH:mm:ss");
+		float width = font.MeasureText(sample);
+		float height = clock.FontSize;
+		return new SKRect(
+			clock.X - width / 2,
+			clock.Y - height,
+			clock.X + width / 2,
+			clock.Y + height * 0.3f);
 	}
 
 	private static SKRect GetValueBounds(ValueDisplayElement val)

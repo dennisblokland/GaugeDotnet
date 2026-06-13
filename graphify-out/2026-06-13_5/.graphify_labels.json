@@ -60,6 +60,7 @@
   "58": "Arc Renderer",
   "59": "Image Renderer",
   "60": "IMeDevice Interface",
+  "61": "MEData Model",
   "62": "IStorageProvider Interface",
   "63": "Local Settings",
   "64": "ME1_3 Frame",
@@ -96,5 +97,6 @@
   "95": "Line Element",
   "96": "Image Element",
   "97": "Community 97",
+  "98": "Community 98",
   "99": "Community 99"
 }

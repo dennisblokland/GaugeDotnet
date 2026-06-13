@@ -322,7 +322,7 @@
       "source_file": "src/GaugeDotnet.Designer/MainWindow.axaml.cs",
       "source_location": "L23",
       "id": "int",
-      "community": 34,
+      "community": 6,
       "norm_label": "int"
     },
     {
@@ -367,7 +367,7 @@
       "source_file": "src/GaugeDotnet/Rendering/FpsCounter.cs",
       "source_location": "L8",
       "id": "stopwatch",
-      "community": 13,
+      "community": 6,
       "norm_label": "stopwatch"
     },
     {
@@ -727,7 +727,7 @@
       "source_file": "src/GaugeDotnet.Designer/MainWindow.axaml.cs",
       "source_location": "L37",
       "id": "float",
-      "community": 14,
+      "community": 34,
       "norm_label": "float"
     },
     {
@@ -862,7 +862,7 @@
       "source_file": "src/GaugeDotnet/Gauges/Components/SegmentDisplay.cs",
       "source_location": "L30",
       "id": "skbitmap",
-      "community": 10,
+      "community": 98,
       "norm_label": "skbitmap"
     },
     {
@@ -1042,7 +1042,7 @@
       "source_file": "src/GaugeDotnet/Rendering/FpsCounter.cs",
       "source_location": "L20",
       "id": "skfont",
-      "community": 13,
+      "community": 6,
       "norm_label": "skfont"
     },
     {
@@ -1285,7 +1285,7 @@
       "source_file": "src/GaugeDotnet/Gauges/NeedleGauge.cs",
       "source_location": "L1",
       "id": "src_gaugedotnet_gauges_needlegauge_cs",
-      "community": 10,
+      "community": 98,
       "norm_label": "needlegauge.cs"
     },
     {
@@ -1294,7 +1294,7 @@
       "source_file": "src/GaugeDotnet/Gauges/NeedleGauge.cs",
       "source_location": "L6",
       "id": "gauges_needlegauge_gaugedotnet_gauges",
-      "community": 10,
+      "community": 98,
       "norm_label": "gaugedotnet.gauges"
     },
     {
@@ -1303,7 +1303,7 @@
       "source_file": "src/GaugeDotnet/Gauges/NeedleGauge.cs",
       "source_location": "L11",
       "id": "gauges_needlegauge_needlegauge",
-      "community": 10,
+      "community": 98,
       "norm_label": "needlegauge"
     },
     {
@@ -1312,7 +1312,7 @@
       "source_file": "src/GaugeDotnet/Gauges/NeedleGauge.cs",
       "source_location": "L109",
       "id": "gauges_needlegauge_needlegauge_updatestaticbackground",
-      "community": 10,
+      "community": 98,
       "norm_label": ".updatestaticbackground()"
     },
     {
@@ -1321,7 +1321,7 @@
       "source_file": "src/GaugeDotnet/Gauges/NeedleGauge.cs",
       "source_location": "L212",
       "id": "gauges_needlegauge_needlegauge_draw",
-      "community": 10,
+      "community": 98,
       "norm_label": ".draw()"
     },
     {
@@ -1742,7 +1742,7 @@
       "label": "Dictionary",
       "file_type": "code",
       "source_file": "src/GaugeDotnet.Designer/MainWindow.axaml.cs",
-      "source_location": "L970",
+      "source_location": "L957",
       "id": "dictionary",
       "community": 11,
       "norm_label": "dictionary"
@@ -1922,7 +1922,7 @@
       "label": "ArcElement",
       "file_type": "code",
       "source_file": "src/GaugeDotnet/Gauges/Custom/GaugeElement.cs",
-      "source_location": "L72",
+      "source_location": "L71",
       "id": "custom_gaugeelement_arcelement",
       "community": 9,
       "norm_label": "arcelement"
@@ -1931,7 +1931,7 @@
       "label": "NeedleElement",
       "file_type": "code",
       "source_file": "src/GaugeDotnet/Gauges/Custom/GaugeElement.cs",
-      "source_location": "L93",
+      "source_location": "L92",
       "id": "custom_gaugeelement_needleelement",
       "community": 9,
       "norm_label": "needleelement"
@@ -1940,7 +1940,7 @@
       "label": "TextElement",
       "file_type": "code",
       "source_file": "src/GaugeDotnet/Gauges/Custom/GaugeElement.cs",
-      "source_location": "L113",
+      "source_location": "L112",
       "id": "custom_gaugeelement_textelement",
       "community": 9,
       "norm_label": "textelement"
@@ -1949,7 +1949,7 @@
       "label": "ValueDisplayElement",
       "file_type": "code",
       "source_file": "src/GaugeDotnet/Gauges/Custom/GaugeElement.cs",
-      "source_location": "L128",
+      "source_location": "L127",
       "id": "custom_gaugeelement_valuedisplayelement",
       "community": 9,
       "norm_label": "valuedisplayelement"
@@ -1958,7 +1958,7 @@
       "label": "TickRingElement",
       "file_type": "code",
       "source_file": "src/GaugeDotnet/Gauges/Custom/GaugeElement.cs",
-      "source_location": "L140",
+      "source_location": "L139",
       "id": "custom_gaugeelement_tickringelement",
       "community": 9,
       "norm_label": "tickringelement"
@@ -1967,7 +1967,7 @@
       "label": "CircleElement",
       "file_type": "code",
       "source_file": "src/GaugeDotnet/Gauges/Custom/GaugeElement.cs",
-      "source_location": "L165",
+      "source_location": "L164",
       "id": "custom_gaugeelement_circleelement",
       "community": 9,
       "norm_label": "circleelement"
@@ -1976,7 +1976,7 @@
       "label": "RectangleElement",
       "file_type": "code",
       "source_file": "src/GaugeDotnet/Gauges/Custom/GaugeElement.cs",
-      "source_location": "L176",
+      "source_location": "L175",
       "id": "custom_gaugeelement_rectangleelement",
       "community": 9,
       "norm_label": "rectangleelement"
@@ -1985,7 +1985,7 @@
       "label": "LineElement",
       "file_type": "code",
       "source_file": "src/GaugeDotnet/Gauges/Custom/GaugeElement.cs",
-      "source_location": "L189",
+      "source_location": "L188",
       "id": "custom_gaugeelement_lineelement",
       "community": 9,
       "norm_label": "lineelement"
@@ -1994,7 +1994,7 @@
       "label": "LinearBarElement",
       "file_type": "code",
       "source_file": "src/GaugeDotnet/Gauges/Custom/GaugeElement.cs",
-      "source_location": "L200",
+      "source_location": "L199",
       "id": "custom_gaugeelement_linearbarelement",
       "community": 9,
       "norm_label": "linearbarelement"
@@ -2003,7 +2003,7 @@
       "label": "WarningIndicatorElement",
       "file_type": "code",
       "source_file": "src/GaugeDotnet/Gauges/Custom/GaugeElement.cs",
-      "source_location": "L220",
+      "source_location": "L219",
       "id": "custom_gaugeelement_warningindicatorelement",
       "community": 9,
       "norm_label": "warningindicatorelement"
@@ -2012,7 +2012,7 @@
       "label": "ImageElement",
       "file_type": "code",
       "source_file": "src/GaugeDotnet/Gauges/Custom/GaugeElement.cs",
-      "source_location": "L236",
+      "source_location": "L235",
       "id": "custom_gaugeelement_imageelement",
       "community": 9,
       "norm_label": "imageelement"
@@ -2021,7 +2021,7 @@
       "label": "LabelValueElement",
       "file_type": "code",
       "source_file": "src/GaugeDotnet/Gauges/Custom/GaugeElement.cs",
-      "source_location": "L247",
+      "source_location": "L246",
       "id": "custom_gaugeelement_labelvalueelement",
       "community": 9,
       "norm_label": "labelvalueelement"
@@ -2030,7 +2030,7 @@
       "label": "ZoneArcElement",
       "file_type": "code",
       "source_file": "src/GaugeDotnet/Gauges/Custom/GaugeElement.cs",
-      "source_location": "L267",
+      "source_location": "L266",
       "id": "custom_gaugeelement_zonearcelement",
       "community": 9,
       "norm_label": "zonearcelement"
@@ -2039,7 +2039,7 @@
       "label": "GraphElement",
       "file_type": "code",
       "source_file": "src/GaugeDotnet/Gauges/Custom/GaugeElement.cs",
-      "source_location": "L289",
+      "source_location": "L288",
       "id": "custom_gaugeelement_graphelement",
       "community": 9,
       "norm_label": "graphelement"
@@ -2048,7 +2048,7 @@
       "label": "PeakMarkerElement",
       "file_type": "code",
       "source_file": "src/GaugeDotnet/Gauges/Custom/GaugeElement.cs",
-      "source_location": "L305",
+      "source_location": "L304",
       "id": "custom_gaugeelement_peakmarkerelement",
       "community": 9,
       "norm_label": "peakmarkerelement"
@@ -2057,19 +2057,10 @@
       "label": "GifElement",
       "file_type": "code",
       "source_file": "src/GaugeDotnet/Gauges/Custom/GaugeElement.cs",
-      "source_location": "L320",
+      "source_location": "L319",
       "id": "custom_gaugeelement_gifelement",
       "community": 9,
       "norm_label": "gifelement"
-    },
-    {
-      "label": "ClockElement",
-      "file_type": "code",
-      "source_file": "src/GaugeDotnet/Gauges/Custom/GaugeElement.cs",
-      "source_location": "L331",
-      "id": "custom_gaugeelement_clockelement",
-      "community": 9,
-      "norm_label": "clockelement"
     },
     {
       "label": "ElementRenderer.cs",
@@ -2120,7 +2111,7 @@
       "label": ".LoadImage()",
       "file_type": "code",
       "source_file": "src/GaugeDotnet/Gauges/Custom/ElementRenderer.cs",
-      "source_location": "L114",
+      "source_location": "L113",
       "id": "custom_elementrenderer_elementrenderer_loadimage",
       "community": 25,
       "norm_label": ".loadimage()"
@@ -2129,7 +2120,7 @@
       "label": ".SaveImageFromCache()",
       "file_type": "code",
       "source_file": "src/GaugeDotnet/Gauges/Custom/ElementRenderer.cs",
-      "source_location": "L117",
+      "source_location": "L116",
       "id": "custom_elementrenderer_elementrenderer_saveimagefromcache",
       "community": 25,
       "norm_label": ".saveimagefromcache()"
@@ -2138,7 +2129,7 @@
       "label": ".ClearImageCache()",
       "file_type": "code",
       "source_file": "src/GaugeDotnet/Gauges/Custom/ElementRenderer.cs",
-      "source_location": "L120",
+      "source_location": "L119",
       "id": "custom_elementrenderer_elementrenderer_clearimagecache",
       "community": 25,
       "norm_label": ".clearimagecache()"
@@ -2446,7 +2437,7 @@
       "source_file": "src/GaugeDotnet/Gauges/Custom/Renderers/LinearBarRenderer.cs",
       "source_location": "L1",
       "id": "src_gaugedotnet_gauges_custom_renderers_linearbarrenderer_cs",
-      "community": 58,
+      "community": 34,
       "norm_label": "linearbarrenderer.cs"
     },
     {
@@ -2455,7 +2446,7 @@
       "source_file": "src/GaugeDotnet/Gauges/Custom/Renderers/LinearBarRenderer.cs",
       "source_location": "L5",
       "id": "renderers_linearbarrenderer_linearbarrenderer",
-      "community": 58,
+      "community": 34,
       "norm_label": "linearbarrenderer"
     },
     {
@@ -2464,7 +2455,7 @@
       "source_file": "src/GaugeDotnet/Gauges/Custom/Renderers/LinearBarRenderer.cs",
       "source_location": "L10",
       "id": "renderers_linearbarrenderer_linearbarrenderer_draw",
-      "community": 58,
+      "community": 34,
       "norm_label": ".draw()"
     },
     {
@@ -2473,7 +2464,7 @@
       "source_file": "src/GaugeDotnet/Gauges/Custom/Renderers/IndicatorRenderer.cs",
       "source_location": "L1",
       "id": "src_gaugedotnet_gauges_custom_renderers_indicatorrenderer_cs",
-      "community": 14,
+      "community": 58,
       "norm_label": "indicatorrenderer.cs"
     },
     {
@@ -2482,7 +2473,7 @@
       "source_file": "src/GaugeDotnet/Gauges/Custom/Renderers/IndicatorRenderer.cs",
       "source_location": "L6",
       "id": "renderers_indicatorrenderer_indicatorrenderer",
-      "community": 14,
+      "community": 58,
       "norm_label": "indicatorrenderer"
     },
     {
@@ -2491,8 +2482,53 @@
       "source_file": "src/GaugeDotnet/Gauges/Custom/Renderers/IndicatorRenderer.cs",
       "source_location": "L12",
       "id": "renderers_indicatorrenderer_indicatorrenderer_draw",
-      "community": 14,
+      "community": 58,
       "norm_label": ".draw()"
+    },
+    {
+      "label": "TextRenderer.cs",
+      "file_type": "code",
+      "source_file": "src/GaugeDotnet/Gauges/Custom/Renderers/TextRenderer.cs",
+      "source_location": "L1",
+      "id": "src_gaugedotnet_gauges_custom_renderers_textrenderer_cs",
+      "community": 48,
+      "norm_label": "textrenderer.cs"
+    },
+    {
+      "label": "TextRenderer",
+      "file_type": "code",
+      "source_file": "src/GaugeDotnet/Gauges/Custom/Renderers/TextRenderer.cs",
+      "source_location": "L5",
+      "id": "renderers_textrenderer_textrenderer",
+      "community": 48,
+      "norm_label": "textrenderer"
+    },
+    {
+      "label": ".DrawText()",
+      "file_type": "code",
+      "source_file": "src/GaugeDotnet/Gauges/Custom/Renderers/TextRenderer.cs",
+      "source_location": "L7",
+      "id": "renderers_textrenderer_textrenderer_drawtext",
+      "community": 48,
+      "norm_label": ".drawtext()"
+    },
+    {
+      "label": ".DrawValueDisplay()",
+      "file_type": "code",
+      "source_file": "src/GaugeDotnet/Gauges/Custom/Renderers/TextRenderer.cs",
+      "source_location": "L36",
+      "id": "renderers_textrenderer_textrenderer_drawvaluedisplay",
+      "community": 48,
+      "norm_label": ".drawvaluedisplay()"
+    },
+    {
+      "label": ".DrawLabelValue()",
+      "file_type": "code",
+      "source_file": "src/GaugeDotnet/Gauges/Custom/Renderers/TextRenderer.cs",
+      "source_location": "L49",
+      "id": "renderers_textrenderer_textrenderer_drawlabelvalue",
+      "community": 48,
+      "norm_label": ".drawlabelvalue()"
     },
     {
       "label": "ShapeRenderer.cs",
@@ -2691,60 +2727,6 @@
       "id": "renderers_gifrenderer_gifrenderer_selectframe",
       "community": 68,
       "norm_label": ".selectframe()"
-    },
-    {
-      "label": "TextRenderer.cs",
-      "file_type": "code",
-      "source_file": "src/GaugeDotnet/Gauges/Custom/Renderers/TextRenderer.cs",
-      "source_location": "L1",
-      "id": "src_gaugedotnet_gauges_custom_renderers_textrenderer_cs",
-      "community": 48,
-      "norm_label": "textrenderer.cs"
-    },
-    {
-      "label": "TextRenderer",
-      "file_type": "code",
-      "source_file": "src/GaugeDotnet/Gauges/Custom/Renderers/TextRenderer.cs",
-      "source_location": "L5",
-      "id": "renderers_textrenderer_textrenderer",
-      "community": 48,
-      "norm_label": "textrenderer"
-    },
-    {
-      "label": ".DrawText()",
-      "file_type": "code",
-      "source_file": "src/GaugeDotnet/Gauges/Custom/Renderers/TextRenderer.cs",
-      "source_location": "L7",
-      "id": "renderers_textrenderer_textrenderer_drawtext",
-      "community": 48,
-      "norm_label": ".drawtext()"
-    },
-    {
-      "label": ".DrawClock()",
-      "file_type": "code",
-      "source_file": "src/GaugeDotnet/Gauges/Custom/Renderers/TextRenderer.cs",
-      "source_location": "L36",
-      "id": "renderers_textrenderer_textrenderer_drawclock",
-      "community": 48,
-      "norm_label": ".drawclock()"
-    },
-    {
-      "label": ".DrawValueDisplay()",
-      "file_type": "code",
-      "source_file": "src/GaugeDotnet/Gauges/Custom/Renderers/TextRenderer.cs",
-      "source_location": "L70",
-      "id": "renderers_textrenderer_textrenderer_drawvaluedisplay",
-      "community": 48,
-      "norm_label": ".drawvaluedisplay()"
-    },
-    {
-      "label": ".DrawLabelValue()",
-      "file_type": "code",
-      "source_file": "src/GaugeDotnet/Gauges/Custom/Renderers/TextRenderer.cs",
-      "source_location": "L83",
-      "id": "renderers_textrenderer_textrenderer_drawlabelvalue",
-      "community": 48,
-      "norm_label": ".drawlabelvalue()"
     },
     {
       "label": "launchSettings.json",
@@ -3013,7 +2995,7 @@
       "source_file": "src/GaugeDotnet/Configuration/AppConfig.cs",
       "source_location": "L1",
       "id": "src_gaugedotnet_configuration_appconfig_cs",
-      "community": 34,
+      "community": 6,
       "norm_label": "appconfig.cs"
     },
     {
@@ -3022,7 +3004,7 @@
       "source_file": "src/GaugeDotnet/Configuration/AppConfig.cs",
       "source_location": "L1",
       "id": "configuration_appconfig_gaugedotnet_configuration",
-      "community": 34,
+      "community": 6,
       "norm_label": "gaugedotnet.configuration"
     },
     {
@@ -3031,7 +3013,7 @@
       "source_file": "src/GaugeDotnet/Configuration/AppConfig.cs",
       "source_location": "L3",
       "id": "configuration_appconfig_appconfig",
-      "community": 34,
+      "community": 6,
       "norm_label": "appconfig"
     },
     {
@@ -3697,7 +3679,7 @@
       "source_file": "src/GaugeDotnet/Rendering/FpsCounter.cs",
       "source_location": "L1",
       "id": "src_gaugedotnet_rendering_fpscounter_cs",
-      "community": 13,
+      "community": 6,
       "norm_label": "fpscounter.cs"
     },
     {
@@ -3706,7 +3688,7 @@
       "source_file": "src/GaugeDotnet/Rendering/FpsCounter.cs",
       "source_location": "L4",
       "id": "rendering_fpscounter_gaugedotnet_rendering",
-      "community": 13,
+      "community": 6,
       "norm_label": "gaugedotnet.rendering"
     },
     {
@@ -3715,7 +3697,7 @@
       "source_file": "src/GaugeDotnet/Rendering/FpsCounter.cs",
       "source_location": "L6",
       "id": "rendering_fpscounter_fpscounter",
-      "community": 13,
+      "community": 6,
       "norm_label": "fpscounter"
     },
     {
@@ -3724,7 +3706,7 @@
       "source_file": "src/GaugeDotnet/Rendering/FpsCounter.cs",
       "source_location": "L22",
       "id": "rendering_fpscounter_fpscounter_tick",
-      "community": 13,
+      "community": 6,
       "norm_label": ".tick()"
     },
     {
@@ -3733,7 +3715,7 @@
       "source_file": "src/GaugeDotnet/Rendering/FpsCounter.cs",
       "source_location": "L35",
       "id": "rendering_fpscounter_fpscounter_draw",
-      "community": 13,
+      "community": 6,
       "norm_label": ".draw()"
     },
     {
@@ -3742,7 +3724,7 @@
       "source_file": "src/GaugeDotnet/Rendering/FpsCounter.cs",
       "source_location": "L40",
       "id": "rendering_fpscounter_fpscounter_dispose",
-      "community": 13,
+      "community": 6,
       "norm_label": ".dispose()"
     },
     {
@@ -3751,7 +3733,7 @@
       "source_file": "src/GaugeDotnet/Rendering/GaugeSDL.cs",
       "source_location": "L1",
       "id": "src_gaugedotnet_rendering_gaugesdl_cs",
-      "community": 1,
+      "community": 61,
       "norm_label": "gaugesdl.cs"
     },
     {
@@ -3760,7 +3742,7 @@
       "source_file": "src/GaugeDotnet/Rendering/GaugeSDL.cs",
       "source_location": "L4",
       "id": "rendering_gaugesdl_gaugedotnet_rendering",
-      "community": 1,
+      "community": 61,
       "norm_label": "gaugedotnet.rendering"
     },
     {
@@ -3769,7 +3751,7 @@
       "source_file": "src/GaugeDotnet/Rendering/GaugeSDL.cs",
       "source_location": "L6",
       "id": "rendering_gaugesdl_gaugesdl",
-      "community": 1,
+      "community": 61,
       "norm_label": "gaugesdl"
     },
     {
@@ -3778,7 +3760,7 @@
       "source_file": "src/GaugeDotnet/Rendering/GaugeSDL.cs",
       "source_location": "L8",
       "id": "intptr",
-      "community": 1,
+      "community": 61,
       "norm_label": "intptr"
     },
     {
@@ -3787,7 +3769,7 @@
       "source_file": "src/GaugeDotnet/Rendering/GaugeSDL.cs",
       "source_location": "L10",
       "id": "grcontext",
-      "community": 1,
+      "community": 61,
       "norm_label": "grcontext"
     },
     {
@@ -3796,7 +3778,7 @@
       "source_file": "src/GaugeDotnet/Rendering/GaugeSDL.cs",
       "source_location": "L11",
       "id": "sksurface",
-      "community": 1,
+      "community": 61,
       "norm_label": "sksurface"
     },
     {
@@ -3805,7 +3787,7 @@
       "source_file": "src/GaugeDotnet/Rendering/GaugeSDL.cs",
       "source_location": "L115",
       "id": "rendering_gaugesdl_gaugesdl_dispose",
-      "community": 1,
+      "community": 61,
       "norm_label": ".dispose()"
     },
     {
@@ -3814,7 +3796,7 @@
       "source_file": "src/GaugeDotnet/Rendering/GaugeSDL.cs",
       "source_location": "L117",
       "id": "rendering_gaugesdl_gaugesdl_cleanup",
-      "community": 1,
+      "community": 61,
       "norm_label": ".cleanup()"
     },
     {
@@ -3823,7 +3805,7 @@
       "source_file": "src/GaugeDotnet/Rendering/GaugeSDL.cs",
       "source_location": "L135",
       "id": "rendering_gaugesdl_gaugesdl_flushandswap",
-      "community": 1,
+      "community": 61,
       "norm_label": ".flushandswap()"
     },
     {
@@ -3832,7 +3814,7 @@
       "source_file": "src/GaugeDotnet/Rendering/GaugeSDL.cs",
       "source_location": "L141",
       "id": "rendering_gaugesdl_gaugesdl_purgegpuresources",
-      "community": 1,
+      "community": 61,
       "norm_label": ".purgegpuresources()"
     },
     {
@@ -3841,7 +3823,7 @@
       "source_file": "src/GaugeDotnet/Rendering/GaugeSDL.cs",
       "source_location": "L144",
       "id": "rendering_gaugesdl_gaugesdl_getcanvas",
-      "community": 1,
+      "community": 61,
       "norm_label": ".getcanvas()"
     },
     {
@@ -6422,7 +6404,7 @@
       "label": ".AddElement()",
       "file_type": "code",
       "source_file": "src/GaugeDotnet.Designer/MainWindow.axaml.cs",
-      "source_location": "L196",
+      "source_location": "L195",
       "id": "gaugedotnet_designer_mainwindow_axaml_mainwindow_addelement",
       "community": 0,
       "norm_label": ".addelement()"
@@ -6431,7 +6413,7 @@
       "label": ".DeleteElement()",
       "file_type": "code",
       "source_file": "src/GaugeDotnet.Designer/MainWindow.axaml.cs",
-      "source_location": "L207",
+      "source_location": "L206",
       "id": "gaugedotnet_designer_mainwindow_axaml_mainwindow_deleteelement",
       "community": 0,
       "norm_label": ".deleteelement()"
@@ -6440,7 +6422,7 @@
       "label": ".DuplicateElement()",
       "file_type": "code",
       "source_file": "src/GaugeDotnet.Designer/MainWindow.axaml.cs",
-      "source_location": "L226",
+      "source_location": "L225",
       "id": "gaugedotnet_designer_mainwindow_axaml_mainwindow_duplicateelement",
       "community": 0,
       "norm_label": ".duplicateelement()"
@@ -6449,7 +6431,7 @@
       "label": ".MoveElement()",
       "file_type": "code",
       "source_file": "src/GaugeDotnet.Designer/MainWindow.axaml.cs",
-      "source_location": "L237",
+      "source_location": "L236",
       "id": "gaugedotnet_designer_mainwindow_axaml_mainwindow_moveelement",
       "community": 0,
       "norm_label": ".moveelement()"
@@ -6458,7 +6440,7 @@
       "label": ".PerformUndo()",
       "file_type": "code",
       "source_file": "src/GaugeDotnet.Designer/MainWindow.axaml.cs",
-      "source_location": "L246",
+      "source_location": "L245",
       "id": "gaugedotnet_designer_mainwindow_axaml_mainwindow_performundo",
       "community": 0,
       "norm_label": ".performundo()"
@@ -6467,7 +6449,7 @@
       "label": ".PerformRedo()",
       "file_type": "code",
       "source_file": "src/GaugeDotnet.Designer/MainWindow.axaml.cs",
-      "source_location": "L258",
+      "source_location": "L257",
       "id": "gaugedotnet_designer_mainwindow_axaml_mainwindow_performredo",
       "community": 0,
       "norm_label": ".performredo()"
@@ -6476,7 +6458,7 @@
       "label": ".UpdateUndoRedoButtons()",
       "file_type": "code",
       "source_file": "src/GaugeDotnet.Designer/MainWindow.axaml.cs",
-      "source_location": "L270",
+      "source_location": "L269",
       "id": "gaugedotnet_designer_mainwindow_axaml_mainwindow_updateundoredobuttons",
       "community": 0,
       "norm_label": ".updateundoredobuttons()"
@@ -6485,7 +6467,7 @@
       "label": ".Snap()",
       "file_type": "code",
       "source_file": "src/GaugeDotnet.Designer/MainWindow.axaml.cs",
-      "source_location": "L276",
+      "source_location": "L275",
       "id": "gaugedotnet_designer_mainwindow_axaml_mainwindow_snap",
       "community": 0,
       "norm_label": ".snap()"
@@ -6494,7 +6476,7 @@
       "label": ".SelectElement()",
       "file_type": "code",
       "source_file": "src/GaugeDotnet.Designer/MainWindow.axaml.cs",
-      "source_location": "L278",
+      "source_location": "L277",
       "id": "gaugedotnet_designer_mainwindow_axaml_mainwindow_selectelement",
       "community": 0,
       "norm_label": ".selectelement()"
@@ -6503,7 +6485,7 @@
       "label": ".RefreshElementList()",
       "file_type": "code",
       "source_file": "src/GaugeDotnet.Designer/MainWindow.axaml.cs",
-      "source_location": "L297",
+      "source_location": "L296",
       "id": "gaugedotnet_designer_mainwindow_axaml_mainwindow_refreshelementlist",
       "community": 0,
       "norm_label": ".refreshelementlist()"
@@ -6512,7 +6494,7 @@
       "label": ".SyncListSelection()",
       "file_type": "code",
       "source_file": "src/GaugeDotnet.Designer/MainWindow.axaml.cs",
-      "source_location": "L307",
+      "source_location": "L306",
       "id": "gaugedotnet_designer_mainwindow_axaml_mainwindow_synclistselection",
       "community": 0,
       "norm_label": ".synclistselection()"
@@ -6521,7 +6503,7 @@
       "label": ".Canvas_PointerPressed()",
       "file_type": "code",
       "source_file": "src/GaugeDotnet.Designer/MainWindow.axaml.cs",
-      "source_location": "L338",
+      "source_location": "L337",
       "id": "gaugedotnet_designer_mainwindow_axaml_mainwindow_canvas_pointerpressed",
       "community": 0,
       "norm_label": ".canvas_pointerpressed()"
@@ -6530,7 +6512,7 @@
       "label": ".Canvas_PointerMoved()",
       "file_type": "code",
       "source_file": "src/GaugeDotnet.Designer/MainWindow.axaml.cs",
-      "source_location": "L388",
+      "source_location": "L387",
       "id": "gaugedotnet_designer_mainwindow_axaml_mainwindow_canvas_pointermoved",
       "community": 0,
       "norm_label": ".canvas_pointermoved()"
@@ -6539,7 +6521,7 @@
       "label": ".Canvas_PointerReleased()",
       "file_type": "code",
       "source_file": "src/GaugeDotnet.Designer/MainWindow.axaml.cs",
-      "source_location": "L403",
+      "source_location": "L402",
       "id": "gaugedotnet_designer_mainwindow_axaml_mainwindow_canvas_pointerreleased",
       "community": 0,
       "norm_label": ".canvas_pointerreleased()"
@@ -6548,7 +6530,7 @@
       "label": ".ClearProperties()",
       "file_type": "code",
       "source_file": "src/GaugeDotnet.Designer/MainWindow.axaml.cs",
-      "source_location": "L415",
+      "source_location": "L414",
       "id": "gaugedotnet_designer_mainwindow_axaml_mainwindow_clearproperties",
       "community": 0,
       "norm_label": ".clearproperties()"
@@ -6557,7 +6539,7 @@
       "label": ".AddCalculatedChannelsSection()",
       "file_type": "code",
       "source_file": "src/GaugeDotnet.Designer/MainWindow.axaml.cs",
-      "source_location": "L432",
+      "source_location": "L431",
       "id": "gaugedotnet_designer_mainwindow_axaml_mainwindow_addcalculatedchannelssection",
       "community": 0,
       "norm_label": ".addcalculatedchannelssection()"
@@ -6566,7 +6548,7 @@
       "label": ".ShowProperties()",
       "file_type": "code",
       "source_file": "src/GaugeDotnet.Designer/MainWindow.axaml.cs",
-      "source_location": "L477",
+      "source_location": "L476",
       "id": "gaugedotnet_designer_mainwindow_axaml_mainwindow_showproperties",
       "community": 0,
       "norm_label": ".showproperties()"
@@ -6575,7 +6557,7 @@
       "label": ".AddHeader()",
       "file_type": "code",
       "source_file": "src/GaugeDotnet.Designer/MainWindow.axaml.cs",
-      "source_location": "L755",
+      "source_location": "L742",
       "id": "gaugedotnet_designer_mainwindow_axaml_mainwindow_addheader",
       "community": 0,
       "norm_label": ".addheader()"
@@ -6584,7 +6566,7 @@
       "label": ".AddSeparator()",
       "file_type": "code",
       "source_file": "src/GaugeDotnet.Designer/MainWindow.axaml.cs",
-      "source_location": "L766",
+      "source_location": "L753",
       "id": "gaugedotnet_designer_mainwindow_axaml_mainwindow_addseparator",
       "community": 0,
       "norm_label": ".addseparator()"
@@ -6593,7 +6575,7 @@
       "label": ".AddTextProp()",
       "file_type": "code",
       "source_file": "src/GaugeDotnet.Designer/MainWindow.axaml.cs",
-      "source_location": "L771",
+      "source_location": "L758",
       "id": "gaugedotnet_designer_mainwindow_axaml_mainwindow_addtextprop",
       "community": 0,
       "norm_label": ".addtextprop()"
@@ -6602,7 +6584,7 @@
       "label": ".AddFloatProp()",
       "file_type": "code",
       "source_file": "src/GaugeDotnet.Designer/MainWindow.axaml.cs",
-      "source_location": "L782",
+      "source_location": "L769",
       "id": "gaugedotnet_designer_mainwindow_axaml_mainwindow_addfloatprop",
       "community": 0,
       "norm_label": ".addfloatprop()"
@@ -6611,7 +6593,7 @@
       "label": ".AddIntProp()",
       "file_type": "code",
       "source_file": "src/GaugeDotnet.Designer/MainWindow.axaml.cs",
-      "source_location": "L801",
+      "source_location": "L788",
       "id": "gaugedotnet_designer_mainwindow_axaml_mainwindow_addintprop",
       "community": 0,
       "norm_label": ".addintprop()"
@@ -6620,7 +6602,7 @@
       "label": ".AddColorProp()",
       "file_type": "code",
       "source_file": "src/GaugeDotnet.Designer/MainWindow.axaml.cs",
-      "source_location": "L819",
+      "source_location": "L806",
       "id": "gaugedotnet_designer_mainwindow_axaml_mainwindow_addcolorprop",
       "community": 0,
       "norm_label": ".addcolorprop()"
@@ -6629,7 +6611,7 @@
       "label": ".AddBoolProp()",
       "file_type": "code",
       "source_file": "src/GaugeDotnet.Designer/MainWindow.axaml.cs",
-      "source_location": "L832",
+      "source_location": "L819",
       "id": "gaugedotnet_designer_mainwindow_axaml_mainwindow_addboolprop",
       "community": 0,
       "norm_label": ".addboolprop()"
@@ -6638,7 +6620,7 @@
       "label": ".AddEnumProp()",
       "file_type": "code",
       "source_file": "src/GaugeDotnet.Designer/MainWindow.axaml.cs",
-      "source_location": "L842",
+      "source_location": "L829",
       "id": "gaugedotnet_designer_mainwindow_axaml_mainwindow_addenumprop",
       "community": 0,
       "norm_label": ".addenumprop()"
@@ -6647,7 +6629,7 @@
       "label": ".AddByteProp()",
       "file_type": "code",
       "source_file": "src/GaugeDotnet.Designer/MainWindow.axaml.cs",
-      "source_location": "L860",
+      "source_location": "L847",
       "id": "gaugedotnet_designer_mainwindow_axaml_mainwindow_addbyteprop",
       "community": 0,
       "norm_label": ".addbyteprop()"
@@ -6656,7 +6638,7 @@
       "label": ".AddDataSourceProp()",
       "file_type": "code",
       "source_file": "src/GaugeDotnet.Designer/MainWindow.axaml.cs",
-      "source_location": "L879",
+      "source_location": "L866",
       "id": "gaugedotnet_designer_mainwindow_axaml_mainwindow_adddatasourceprop",
       "community": 0,
       "norm_label": ".adddatasourceprop()"
@@ -6665,7 +6647,7 @@
       "label": ".AddFontProp()",
       "file_type": "code",
       "source_file": "src/GaugeDotnet.Designer/MainWindow.axaml.cs",
-      "source_location": "L908",
+      "source_location": "L895",
       "id": "gaugedotnet_designer_mainwindow_axaml_mainwindow_addfontprop",
       "community": 0,
       "norm_label": ".addfontprop()"
@@ -6674,7 +6656,7 @@
       "label": ".AddImagePathProp()",
       "file_type": "code",
       "source_file": "src/GaugeDotnet.Designer/MainWindow.axaml.cs",
-      "source_location": "L925",
+      "source_location": "L912",
       "id": "gaugedotnet_designer_mainwindow_axaml_mainwindow_addimagepathprop",
       "community": 0,
       "norm_label": ".addimagepathprop()"
@@ -6683,7 +6665,7 @@
       "label": ".UpdateTestValueSliders()",
       "file_type": "code",
       "source_file": "src/GaugeDotnet.Designer/MainWindow.axaml.cs",
-      "source_location": "L972",
+      "source_location": "L959",
       "id": "gaugedotnet_designer_mainwindow_axaml_mainwindow_updatetestvaluesliders",
       "community": 0,
       "norm_label": ".updatetestvaluesliders()"
@@ -6692,7 +6674,7 @@
       "label": ".Redraw()",
       "file_type": "code",
       "source_file": "src/GaugeDotnet.Designer/MainWindow.axaml.cs",
-      "source_location": "L1017",
+      "source_location": "L1004",
       "id": "gaugedotnet_designer_mainwindow_axaml_mainwindow_redraw",
       "community": 0,
       "norm_label": ".redraw()"
@@ -6701,7 +6683,7 @@
       "label": ".OnSaveClick()",
       "file_type": "code",
       "source_file": "src/GaugeDotnet.Designer/MainWindow.axaml.cs",
-      "source_location": "L1039",
+      "source_location": "L1026",
       "id": "gaugedotnet_designer_mainwindow_axaml_mainwindow_onsaveclick",
       "community": 0,
       "norm_label": ".onsaveclick()"
@@ -6710,7 +6692,7 @@
       "label": ".CopyImagesAndRewritePaths()",
       "file_type": "code",
       "source_file": "src/GaugeDotnet.Designer/MainWindow.axaml.cs",
-      "source_location": "L1078",
+      "source_location": "L1065",
       "id": "gaugedotnet_designer_mainwindow_axaml_mainwindow_copyimagesandrewritepaths",
       "community": 0,
       "norm_label": ".copyimagesandrewritepaths()"
@@ -6719,7 +6701,7 @@
       "label": ".SaveAndRelativize()",
       "file_type": "code",
       "source_file": "src/GaugeDotnet.Designer/MainWindow.axaml.cs",
-      "source_location": "L1103",
+      "source_location": "L1090",
       "id": "gaugedotnet_designer_mainwindow_axaml_mainwindow_saveandrelativize",
       "community": 0,
       "norm_label": ".saveandrelativize()"
@@ -6728,7 +6710,7 @@
       "label": ".CopyRawAndRelativize()",
       "file_type": "code",
       "source_file": "src/GaugeDotnet.Designer/MainWindow.axaml.cs",
-      "source_location": "L1115",
+      "source_location": "L1102",
       "id": "gaugedotnet_designer_mainwindow_axaml_mainwindow_copyrawandrelativize",
       "community": 0,
       "norm_label": ".copyrawandrelativize()"
@@ -6737,7 +6719,7 @@
       "label": ".OnLoadClick()",
       "file_type": "code",
       "source_file": "src/GaugeDotnet.Designer/MainWindow.axaml.cs",
-      "source_location": "L1129",
+      "source_location": "L1116",
       "id": "gaugedotnet_designer_mainwindow_axaml_mainwindow_onloadclick",
       "community": 0,
       "norm_label": ".onloadclick()"
@@ -6746,7 +6728,7 @@
       "label": ".OnNewClick()",
       "file_type": "code",
       "source_file": "src/GaugeDotnet.Designer/MainWindow.axaml.cs",
-      "source_location": "L1159",
+      "source_location": "L1146",
       "id": "gaugedotnet_designer_mainwindow_axaml_mainwindow_onnewclick",
       "community": 0,
       "norm_label": ".onnewclick()"
@@ -6800,7 +6782,7 @@
       "label": ".DrawSelectionHighlight()",
       "file_type": "code",
       "source_file": "src/GaugeDotnet.Designer/Rendering/ElementRenderer.cs",
-      "source_location": "L155",
+      "source_location": "L154",
       "id": "rendering_elementrenderer_elementrenderer_drawselectionhighlight",
       "community": 24,
       "norm_label": ".drawselectionhighlight()"
@@ -6809,25 +6791,16 @@
       "label": ".GetTextBounds()",
       "file_type": "code",
       "source_file": "src/GaugeDotnet.Designer/Rendering/ElementRenderer.cs",
-      "source_location": "L191",
+      "source_location": "L190",
       "id": "rendering_elementrenderer_elementrenderer_gettextbounds",
       "community": 24,
       "norm_label": ".gettextbounds()"
     },
     {
-      "label": ".GetClockBounds()",
-      "file_type": "code",
-      "source_file": "src/GaugeDotnet.Designer/Rendering/ElementRenderer.cs",
-      "source_location": "L204",
-      "id": "rendering_elementrenderer_elementrenderer_getclockbounds",
-      "community": 24,
-      "norm_label": ".getclockbounds()"
-    },
-    {
       "label": ".GetValueBounds()",
       "file_type": "code",
       "source_file": "src/GaugeDotnet.Designer/Rendering/ElementRenderer.cs",
-      "source_location": "L218",
+      "source_location": "L203",
       "id": "rendering_elementrenderer_elementrenderer_getvaluebounds",
       "community": 24,
       "norm_label": ".getvaluebounds()"
@@ -6836,7 +6809,7 @@
       "label": ".GetTypeface()",
       "file_type": "code",
       "source_file": "src/GaugeDotnet.Designer/Rendering/ElementRenderer.cs",
-      "source_location": "L232",
+      "source_location": "L217",
       "id": "rendering_elementrenderer_elementrenderer_gettypeface",
       "community": 24,
       "norm_label": ".gettypeface()"
@@ -7016,7 +6989,7 @@
       "label": "Key Files",
       "file_type": "document",
       "source_file": "AGENTS.md",
-      "source_location": "L93",
+      "source_location": "L92",
       "id": "gaugedotnet_agents_key_files",
       "community": 41,
       "norm_label": "key files"
@@ -7025,7 +6998,7 @@
       "label": "Smoothing",
       "file_type": "document",
       "source_file": "AGENTS.md",
-      "source_location": "L102",
+      "source_location": "L101",
       "id": "gaugedotnet_agents_smoothing",
       "community": 41,
       "norm_label": "smoothing"
@@ -7034,7 +7007,7 @@
       "label": "Needle Image Guide",
       "file_type": "document",
       "source_file": "AGENTS.md",
-      "source_location": "L106",
+      "source_location": "L105",
       "id": "gaugedotnet_agents_needle_image_guide",
       "community": 41,
       "norm_label": "needle image guide"
@@ -7043,7 +7016,7 @@
       "label": "Designer Keyboard Shortcuts",
       "file_type": "document",
       "source_file": "AGENTS.md",
-      "source_location": "L121",
+      "source_location": "L120",
       "id": "gaugedotnet_agents_designer_keyboard_shortcuts",
       "community": 41,
       "norm_label": "designer keyboard shortcuts"
@@ -7052,7 +7025,7 @@
       "label": "Tests",
       "file_type": "document",
       "source_file": "AGENTS.md",
-      "source_location": "L133",
+      "source_location": "L132",
       "id": "gaugedotnet_agents_tests",
       "community": 41,
       "norm_label": "tests"
@@ -7214,7 +7187,7 @@
       "label": "Background Image",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L131",
+      "source_location": "L130",
       "id": "gaugedotnet_readme_background_image",
       "community": 21,
       "norm_label": "background image"
@@ -7223,7 +7196,7 @@
       "label": "Needle Image Support",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L145",
+      "source_location": "L144",
       "id": "gaugedotnet_readme_needle_image_support",
       "community": 21,
       "norm_label": "needle image support"
@@ -7232,7 +7205,7 @@
       "label": "Value Smoothing",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L151",
+      "source_location": "L150",
       "id": "gaugedotnet_readme_value_smoothing",
       "community": 21,
       "norm_label": "value smoothing"
@@ -7241,7 +7214,7 @@
       "label": "Tests",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L155",
+      "source_location": "L154",
       "id": "gaugedotnet_readme_tests",
       "community": 21,
       "norm_label": "tests"
@@ -7250,7 +7223,7 @@
       "label": "code:shell (dotnet test)",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L157",
+      "source_location": "L156",
       "id": "gaugedotnet_readme_codeblock_6",
       "community": 21,
       "norm_label": "code:shell (dotnet test)"
@@ -7259,7 +7232,7 @@
       "label": "License",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L163",
+      "source_location": "L162",
       "id": "gaugedotnet_readme_license",
       "community": 21,
       "norm_label": "license"
@@ -12079,16 +12052,6 @@
       "target": "custom_gaugeelement_gifelement"
     },
     {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "src/GaugeDotnet/Gauges/Custom/GaugeElement.cs",
-      "source_location": "L331",
-      "weight": 1.0,
-      "source": "src_gaugedotnet_gauges_custom_gaugeelement_cs",
-      "target": "custom_gaugeelement_clockelement",
-      "confidence_score": 1.0
-    },
-    {
       "relation": "inherits",
       "confidence": "EXTRACTED",
       "source_file": "src/GaugeDotnet/Gauges/Custom/GaugeElement.cs",
@@ -12247,16 +12210,6 @@
       "confidence_score": 1.0,
       "source": "custom_gaugeelement_gifelement",
       "target": "custom_gaugeelement_gaugeelement"
-    },
-    {
-      "relation": "inherits",
-      "confidence": "EXTRACTED",
-      "source_file": "src/GaugeDotnet/Gauges/Custom/GaugeElement.cs",
-      "source_location": "L331",
-      "weight": 1.0,
-      "source": "custom_gaugeelement_clockelement",
-      "target": "custom_gaugeelement_gaugeelement",
-      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -12776,6 +12729,68 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
+      "source_file": "src/GaugeDotnet/Gauges/Custom/Renderers/TextRenderer.cs",
+      "source_location": "L5",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "src_gaugedotnet_gauges_custom_renderers_textrenderer_cs",
+      "target": "renderers_textrenderer_textrenderer"
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "src/GaugeDotnet/Gauges/Custom/Renderers/TextRenderer.cs",
+      "source_location": "L7",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "renderers_textrenderer_textrenderer",
+      "target": "renderers_textrenderer_textrenderer_drawtext"
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "src/GaugeDotnet/Gauges/Custom/Renderers/TextRenderer.cs",
+      "source_location": "L36",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "renderers_textrenderer_textrenderer",
+      "target": "renderers_textrenderer_textrenderer_drawvaluedisplay"
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "src/GaugeDotnet/Gauges/Custom/Renderers/TextRenderer.cs",
+      "source_location": "L49",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "renderers_textrenderer_textrenderer",
+      "target": "renderers_textrenderer_textrenderer_drawlabelvalue"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/GaugeDotnet/Gauges/Custom/Renderers/TextRenderer.cs",
+      "source_location": "L46",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "renderers_textrenderer_textrenderer_drawvaluedisplay",
+      "target": "renderers_textrenderer_textrenderer_drawtext"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "src/GaugeDotnet/Gauges/Custom/Renderers/TextRenderer.cs",
+      "source_location": "L90",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "renderers_textrenderer_textrenderer_drawlabelvalue",
+      "target": "renderers_textrenderer_textrenderer_drawtext"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
       "source_file": "src/GaugeDotnet/Gauges/Custom/Renderers/ShapeRenderer.cs",
       "source_location": "L5",
       "weight": 1.0,
@@ -12964,89 +12979,6 @@
       "confidence_score": 1.0,
       "source": "renderers_gifrenderer_gifrenderer_draw",
       "target": "renderers_gifrenderer_gifrenderer_selectframe"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "src/GaugeDotnet/Gauges/Custom/Renderers/TextRenderer.cs",
-      "source_location": "L5",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "src_gaugedotnet_gauges_custom_renderers_textrenderer_cs",
-      "target": "renderers_textrenderer_textrenderer"
-    },
-    {
-      "relation": "method",
-      "confidence": "EXTRACTED",
-      "source_file": "src/GaugeDotnet/Gauges/Custom/Renderers/TextRenderer.cs",
-      "source_location": "L7",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "renderers_textrenderer_textrenderer",
-      "target": "renderers_textrenderer_textrenderer_drawtext"
-    },
-    {
-      "relation": "method",
-      "confidence": "EXTRACTED",
-      "source_file": "src/GaugeDotnet/Gauges/Custom/Renderers/TextRenderer.cs",
-      "source_location": "L36",
-      "weight": 1.0,
-      "source": "renderers_textrenderer_textrenderer",
-      "target": "renderers_textrenderer_textrenderer_drawclock",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "method",
-      "confidence": "EXTRACTED",
-      "source_file": "src/GaugeDotnet/Gauges/Custom/Renderers/TextRenderer.cs",
-      "source_location": "L36",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "renderers_textrenderer_textrenderer",
-      "target": "renderers_textrenderer_textrenderer_drawvaluedisplay"
-    },
-    {
-      "relation": "method",
-      "confidence": "EXTRACTED",
-      "source_file": "src/GaugeDotnet/Gauges/Custom/Renderers/TextRenderer.cs",
-      "source_location": "L49",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "renderers_textrenderer_textrenderer",
-      "target": "renderers_textrenderer_textrenderer_drawlabelvalue"
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "source_file": "src/GaugeDotnet/Gauges/Custom/Renderers/TextRenderer.cs",
-      "source_location": "L67",
-      "weight": 1.0,
-      "source": "renderers_textrenderer_textrenderer_drawclock",
-      "target": "renderers_textrenderer_textrenderer_drawtext",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "source_file": "src/GaugeDotnet/Gauges/Custom/Renderers/TextRenderer.cs",
-      "source_location": "L46",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "renderers_textrenderer_textrenderer_drawvaluedisplay",
-      "target": "renderers_textrenderer_textrenderer_drawtext"
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "source_file": "src/GaugeDotnet/Gauges/Custom/Renderers/TextRenderer.cs",
-      "source_location": "L90",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "renderers_textrenderer_textrenderer_drawlabelvalue",
-      "target": "renderers_textrenderer_textrenderer_drawtext"
     },
     {
       "relation": "contains",
@@ -13349,9 +13281,9 @@
       "source_file": "src/GaugeDotnet/Configuration/TolerantGaugeTypeConverter.cs",
       "source_location": "L4",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "src_gaugedotnet_configuration_tolerantgaugetypeconverter_cs",
-      "target": "configuration_tolerantgaugetypeconverter_gaugedotnet_configuration"
+      "target": "configuration_tolerantgaugetypeconverter_gaugedotnet_configuration",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -13359,9 +13291,9 @@
       "source_file": "src/GaugeDotnet/Configuration/TolerantGaugeTypeConverter.cs",
       "source_location": "L11",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "src_gaugedotnet_configuration_tolerantgaugetypeconverter_cs",
-      "target": "configuration_tolerantgaugetypeconverter_tolerantgaugetypeconverter"
+      "target": "configuration_tolerantgaugetypeconverter_tolerantgaugetypeconverter",
+      "confidence_score": 1.0
     },
     {
       "relation": "inherits",
@@ -13369,9 +13301,9 @@
       "source_file": "src/GaugeDotnet/Configuration/TolerantGaugeTypeConverter.cs",
       "source_location": "L11",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "configuration_tolerantgaugetypeconverter_tolerantgaugetypeconverter",
-      "target": "jsonconverter"
+      "target": "jsonconverter",
+      "confidence_score": 1.0
     },
     {
       "relation": "references",
@@ -13380,9 +13312,9 @@
       "source_location": "L13",
       "weight": 1.0,
       "context": "field",
-      "confidence_score": 1.0,
       "source": "configuration_tolerantgaugetypeconverter_tolerantgaugetypeconverter",
-      "target": "gaugetype"
+      "target": "gaugetype",
+      "confidence_score": 1.0
     },
     {
       "relation": "method",
@@ -13390,9 +13322,9 @@
       "source_file": "src/GaugeDotnet/Configuration/TolerantGaugeTypeConverter.cs",
       "source_location": "L15",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "configuration_tolerantgaugetypeconverter_tolerantgaugetypeconverter",
-      "target": "configuration_tolerantgaugetypeconverter_tolerantgaugetypeconverter_read"
+      "target": "configuration_tolerantgaugetypeconverter_tolerantgaugetypeconverter_read",
+      "confidence_score": 1.0
     },
     {
       "relation": "method",
@@ -13400,9 +13332,9 @@
       "source_file": "src/GaugeDotnet/Configuration/TolerantGaugeTypeConverter.cs",
       "source_location": "L32",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "configuration_tolerantgaugetypeconverter_tolerantgaugetypeconverter",
-      "target": "configuration_tolerantgaugetypeconverter_tolerantgaugetypeconverter_write"
+      "target": "configuration_tolerantgaugetypeconverter_tolerantgaugetypeconverter_write",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -18760,16 +18692,6 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "src/GaugeDotnet.Designer/Rendering/ElementRenderer.cs",
-      "source_location": "L204",
-      "weight": 1.0,
-      "source": "rendering_elementrenderer_elementrenderer",
-      "target": "rendering_elementrenderer_elementrenderer_getclockbounds",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "method",
-      "confidence": "EXTRACTED",
-      "source_file": "src/GaugeDotnet.Designer/Rendering/ElementRenderer.cs",
       "source_location": "L200",
       "weight": 1.0,
       "confidence_score": 1.0,
@@ -18826,17 +18748,6 @@
       "source_file": "src/GaugeDotnet.Designer/Rendering/ElementRenderer.cs",
       "source_location": "L97",
       "weight": 1.0,
-      "source": "rendering_elementrenderer_elementrenderer_getbounds",
-      "target": "rendering_elementrenderer_elementrenderer_getclockbounds",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "source_file": "src/GaugeDotnet.Designer/Rendering/ElementRenderer.cs",
-      "source_location": "L97",
-      "weight": 1.0,
       "confidence_score": 1.0,
       "source": "rendering_elementrenderer_elementrenderer_getbounds",
       "target": "rendering_elementrenderer_elementrenderer_getvaluebounds"
@@ -18862,17 +18773,6 @@
       "confidence_score": 1.0,
       "source": "rendering_elementrenderer_elementrenderer_gettextbounds",
       "target": "rendering_elementrenderer_elementrenderer_gettypeface"
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "source_file": "src/GaugeDotnet.Designer/Rendering/ElementRenderer.cs",
-      "source_location": "L206",
-      "weight": 1.0,
-      "source": "rendering_elementrenderer_elementrenderer_getclockbounds",
-      "target": "rendering_elementrenderer_elementrenderer_gettypeface",
-      "confidence_score": 1.0
     },
     {
       "relation": "calls",
@@ -19788,5 +19688,5 @@
       "source_file": ".github/workflows/CI.yml"
     }
   ],
-  "built_at_commit": "c844bbf087f0706106327d5e9addb4f4189fbae9"
+  "built_at_commit": "475426d84ce69783a15f0e8594484a97526cd368"
 }

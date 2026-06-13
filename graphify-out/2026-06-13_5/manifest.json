@@ -155,13 +155,13 @@
     "semantic_hash": "b3ddab44b98ebb3cc00e70a546d77432"
   },
   "/home/dennis/GaugeDotnet/src/GaugeDotnet/Gauges/Custom/GaugeElement.cs": {
-    "mtime": 1781353278.6688943,
-    "ast_hash": "978efe7e9462b25988f51b50f23a214c",
+    "mtime": 1781350840.5399756,
+    "ast_hash": "5d6926db696ded58439cbda7fc84e98e",
     "semantic_hash": ""
   },
   "/home/dennis/GaugeDotnet/src/GaugeDotnet/Gauges/Custom/ElementRenderer.cs": {
-    "mtime": 1781353296.6678245,
-    "ast_hash": "e9c6746a90908740e1b4dad6746a1e0d",
+    "mtime": 1781350875.0213795,
+    "ast_hash": "f454fdf10757d9029f41b4e493638889",
     "semantic_hash": ""
   },
   "/home/dennis/GaugeDotnet/src/GaugeDotnet/Gauges/Custom/Renderers/RenderContext.cs": {
@@ -185,8 +185,8 @@
     "semantic_hash": ""
   },
   "/home/dennis/GaugeDotnet/src/GaugeDotnet/Gauges/Custom/Renderers/TextRenderer.cs": {
-    "mtime": 1781353288.9209228,
-    "ast_hash": "7b55382195e1d141e8ef25772421fecd",
+    "mtime": 1781206215.9585733,
+    "ast_hash": "4de941b322a567bee8fae5cf6fd80726",
     "semantic_hash": ""
   },
   "/home/dennis/GaugeDotnet/src/GaugeDotnet/Gauges/Custom/Renderers/TickRingRenderer.cs": {
@@ -555,13 +555,13 @@
     "semantic_hash": "10fe4ec373b90a810edb310daa75cace"
   },
   "/home/dennis/GaugeDotnet/src/GaugeDotnet.Designer/MainWindow.axaml.cs": {
-    "mtime": 1781353366.6740024,
-    "ast_hash": "a987a889c6c967031ed1032125271316",
+    "mtime": 1781350957.5326803,
+    "ast_hash": "b650fdb3269c22c4f32733a4a0de02a9",
     "semantic_hash": ""
   },
   "/home/dennis/GaugeDotnet/src/GaugeDotnet.Designer/Rendering/ElementRenderer.cs": {
-    "mtime": 1781353379.4262881,
-    "ast_hash": "9ad86d63ea84d39391809f17defd4f24",
+    "mtime": 1781350923.852401,
+    "ast_hash": "bb1b33f4f581f4b64cd7caa96ab91a32",
     "semantic_hash": ""
   },
   "/home/dennis/GaugeDotnet/.claude/settings.local.json": {
@@ -570,13 +570,13 @@
     "semantic_hash": ""
   },
   "/home/dennis/GaugeDotnet/AGENTS.md": {
-    "mtime": 1781353418.838838,
-    "ast_hash": "725908d878b3d2e2a5c3bd617209f22b",
+    "mtime": 1781350993.714993,
+    "ast_hash": "d8dccadfcce9363478871a80b40881cc",
     "semantic_hash": ""
   },
   "/home/dennis/GaugeDotnet/README.md": {
-    "mtime": 1781353427.8762295,
-    "ast_hash": "2aef7240f549846f8781289c4923f642",
+    "mtime": 1781351002.8967137,
+    "ast_hash": "fb584e45662ca54565ac71d0001ff105",
     "semantic_hash": ""
   },
   "/home/dennis/GaugeDotnet/.github/dependabot.yml": {

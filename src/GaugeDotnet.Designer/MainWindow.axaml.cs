@@ -78,6 +78,7 @@ public partial class MainWindow : Window
 		AddLabelValueBtn.Click += (_, _) => AddElement(new LabelValueElement());
 		AddPeakBtn.Click += (_, _) => AddElement(new PeakMarkerElement());
 		AddGifBtn.Click += (_, _) => AddElement(new GifElement());
+		AddClockBtn.Click += (_, _) => AddElement(new ClockElement());
 
 		GridSnapBtn.IsCheckedChanged += (_, _) => _gridSnapEnabled = GridSnapBtn.IsChecked ?? false;
 
@@ -670,6 +671,18 @@ public partial class MainWindow : Window
 				AddFloatProp("Width", gif.Width, v => gif.Width = v, 1, 1280);
 				AddFloatProp("Height", gif.Height, v => gif.Height = v, 1, 960);
 				AddFloatProp("Rotation", gif.Rotation, v => gif.Rotation = v, -360, 360);
+				break;
+
+			case ClockElement clock:
+				AddTextProp("Format", clock.Format, v => clock.Format = v);
+				AddBoolProp("Use UTC", clock.UseUtc, v => clock.UseUtc = v);
+				AddFloatProp("Font Size", clock.FontSize, v => clock.FontSize = v, 8, 200);
+				AddFontProp(clock.Font, v => clock.Font = v);
+				AddColorProp("Color", clock.Color, v => clock.Color = v);
+				AddBoolProp("Show Box", clock.ShowBox, v => clock.ShowBox = v);
+				AddColorProp("Box Color", clock.BoxColor, v => clock.BoxColor = v);
+				AddFloatProp("Box Padding", clock.BoxPadding, v => clock.BoxPadding = v, 0, 40);
+				AddFloatProp("Box Corner Radius", clock.BoxCornerRadius, v => clock.BoxCornerRadius = v, 0, 40);
 				break;
 
 			case ZoneArcElement zone:

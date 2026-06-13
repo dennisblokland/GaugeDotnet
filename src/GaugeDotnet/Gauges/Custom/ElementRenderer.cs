@@ -104,6 +104,7 @@ public static class ElementRenderer
 			case LabelValueElement lv:       TextRenderer.DrawLabelValue(canvas, lv, value); break;
 			case PeakMarkerElement peak:     PeakMarkerRenderer.Draw(canvas, peak, value); break;
 			case GifElement gif:             GifRenderer.Draw(canvas, gif, value, baseDirectory); break;
+			case ClockElement clock:         TextRenderer.DrawClock(canvas, clock); break;
 			default: Debug.Fail($"No renderer for element type: {element.GetType().Name}"); break;
 		}
 
