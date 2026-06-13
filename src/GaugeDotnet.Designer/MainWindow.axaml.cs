@@ -37,6 +37,20 @@ public partial class MainWindow : Window
 	private float _dragStartX;
 	private float _dragStartY;
 
+	// Resize state
+	private bool _isResizing;
+	private int _resizeCorner;          // 0=TL 1=TR 2=BL 3=BR
+	private SKRect _resizeStartBounds;
+	private const float HandleHitTolerance = 8f;
+	private static readonly Cursor[] _cornerCursors =
+	[
+		new Cursor(StandardCursorType.TopLeftCorner),
+		new Cursor(StandardCursorType.TopRightCorner),
+		new Cursor(StandardCursorType.BottomLeftCorner),
+		new Cursor(StandardCursorType.BottomRightCorner),
+	];
+	private static readonly Cursor _defaultCursor = Cursor.Default;
+
 	// Grid snap
 	private bool _gridSnapEnabled;
 	private const float GridSize = 10f;
@@ -343,6 +357,23 @@ public partial class MainWindow : Window
 
 		if (point.Properties.IsLeftButtonPressed)
 		{
+			// Resize takes priority: a single selected element exposes corner handles
+			if (_vm.SelectedElement != null && _multiSelection.Count == 0)
+			{
+				int corner = HitResizeHandle(_vm.SelectedElement, px, py);
+				if (corner >= 0)
+				{
+					_vm.Snapshot();
+					_isResizing = true;
+					_resizeCorner = corner;
+					_resizeStartBounds = DesignerRenderer.GetBounds(_vm.SelectedElement);
+					_dragStartMouse = new Point(px, py);
+					UpdateUndoRedoButtons();
+					e.Handled = true;
+					return;
+				}
+			}
+
 			GaugeElement? hit = null;
 			for (int i = _vm.Definition.Elements.Count - 1; i >= 0; i--)
 			{
@@ -387,9 +418,50 @@ public partial class MainWindow : Window
 
 	private void Canvas_PointerMoved(object? sender, PointerEventArgs e)
 	{
-		if (!_isDragging || _dragOffsets.Count == 0) return;
-
 		PointerPoint point = e.GetCurrentPoint(CanvasImage);
+
+		if (_isResizing && _vm.SelectedElement != null)
+		{
+			GaugeElement sel = _vm.SelectedElement;
+			SKRect b = _resizeStartBounds;
+
+			// The corner opposite the dragged one stays fixed.
+			float anchorX = (_resizeCorner is 0 or 2) ? b.Right : b.Left;
+			float anchorY = (_resizeCorner is 0 or 1) ? b.Bottom : b.Top;
+			float moveX = Snap((float)point.Position.X);
+			float moveY = Snap((float)point.Position.Y);
+
+			SKRect r = new(
+				MathF.Min(anchorX, moveX), MathF.Min(anchorY, moveY),
+				MathF.Max(anchorX, moveX), MathF.Max(anchorY, moveY));
+			DesignerRenderer.SetBounds(sel, r);
+
+			// SetBounds may not reproduce the rect exactly (e.g. radius types snap
+			// to a square). Translate so the fixed corner lands where it started.
+			SKRect actual = DesignerRenderer.GetBounds(sel);
+			float actualAnchorX = (_resizeCorner is 0 or 2) ? actual.Right : actual.Left;
+			float actualAnchorY = (_resizeCorner is 0 or 1) ? actual.Bottom : actual.Top;
+			sel.X += anchorX - actualAnchorX;
+			sel.Y += anchorY - actualAnchorY;
+
+			Redraw();
+			return;
+		}
+
+		if (!_isDragging || _dragOffsets.Count == 0)
+		{
+			// Hover: show a corner cursor when over a resize handle
+			Cursor desired = _defaultCursor;
+			if (_vm.SelectedElement != null && _multiSelection.Count == 0)
+			{
+				int corner = HitResizeHandle(_vm.SelectedElement,
+					(float)point.Position.X, (float)point.Position.Y);
+				if (corner >= 0) desired = _cornerCursors[corner];
+			}
+			if (CanvasImage.Cursor != desired) CanvasImage.Cursor = desired;
+			return;
+		}
+
 		float dx = (float)point.Position.X - (float)_dragStartMouse.X;
 		float dy = (float)point.Position.Y - (float)_dragStartMouse.Y;
 		foreach ((GaugeElement element, float startX, float startY) in _dragOffsets)
@@ -402,12 +474,37 @@ public partial class MainWindow : Window
 
 	private void Canvas_PointerReleased(object? sender, PointerReleasedEventArgs e)
 	{
+		if (_isResizing)
+		{
+			_isResizing = false;
+			if (_vm.SelectedElement != null)
+				ShowProperties(_vm.SelectedElement);
+			return;
+		}
+
 		if (_isDragging)
 		{
 			_isDragging = false;
 			if (_vm.SelectedElement != null)
 				ShowProperties(_vm.SelectedElement);
 		}
+	}
+
+	private static int HitResizeHandle(GaugeElement element, float px, float py)
+	{
+		SKRect b = DesignerRenderer.GetBounds(element);
+		b.Inflate(6f, 6f);
+		ReadOnlySpan<(float X, float Y)> corners =
+		[
+			(b.Left, b.Top), (b.Right, b.Top), (b.Left, b.Bottom), (b.Right, b.Bottom),
+		];
+		for (int i = 0; i < corners.Length; i++)
+		{
+			if (MathF.Abs(px - corners[i].X) <= HandleHitTolerance &&
+				MathF.Abs(py - corners[i].Y) <= HandleHitTolerance)
+				return i;
+		}
+		return -1;
 	}
 
 	// ──────────────────── Property Panel ────────────────────

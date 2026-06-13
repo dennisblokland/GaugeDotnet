@@ -150,6 +150,38 @@ public static class ElementRenderer
 		};
 	}
 
+	// --- Resize: inverse of GetBounds, maps a target rect onto an element's size props ---
+
+	public static void SetBounds(GaugeElement element, SKRect r)
+	{
+		float cx = (r.Left + r.Right) / 2f;
+		float cy = (r.Top + r.Bottom) / 2f;
+		float w = MathF.Max(2f, r.Width);
+		float h = MathF.Max(2f, r.Height);
+		float radius = MathF.Max(5f, MathF.Min(w, h) / 2f);
+
+		switch (element)
+		{
+			case ArcElement a:             a.X = cx; a.Y = cy; a.Radius = radius; break;
+			case ZoneArcElement z:         z.X = cx; z.Y = cy; z.Radius = radius; break;
+			case PeakMarkerElement p:      p.X = cx; p.Y = cy; p.Radius = radius; break;
+			case TickRingElement t:        t.X = cx; t.Y = cy; t.Radius = radius; break;
+			case CircleElement c:          c.X = cx; c.Y = cy; c.Radius = MathF.Max(2f, MathF.Min(w, h) / 2f); break;
+			case WarningIndicatorElement wi: wi.X = cx; wi.Y = cy; wi.Radius = MathF.Max(2f, MathF.Min(w, h) / 2f); break;
+			case NeedleElement n:          n.X = cx; n.Y = cy; n.Length = radius; break;
+			case RectangleElement rect:    rect.X = r.Left; rect.Y = r.Top; rect.Width = w; rect.Height = h; break;
+			case LinearBarElement bar:     bar.X = r.Left; bar.Y = r.Top; bar.Width = w; bar.Height = h; break;
+			case ImageElement img:         img.X = r.Left; img.Y = r.Top; img.Width = w; img.Height = h; break;
+			case GifElement gif:           gif.X = r.Left; gif.Y = r.Top; gif.Width = w; gif.Height = h; break;
+			case GraphElement g:           g.X = r.Left; g.Y = r.Top; g.Width = w; g.Height = h; break;
+			case LineElement ln:           ln.X = r.Left; ln.Y = r.Top; ln.X2 = r.Right; ln.Y2 = r.Bottom; break;
+			case TextElement tx:           tx.FontSize = MathF.Max(6f, h / 1.3f); break;
+			case ValueDisplayElement vd:   vd.FontSize = MathF.Max(6f, h / 1.3f); break;
+			case ClockElement ck:          ck.FontSize = MathF.Max(6f, h / 1.3f); break;
+			case LabelValueElement lv:     lv.ValueFontSize = MathF.Max(6f, h * 0.6f); lv.LabelFontSize = MathF.Max(6f, h * 0.25f); break;
+		}
+	}
+
 	// --- Selection highlight ---
 
 	private static void DrawSelectionHighlight(SKCanvas canvas, GaugeElement element, bool secondary = false)
