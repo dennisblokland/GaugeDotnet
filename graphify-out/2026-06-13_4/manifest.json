@@ -235,9 +235,9 @@
     "semantic_hash": "590019185499449a313b9bb459ff9aa9"
   },
   "/home/dennis/GaugeDotnet/src/GaugeDotnet/Configuration/GaugeType.cs": {
-    "mtime": 1781351458.0491126,
-    "ast_hash": "54a041f327d0cad483e0fd583bcd2989",
-    "semantic_hash": ""
+    "mtime": 1781350685.1387494,
+    "ast_hash": "f12e691c2278409d2ffffe6fc0fd5fa3",
+    "semantic_hash": "f12e691c2278409d2ffffe6fc0fd5fa3"
   },
   "/home/dennis/GaugeDotnet/src/GaugeDotnet/Configuration/GridCellConfig.cs": {
     "mtime": 1777476275.0,
@@ -565,8 +565,8 @@
     "semantic_hash": ""
   },
   "/home/dennis/GaugeDotnet/.claude/settings.local.json": {
-    "mtime": 1781351557.6352262,
-    "ast_hash": "b194c0fc3d5184d714c97c88c1f161de",
+    "mtime": 1781350357.2072964,
+    "ast_hash": "03e83d6e49ffdc578b7c69a6b595a5d2",
     "semantic_hash": ""
   },
   "/home/dennis/GaugeDotnet/AGENTS.md": {
@@ -617,11 +617,6 @@
   "/home/dennis/GaugeDotnet/CLAUDE.md": {
     "mtime": 1779440703.6495333,
     "ast_hash": "82efb97a359f5c7290bf2513d14686be",
-    "semantic_hash": ""
-  },
-  "/home/dennis/GaugeDotnet/src/GaugeDotnet/Configuration/TolerantGaugeTypeConverter.cs": {
-    "mtime": 1781351447.992612,
-    "ast_hash": "654b748ef1b9972c45fee7dbd538fc83",
     "semantic_hash": ""
   }
 }

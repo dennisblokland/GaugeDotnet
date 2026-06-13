@@ -502,7 +502,7 @@
       "source_file": "src/GaugeDotnet/Rendering/FontHelper.cs",
       "source_location": "L7",
       "id": "sktypeface",
-      "community": 99,
+      "community": 34,
       "norm_label": "sktypeface"
     },
     {
@@ -727,7 +727,7 @@
       "source_file": "src/GaugeDotnet.Designer/MainWindow.axaml.cs",
       "source_location": "L37",
       "id": "float",
-      "community": 34,
+      "community": 58,
       "norm_label": "float"
     },
     {
@@ -844,7 +844,7 @@
       "source_file": "src/GaugeDotnet/Gauges/Components/SegmentDisplay.cs",
       "source_location": "L36",
       "id": "skmaskfilter",
-      "community": 27,
+      "community": 10,
       "norm_label": "skmaskfilter"
     },
     {
@@ -862,7 +862,7 @@
       "source_file": "src/GaugeDotnet/Gauges/Components/SegmentDisplay.cs",
       "source_location": "L30",
       "id": "skbitmap",
-      "community": 98,
+      "community": 16,
       "norm_label": "skbitmap"
     },
     {
@@ -1285,7 +1285,7 @@
       "source_file": "src/GaugeDotnet/Gauges/NeedleGauge.cs",
       "source_location": "L1",
       "id": "src_gaugedotnet_gauges_needlegauge_cs",
-      "community": 98,
+      "community": 10,
       "norm_label": "needlegauge.cs"
     },
     {
@@ -1294,7 +1294,7 @@
       "source_file": "src/GaugeDotnet/Gauges/NeedleGauge.cs",
       "source_location": "L6",
       "id": "gauges_needlegauge_gaugedotnet_gauges",
-      "community": 98,
+      "community": 10,
       "norm_label": "gaugedotnet.gauges"
     },
     {
@@ -1303,7 +1303,7 @@
       "source_file": "src/GaugeDotnet/Gauges/NeedleGauge.cs",
       "source_location": "L11",
       "id": "gauges_needlegauge_needlegauge",
-      "community": 98,
+      "community": 10,
       "norm_label": "needlegauge"
     },
     {
@@ -1312,7 +1312,7 @@
       "source_file": "src/GaugeDotnet/Gauges/NeedleGauge.cs",
       "source_location": "L109",
       "id": "gauges_needlegauge_needlegauge_updatestaticbackground",
-      "community": 98,
+      "community": 10,
       "norm_label": ".updatestaticbackground()"
     },
     {
@@ -1321,7 +1321,7 @@
       "source_file": "src/GaugeDotnet/Gauges/NeedleGauge.cs",
       "source_location": "L212",
       "id": "gauges_needlegauge_needlegauge_draw",
-      "community": 98,
+      "community": 10,
       "norm_label": ".draw()"
     },
     {
@@ -2437,7 +2437,7 @@
       "source_file": "src/GaugeDotnet/Gauges/Custom/Renderers/LinearBarRenderer.cs",
       "source_location": "L1",
       "id": "src_gaugedotnet_gauges_custom_renderers_linearbarrenderer_cs",
-      "community": 34,
+      "community": 58,
       "norm_label": "linearbarrenderer.cs"
     },
     {
@@ -2446,7 +2446,7 @@
       "source_file": "src/GaugeDotnet/Gauges/Custom/Renderers/LinearBarRenderer.cs",
       "source_location": "L5",
       "id": "renderers_linearbarrenderer_linearbarrenderer",
-      "community": 34,
+      "community": 58,
       "norm_label": "linearbarrenderer"
     },
     {
@@ -2455,7 +2455,7 @@
       "source_file": "src/GaugeDotnet/Gauges/Custom/Renderers/LinearBarRenderer.cs",
       "source_location": "L10",
       "id": "renderers_linearbarrenderer_linearbarrenderer_draw",
-      "community": 34,
+      "community": 58,
       "norm_label": ".draw()"
     },
     {
@@ -3017,69 +3017,6 @@
       "norm_label": "appconfig"
     },
     {
-      "label": "TolerantGaugeTypeConverter.cs",
-      "file_type": "code",
-      "source_file": "src/GaugeDotnet/Configuration/TolerantGaugeTypeConverter.cs",
-      "source_location": "L1",
-      "id": "src_gaugedotnet_configuration_tolerantgaugetypeconverter_cs",
-      "community": 97,
-      "norm_label": "tolerantgaugetypeconverter.cs"
-    },
-    {
-      "label": "GaugeDotnet.Configuration",
-      "file_type": "code",
-      "source_file": "src/GaugeDotnet/Configuration/TolerantGaugeTypeConverter.cs",
-      "source_location": "L4",
-      "id": "configuration_tolerantgaugetypeconverter_gaugedotnet_configuration",
-      "community": 97,
-      "norm_label": "gaugedotnet.configuration"
-    },
-    {
-      "label": "TolerantGaugeTypeConverter",
-      "file_type": "code",
-      "source_file": "src/GaugeDotnet/Configuration/TolerantGaugeTypeConverter.cs",
-      "source_location": "L11",
-      "id": "configuration_tolerantgaugetypeconverter_tolerantgaugetypeconverter",
-      "community": 97,
-      "norm_label": "tolerantgaugetypeconverter"
-    },
-    {
-      "label": "JsonConverter",
-      "file_type": "code",
-      "source_file": "",
-      "source_location": "",
-      "id": "jsonconverter",
-      "community": 97,
-      "norm_label": "jsonconverter"
-    },
-    {
-      "label": "GaugeType",
-      "file_type": "code",
-      "source_file": "src/GaugeDotnet/Configuration/TolerantGaugeTypeConverter.cs",
-      "source_location": "L13",
-      "id": "gaugetype",
-      "community": 97,
-      "norm_label": "gaugetype"
-    },
-    {
-      "label": ".Read()",
-      "file_type": "code",
-      "source_file": "src/GaugeDotnet/Configuration/TolerantGaugeTypeConverter.cs",
-      "source_location": "L15",
-      "id": "configuration_tolerantgaugetypeconverter_tolerantgaugetypeconverter_read",
-      "community": 97,
-      "norm_label": ".read()"
-    },
-    {
-      "label": ".Write()",
-      "file_type": "code",
-      "source_file": "src/GaugeDotnet/Configuration/TolerantGaugeTypeConverter.cs",
-      "source_location": "L32",
-      "id": "configuration_tolerantgaugetypeconverter_tolerantgaugetypeconverter_write",
-      "community": 97,
-      "norm_label": ".write()"
-    },
-    {
       "label": "GaugeType.cs",
       "file_type": "code",
       "source_file": "src/GaugeDotnet/Configuration/GaugeType.cs",
@@ -3092,7 +3029,7 @@
       "label": "GaugeDotnet.Configuration",
       "file_type": "code",
       "source_file": "src/GaugeDotnet/Configuration/GaugeType.cs",
-      "source_location": "L3",
+      "source_location": "L1",
       "id": "configuration_gaugetype_gaugedotnet_configuration",
       "community": 88,
       "norm_label": "gaugedotnet.configuration"
@@ -3634,7 +3571,7 @@
       "source_file": "src/GaugeDotnet/Rendering/FontHelper.cs",
       "source_location": "L1",
       "id": "src_gaugedotnet_rendering_fonthelper_cs",
-      "community": 99,
+      "community": 34,
       "norm_label": "fonthelper.cs"
     },
     {
@@ -3643,7 +3580,7 @@
       "source_file": "src/GaugeDotnet/Rendering/FontHelper.cs",
       "source_location": "L3",
       "id": "rendering_fonthelper_gaugedotnet_rendering",
-      "community": 99,
+      "community": 34,
       "norm_label": "gaugedotnet.rendering"
     },
     {
@@ -3652,7 +3589,7 @@
       "source_file": "src/GaugeDotnet/Rendering/FontHelper.cs",
       "source_location": "L5",
       "id": "rendering_fonthelper_fonthelper",
-      "community": 99,
+      "community": 34,
       "norm_label": "fonthelper"
     },
     {
@@ -3661,7 +3598,7 @@
       "source_file": "src/GaugeDotnet/Rendering/FontHelper.cs",
       "source_location": "L9",
       "id": "rendering_fonthelper_fonthelper_loaddefaulttypeface",
-      "community": 99,
+      "community": 34,
       "norm_label": ".loaddefaulttypeface()"
     },
     {
@@ -3670,7 +3607,7 @@
       "source_file": "src/GaugeDotnet/Rendering/FontHelper.cs",
       "source_location": "L28",
       "id": "rendering_fonthelper_fonthelper_getfont",
-      "community": 99,
+      "community": 34,
       "norm_label": ".getfont()"
     },
     {
@@ -5326,7 +5263,7 @@
       "source_file": "src/RG35XX.Libraries/KeyBus.cs",
       "source_location": "L1",
       "id": "src_rg35xx_libraries_keybus_cs",
-      "community": 58,
+      "community": 2,
       "norm_label": "keybus.cs"
     },
     {
@@ -5335,7 +5272,7 @@
       "source_file": "src/RG35XX.Libraries/KeyBus.cs",
       "source_location": "L5",
       "id": "rg35xx_libraries_keybus_rg35xx_libraries",
-      "community": 58,
+      "community": 2,
       "norm_label": "rg35xx.libraries"
     },
     {
@@ -5344,7 +5281,7 @@
       "source_file": "src/RG35XX.Libraries/KeyBus.cs",
       "source_location": "L7",
       "id": "rg35xx_libraries_keybus_keybus",
-      "community": 58,
+      "community": 2,
       "norm_label": "keybus"
     },
     {
@@ -5353,7 +5290,7 @@
       "source_file": "src/RG35XX.Libraries/LinuxGamePadReader.cs",
       "source_location": "L11",
       "id": "concurrentqueue",
-      "community": 58,
+      "community": 2,
       "norm_label": "concurrentqueue"
     },
     {
@@ -5362,7 +5299,7 @@
       "source_file": "src/RG35XX.Libraries/KeyBus.cs",
       "source_location": "L12",
       "id": "rg35xx_libraries_keybus_keybus_clearbuffer",
-      "community": 58,
+      "community": 2,
       "norm_label": ".clearbuffer()"
     },
     {
@@ -5371,7 +5308,7 @@
       "source_file": "src/RG35XX.Libraries/KeyBus.cs",
       "source_location": "L17",
       "id": "rg35xx_libraries_keybus_keybus_onkeydown",
-      "community": 58,
+      "community": 2,
       "norm_label": ".onkeydown()"
     },
     {
@@ -5380,7 +5317,7 @@
       "source_file": "src/RG35XX.Libraries/KeyBus.cs",
       "source_location": "L67",
       "id": "rg35xx_libraries_keybus_keybus_onkeyup",
-      "community": 58,
+      "community": 2,
       "norm_label": ".onkeyup()"
     },
     {
@@ -5389,7 +5326,7 @@
       "source_file": "src/RG35XX.Libraries/KeyBus.cs",
       "source_location": "L117",
       "id": "rg35xx_libraries_keybus_keybus_readinput",
-      "community": 58,
+      "community": 2,
       "norm_label": ".readinput()"
     },
     {
@@ -5668,7 +5605,7 @@
       "source_file": "src/RG35XX.Libraries/LinuxGamePadReader.cs",
       "source_location": "L1",
       "id": "src_rg35xx_libraries_linuxgamepadreader_cs",
-      "community": 58,
+      "community": 2,
       "norm_label": "linuxgamepadreader.cs"
     },
     {
@@ -5677,7 +5614,7 @@
       "source_file": "src/RG35XX.Libraries/LinuxGamePadReader.cs",
       "source_location": "L6",
       "id": "rg35xx_libraries_linuxgamepadreader_rg35xx_libraries",
-      "community": 58,
+      "community": 2,
       "norm_label": "rg35xx.libraries"
     },
     {
@@ -5686,7 +5623,7 @@
       "source_file": "src/RG35XX.Libraries/LinuxGamePadReader.cs",
       "source_location": "L8",
       "id": "rg35xx_libraries_linuxgamepadreader_linuxgamepadreader",
-      "community": 58,
+      "community": 2,
       "norm_label": "linuxgamepadreader"
     },
     {
@@ -5695,7 +5632,7 @@
       "source_file": "src/RG35XX.Libraries/LinuxGamePadReader.cs",
       "source_location": "L14",
       "id": "thread",
-      "community": 58,
+      "community": 2,
       "norm_label": "thread"
     },
     {
@@ -5704,7 +5641,7 @@
       "source_file": "src/RG35XX.Libraries/LinuxGamePadReader.cs",
       "source_location": "L15",
       "id": "filestream",
-      "community": 58,
+      "community": 2,
       "norm_label": "filestream"
     },
     {
@@ -5713,7 +5650,7 @@
       "source_file": "src/RG35XX.Libraries/LinuxGamePadReader.cs",
       "source_location": "L18",
       "id": "rg35xx_libraries_linuxgamepadreader_linuxgamepadreader_clearbuffer",
-      "community": 58,
+      "community": 2,
       "norm_label": ".clearbuffer()"
     },
     {
@@ -5722,7 +5659,7 @@
       "source_file": "src/RG35XX.Libraries/LinuxGamePadReader.cs",
       "source_location": "L23",
       "id": "rg35xx_libraries_linuxgamepadreader_linuxgamepadreader_initialize",
-      "community": 58,
+      "community": 2,
       "norm_label": ".initialize()"
     },
     {
@@ -5731,7 +5668,7 @@
       "source_file": "src/RG35XX.Libraries/LinuxGamePadReader.cs",
       "source_location": "L55",
       "id": "rg35xx_libraries_linuxgamepadreader_linuxgamepadreader_readinput",
-      "community": 58,
+      "community": 2,
       "norm_label": ".readinput()"
     },
     {
@@ -5740,7 +5677,7 @@
       "source_file": "src/RG35XX.Libraries/LinuxGamePadReader.cs",
       "source_location": "L65",
       "id": "rg35xx_libraries_linuxgamepadreader_linuxgamepadreader_dispose",
-      "community": 58,
+      "community": 2,
       "norm_label": ".dispose()"
     },
     {
@@ -5749,7 +5686,7 @@
       "source_file": "src/RG35XX.Libraries/LinuxGamePadReader.cs",
       "source_location": "L99",
       "id": "rg35xx_libraries_linuxgamepadreader_linuxgamepadreader_readloop",
-      "community": 58,
+      "community": 2,
       "norm_label": ".readloop()"
     },
     {
@@ -5758,7 +5695,7 @@
       "source_file": "src/RG35XX.Libraries/LinuxGamePadReader.cs",
       "source_location": "L118",
       "id": "rg35xx_libraries_linuxgamepadreader_linuxgamepadreader_readfromstream",
-      "community": 58,
+      "community": 2,
       "norm_label": ".readfromstream()"
     },
     {
@@ -8239,9 +8176,9 @@
       "source_location": "L23",
       "weight": 1.0,
       "context": "field",
-      "confidence_score": 1.0,
       "source": "gaugedotnet_gameloop_gameloop",
-      "target": "batteryoverlay"
+      "target": "batteryoverlay",
+      "confidence_score": 1.0
     },
     {
       "relation": "references",
@@ -8385,9 +8322,9 @@
       "source_location": "L8",
       "weight": 1.0,
       "context": "field",
-      "confidence_score": 1.0,
       "source": "rendering_batteryoverlay_batteryoverlay",
-      "target": "appconfig"
+      "target": "appconfig",
+      "confidence_score": 1.0
     },
     {
       "relation": "inherits",
@@ -8537,9 +8474,9 @@
       "source_location": "L17",
       "weight": 1.0,
       "context": "field",
-      "confidence_score": 1.0,
       "source": "rendering_batteryoverlay_batteryoverlay",
-      "target": "int"
+      "target": "int",
+      "confidence_score": 1.0
     },
     {
       "relation": "references",
@@ -9697,9 +9634,9 @@
       "source_location": "L9",
       "weight": 1.0,
       "context": "field",
-      "confidence_score": 1.0,
       "source": "renderers_arcrenderer_arcrenderer",
-      "target": "float"
+      "target": "float",
+      "confidence_score": 1.0
     },
     {
       "relation": "references",
@@ -9708,9 +9645,9 @@
       "source_location": "L9",
       "weight": 1.0,
       "context": "field",
-      "confidence_score": 1.0,
       "source": "renderers_needlerenderer_needlerenderer",
-      "target": "float"
+      "target": "float",
+      "confidence_score": 1.0
     },
     {
       "relation": "references",
@@ -9719,9 +9656,9 @@
       "source_location": "L8",
       "weight": 1.0,
       "context": "field",
-      "confidence_score": 1.0,
       "source": "renderers_linearbarrenderer_linearbarrenderer",
-      "target": "float"
+      "target": "float",
+      "confidence_score": 1.0
     },
     {
       "relation": "references",
@@ -9730,9 +9667,9 @@
       "source_location": "L10",
       "weight": 1.0,
       "context": "field",
-      "confidence_score": 1.0,
       "source": "renderers_indicatorrenderer_indicatorrenderer",
-      "target": "float"
+      "target": "float",
+      "confidence_score": 1.0
     },
     {
       "relation": "references",
@@ -9851,9 +9788,9 @@
       "source_location": "L14",
       "weight": 1.0,
       "context": "field",
-      "confidence_score": 1.0,
       "source": "rendering_batteryoverlay_batteryoverlay",
-      "target": "skcolor"
+      "target": "skcolor",
+      "confidence_score": 1.0
     },
     {
       "relation": "calls",
@@ -10321,9 +10258,9 @@
       "source_location": "L10",
       "weight": 1.0,
       "context": "field",
-      "confidence_score": 1.0,
       "source": "rendering_batteryoverlay_batteryoverlay",
-      "target": "skpaint"
+      "target": "skpaint",
+      "confidence_score": 1.0
     },
     {
       "relation": "references",
@@ -12047,9 +11984,9 @@
       "source_file": "src/GaugeDotnet/Gauges/Custom/GaugeElement.cs",
       "source_location": "L319",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "src_gaugedotnet_gauges_custom_gaugeelement_cs",
-      "target": "custom_gaugeelement_gifelement"
+      "target": "custom_gaugeelement_gifelement",
+      "confidence_score": 1.0
     },
     {
       "relation": "inherits",
@@ -12207,9 +12144,9 @@
       "source_file": "src/GaugeDotnet/Gauges/Custom/GaugeElement.cs",
       "source_location": "L319",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "custom_gaugeelement_gifelement",
-      "target": "custom_gaugeelement_gaugeelement"
+      "target": "custom_gaugeelement_gaugeelement",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -12360,9 +12297,9 @@
       "source_location": "L8",
       "weight": 1.0,
       "context": "field",
-      "confidence_score": 1.0,
       "source": "renderers_colorcache_colorcache",
-      "target": "concurrentdictionary"
+      "target": "concurrentdictionary",
+      "confidence_score": 1.0
     },
     {
       "relation": "references",
@@ -12404,9 +12341,9 @@
       "source_location": "L12",
       "weight": 1.0,
       "context": "field",
-      "confidence_score": 1.0,
       "source": "renderers_gifcache_gifcache",
-      "target": "concurrentdictionary"
+      "target": "concurrentdictionary",
+      "confidence_score": 1.0
     },
     {
       "relation": "calls",
@@ -12466,9 +12403,9 @@
       "source_file": "src/GaugeDotnet/Gauges/Custom/Renderers/ColorCache.cs",
       "source_location": "L6",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "src_gaugedotnet_gauges_custom_renderers_colorcache_cs",
-      "target": "renderers_colorcache_colorcache"
+      "target": "renderers_colorcache_colorcache",
+      "confidence_score": 1.0
     },
     {
       "relation": "method",
@@ -12476,9 +12413,9 @@
       "source_file": "src/GaugeDotnet/Gauges/Custom/Renderers/ColorCache.cs",
       "source_location": "L11",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "renderers_colorcache_colorcache",
-      "target": "renderers_colorcache_colorcache_get"
+      "target": "renderers_colorcache_colorcache_get",
+      "confidence_score": 1.0
     },
     {
       "relation": "method",
@@ -12486,9 +12423,9 @@
       "source_file": "src/GaugeDotnet/Gauges/Custom/Renderers/ColorCache.cs",
       "source_location": "L14",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "renderers_colorcache_colorcache",
-      "target": "renderers_colorcache_colorcache_clear"
+      "target": "renderers_colorcache_colorcache_clear",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -12556,9 +12493,9 @@
       "source_file": "src/GaugeDotnet/Gauges/Custom/Renderers/RenderContext.cs",
       "source_location": "L22",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "renderers_rendercontext_rendercontext",
-      "target": "renderers_rendercontext_rendercontext_resetpaint"
+      "target": "renderers_rendercontext_rendercontext_resetpaint",
+      "confidence_score": 1.0
     },
     {
       "relation": "method",
@@ -12587,9 +12524,9 @@
       "source_location": "L7",
       "weight": 1.0,
       "context": "field",
-      "confidence_score": 1.0,
       "source": "renderers_arcrenderer_arcrenderer",
-      "target": "byte"
+      "target": "byte",
+      "confidence_score": 1.0
     },
     {
       "relation": "method",
@@ -12618,9 +12555,9 @@
       "source_location": "L7",
       "weight": 1.0,
       "context": "field",
-      "confidence_score": 1.0,
       "source": "renderers_needlerenderer_needlerenderer",
-      "target": "byte"
+      "target": "byte",
+      "confidence_score": 1.0
     },
     {
       "relation": "references",
@@ -12629,9 +12566,9 @@
       "source_location": "L7",
       "weight": 1.0,
       "context": "field",
-      "confidence_score": 1.0,
       "source": "renderers_linearbarrenderer_linearbarrenderer",
-      "target": "byte"
+      "target": "byte",
+      "confidence_score": 1.0
     },
     {
       "relation": "references",
@@ -12640,9 +12577,9 @@
       "source_location": "L8",
       "weight": 1.0,
       "context": "field",
-      "confidence_score": 1.0,
       "source": "renderers_indicatorrenderer_indicatorrenderer",
-      "target": "byte"
+      "target": "byte",
+      "confidence_score": 1.0
     },
     {
       "relation": "references",
@@ -12884,9 +12821,9 @@
       "source_file": "src/GaugeDotnet/Gauges/Custom/Renderers/GifCache.cs",
       "source_location": "L10",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "src_gaugedotnet_gauges_custom_renderers_gifcache_cs",
-      "target": "renderers_gifcache_gifcache"
+      "target": "renderers_gifcache_gifcache",
+      "confidence_score": 1.0
     },
     {
       "relation": "method",
@@ -12894,9 +12831,9 @@
       "source_file": "src/GaugeDotnet/Gauges/Custom/Renderers/GifCache.cs",
       "source_location": "L15",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "renderers_gifcache_gifcache",
-      "target": "renderers_gifcache_gifcache_load"
+      "target": "renderers_gifcache_gifcache_load",
+      "confidence_score": 1.0
     },
     {
       "relation": "method",
@@ -12904,9 +12841,9 @@
       "source_file": "src/GaugeDotnet/Gauges/Custom/Renderers/GifCache.cs",
       "source_location": "L21",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "renderers_gifcache_gifcache",
-      "target": "renderers_gifcache_gifcache_decode"
+      "target": "renderers_gifcache_gifcache_decode",
+      "confidence_score": 1.0
     },
     {
       "relation": "method",
@@ -12914,9 +12851,9 @@
       "source_file": "src/GaugeDotnet/Gauges/Custom/Renderers/GifCache.cs",
       "source_location": "L60",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "renderers_gifcache_gifcache",
-      "target": "renderers_gifcache_gifcache_resolve"
+      "target": "renderers_gifcache_gifcache_resolve",
+      "confidence_score": 1.0
     },
     {
       "relation": "method",
@@ -12924,9 +12861,9 @@
       "source_file": "src/GaugeDotnet/Gauges/Custom/Renderers/GifCache.cs",
       "source_location": "L68",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "renderers_gifcache_gifcache",
-      "target": "renderers_gifcache_gifcache_clear"
+      "target": "renderers_gifcache_gifcache_clear",
+      "confidence_score": 1.0
     },
     {
       "relation": "calls",
@@ -12935,9 +12872,9 @@
       "source_file": "src/GaugeDotnet/Gauges/Custom/Renderers/GifCache.cs",
       "source_location": "L17",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "renderers_gifcache_gifcache_load",
-      "target": "renderers_gifcache_gifcache_resolve"
+      "target": "renderers_gifcache_gifcache_resolve",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -12945,9 +12882,9 @@
       "source_file": "src/GaugeDotnet/Gauges/Custom/Renderers/GifRenderer.cs",
       "source_location": "L5",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "src_gaugedotnet_gauges_custom_renderers_gifrenderer_cs",
-      "target": "renderers_gifrenderer_gifrenderer"
+      "target": "renderers_gifrenderer_gifrenderer",
+      "confidence_score": 1.0
     },
     {
       "relation": "method",
@@ -12955,9 +12892,9 @@
       "source_file": "src/GaugeDotnet/Gauges/Custom/Renderers/GifRenderer.cs",
       "source_location": "L7",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "renderers_gifrenderer_gifrenderer",
-      "target": "renderers_gifrenderer_gifrenderer_draw"
+      "target": "renderers_gifrenderer_gifrenderer_draw",
+      "confidence_score": 1.0
     },
     {
       "relation": "method",
@@ -12965,9 +12902,9 @@
       "source_file": "src/GaugeDotnet/Gauges/Custom/Renderers/GifRenderer.cs",
       "source_location": "L35",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "renderers_gifrenderer_gifrenderer",
-      "target": "renderers_gifrenderer_gifrenderer_selectframe"
+      "target": "renderers_gifrenderer_gifrenderer_selectframe",
+      "confidence_score": 1.0
     },
     {
       "relation": "calls",
@@ -12976,9 +12913,9 @@
       "source_file": "src/GaugeDotnet/Gauges/Custom/Renderers/GifRenderer.cs",
       "source_location": "L14",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "renderers_gifrenderer_gifrenderer_draw",
-      "target": "renderers_gifrenderer_gifrenderer_selectframe"
+      "target": "renderers_gifrenderer_gifrenderer_selectframe",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -13278,67 +13215,6 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "src/GaugeDotnet/Configuration/TolerantGaugeTypeConverter.cs",
-      "source_location": "L4",
-      "weight": 1.0,
-      "source": "src_gaugedotnet_configuration_tolerantgaugetypeconverter_cs",
-      "target": "configuration_tolerantgaugetypeconverter_gaugedotnet_configuration",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "src/GaugeDotnet/Configuration/TolerantGaugeTypeConverter.cs",
-      "source_location": "L11",
-      "weight": 1.0,
-      "source": "src_gaugedotnet_configuration_tolerantgaugetypeconverter_cs",
-      "target": "configuration_tolerantgaugetypeconverter_tolerantgaugetypeconverter",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "inherits",
-      "confidence": "EXTRACTED",
-      "source_file": "src/GaugeDotnet/Configuration/TolerantGaugeTypeConverter.cs",
-      "source_location": "L11",
-      "weight": 1.0,
-      "source": "configuration_tolerantgaugetypeconverter_tolerantgaugetypeconverter",
-      "target": "jsonconverter",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "source_file": "src/GaugeDotnet/Configuration/TolerantGaugeTypeConverter.cs",
-      "source_location": "L13",
-      "weight": 1.0,
-      "context": "field",
-      "source": "configuration_tolerantgaugetypeconverter_tolerantgaugetypeconverter",
-      "target": "gaugetype",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "method",
-      "confidence": "EXTRACTED",
-      "source_file": "src/GaugeDotnet/Configuration/TolerantGaugeTypeConverter.cs",
-      "source_location": "L15",
-      "weight": 1.0,
-      "source": "configuration_tolerantgaugetypeconverter_tolerantgaugetypeconverter",
-      "target": "configuration_tolerantgaugetypeconverter_tolerantgaugetypeconverter_read",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "method",
-      "confidence": "EXTRACTED",
-      "source_file": "src/GaugeDotnet/Configuration/TolerantGaugeTypeConverter.cs",
-      "source_location": "L32",
-      "weight": 1.0,
-      "source": "configuration_tolerantgaugetypeconverter_tolerantgaugetypeconverter",
-      "target": "configuration_tolerantgaugetypeconverter_tolerantgaugetypeconverter_write",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
       "source_file": "src/GaugeDotnet/Configuration/GaugeType.cs",
       "source_location": "L1",
       "weight": 1.0,
@@ -13628,9 +13504,9 @@
       "source_location": "L7",
       "weight": 1.0,
       "context": "field",
-      "confidence_score": 1.0,
       "source": "me1_4net_medata_medata",
-      "target": "object"
+      "target": "object",
+      "confidence_score": 1.0
     },
     {
       "relation": "references",
@@ -14284,9 +14160,9 @@
       "source_file": "src/GaugeDotnet/Rendering/GaugeSDL.cs",
       "source_location": "L141",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "rendering_gaugesdl_gaugesdl",
-      "target": "rendering_gaugesdl_gaugesdl_purgegpuresources"
+      "target": "rendering_gaugesdl_gaugesdl_purgegpuresources",
+      "confidence_score": 1.0
     },
     {
       "relation": "method",
@@ -14315,9 +14191,9 @@
       "source_file": "src/GaugeDotnet/Rendering/BatteryOverlay.cs",
       "source_location": "L4",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "src_gaugedotnet_rendering_batteryoverlay_cs",
-      "target": "rendering_batteryoverlay_gaugedotnet_rendering"
+      "target": "rendering_batteryoverlay_gaugedotnet_rendering",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -14325,9 +14201,9 @@
       "source_file": "src/GaugeDotnet/Rendering/BatteryOverlay.cs",
       "source_location": "L6",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "src_gaugedotnet_rendering_batteryoverlay_cs",
-      "target": "rendering_batteryoverlay_batteryoverlay"
+      "target": "rendering_batteryoverlay_batteryoverlay",
+      "confidence_score": 1.0
     },
     {
       "relation": "references",
@@ -14336,9 +14212,9 @@
       "source_location": "L18",
       "weight": 1.0,
       "context": "field",
-      "confidence_score": 1.0,
       "source": "rendering_batteryoverlay_batteryoverlay",
-      "target": "datetime"
+      "target": "datetime",
+      "confidence_score": 1.0
     },
     {
       "relation": "method",
@@ -14346,9 +14222,9 @@
       "source_file": "src/GaugeDotnet/Rendering/BatteryOverlay.cs",
       "source_location": "L26",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "rendering_batteryoverlay_batteryoverlay",
-      "target": "rendering_batteryoverlay_batteryoverlay_getbatterypercent"
+      "target": "rendering_batteryoverlay_batteryoverlay_getbatterypercent",
+      "confidence_score": 1.0
     },
     {
       "relation": "method",
@@ -14356,9 +14232,9 @@
       "source_file": "src/GaugeDotnet/Rendering/BatteryOverlay.cs",
       "source_location": "L43",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "rendering_batteryoverlay_batteryoverlay",
-      "target": "rendering_batteryoverlay_batteryoverlay_readsystembattery"
+      "target": "rendering_batteryoverlay_batteryoverlay_readsystembattery",
+      "confidence_score": 1.0
     },
     {
       "relation": "method",
@@ -14366,9 +14242,9 @@
       "source_file": "src/GaugeDotnet/Rendering/BatteryOverlay.cs",
       "source_location": "L70",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "rendering_batteryoverlay_batteryoverlay",
-      "target": "rendering_batteryoverlay_batteryoverlay_draw"
+      "target": "rendering_batteryoverlay_batteryoverlay_draw",
+      "confidence_score": 1.0
     },
     {
       "relation": "method",
@@ -14376,9 +14252,9 @@
       "source_file": "src/GaugeDotnet/Rendering/BatteryOverlay.cs",
       "source_location": "L127",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "rendering_batteryoverlay_batteryoverlay",
-      "target": "rendering_batteryoverlay_batteryoverlay_dispose"
+      "target": "rendering_batteryoverlay_batteryoverlay_dispose",
+      "confidence_score": 1.0
     },
     {
       "relation": "calls",
@@ -14387,9 +14263,9 @@
       "source_file": "src/GaugeDotnet/Rendering/BatteryOverlay.cs",
       "source_location": "L39",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "rendering_batteryoverlay_batteryoverlay_getbatterypercent",
-      "target": "rendering_batteryoverlay_batteryoverlay_readsystembattery"
+      "target": "rendering_batteryoverlay_batteryoverlay_readsystembattery",
+      "confidence_score": 1.0
     },
     {
       "relation": "calls",
@@ -14398,9 +14274,9 @@
       "source_file": "src/GaugeDotnet/Rendering/BatteryOverlay.cs",
       "source_location": "L72",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "rendering_batteryoverlay_batteryoverlay_draw",
-      "target": "rendering_batteryoverlay_batteryoverlay_getbatterypercent"
+      "target": "rendering_batteryoverlay_batteryoverlay_getbatterypercent",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -15208,9 +15084,9 @@
       "source_file": "src/ME1_4NET/MEData.cs",
       "source_location": "L62",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "me1_4net_medata_medata",
-      "target": "me1_4net_medata_medata_snapshot"
+      "target": "me1_4net_medata_medata_snapshot",
+      "confidence_score": 1.0
     },
     {
       "relation": "method",
@@ -17482,9 +17358,9 @@
       "source_file": "src/GaugeDotnet.Designer/MainWindow.axaml.cs",
       "source_location": "L1102",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "gaugedotnet_designer_mainwindow_axaml_mainwindow",
-      "target": "gaugedotnet_designer_mainwindow_axaml_mainwindow_copyrawandrelativize"
+      "target": "gaugedotnet_designer_mainwindow_axaml_mainwindow_copyrawandrelativize",
+      "confidence_score": 1.0
     },
     {
       "relation": "method",
@@ -18624,9 +18500,9 @@
       "source_file": "src/GaugeDotnet.Designer/MainWindow.axaml.cs",
       "source_location": "L1084",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "gaugedotnet_designer_mainwindow_axaml_mainwindow_copyimagesandrewritepaths",
-      "target": "gaugedotnet_designer_mainwindow_axaml_mainwindow_copyrawandrelativize"
+      "target": "gaugedotnet_designer_mainwindow_axaml_mainwindow_copyrawandrelativize",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -18791,9 +18667,9 @@
       "source_file": ".claude/settings.json",
       "source_location": "L2",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "claude_settings_json",
-      "target": "claude_settings_hooks"
+      "target": "claude_settings_hooks",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -18801,9 +18677,9 @@
       "source_file": ".claude/settings.json",
       "source_location": "L3",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "claude_settings_hooks",
-      "target": "claude_settings_hooks_pretooluse"
+      "target": "claude_settings_hooks_pretooluse",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -18831,9 +18707,9 @@
       "source_file": "CLAUDE.md",
       "source_location": "L1",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "claude_md",
-      "target": "gaugedotnet_claude_graphify"
+      "target": "gaugedotnet_claude_graphify",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -18841,9 +18717,9 @@
       "source_file": "AGENTS.md",
       "source_location": "L1",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "agents_md",
-      "target": "gaugedotnet_agents_gaugedotnet_agent_instructions"
+      "target": "gaugedotnet_agents_gaugedotnet_agent_instructions",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -18851,9 +18727,9 @@
       "source_file": "AGENTS.md",
       "source_location": "L5",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "gaugedotnet_agents_gaugedotnet_agent_instructions",
-      "target": "gaugedotnet_agents_projects"
+      "target": "gaugedotnet_agents_projects",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -18861,9 +18737,9 @@
       "source_file": "AGENTS.md",
       "source_location": "L16",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "gaugedotnet_agents_gaugedotnet_agent_instructions",
-      "target": "gaugedotnet_agents_build_test"
+      "target": "gaugedotnet_agents_build_test",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -18871,9 +18747,9 @@
       "source_file": "AGENTS.md",
       "source_location": "L26",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "gaugedotnet_agents_gaugedotnet_agent_instructions",
-      "target": "gaugedotnet_agents_setup"
+      "target": "gaugedotnet_agents_setup",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -18881,9 +18757,9 @@
       "source_file": "AGENTS.md",
       "source_location": "L30",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "gaugedotnet_agents_gaugedotnet_agent_instructions",
-      "target": "gaugedotnet_agents_conventions"
+      "target": "gaugedotnet_agents_conventions",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -18891,9 +18767,9 @@
       "source_file": "AGENTS.md",
       "source_location": "L40",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "gaugedotnet_agents_gaugedotnet_agent_instructions",
-      "target": "gaugedotnet_agents_architecture_notes"
+      "target": "gaugedotnet_agents_architecture_notes",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -18901,9 +18777,9 @@
       "source_file": "AGENTS.md",
       "source_location": "L48",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "gaugedotnet_agents_gaugedotnet_agent_instructions",
-      "target": "gaugedotnet_agents_custom_gauge_system"
+      "target": "gaugedotnet_agents_custom_gauge_system",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -18911,9 +18787,9 @@
       "source_file": "AGENTS.md",
       "source_location": "L132",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "gaugedotnet_agents_gaugedotnet_agent_instructions",
-      "target": "gaugedotnet_agents_tests"
+      "target": "gaugedotnet_agents_tests",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -18921,9 +18797,9 @@
       "source_file": "AGENTS.md",
       "source_location": "L18",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "gaugedotnet_agents_build_test",
-      "target": "gaugedotnet_agents_codeblock_1"
+      "target": "gaugedotnet_agents_codeblock_1",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -18931,9 +18807,9 @@
       "source_file": "AGENTS.md",
       "source_location": "L52",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "gaugedotnet_agents_custom_gauge_system",
-      "target": "gaugedotnet_agents_workflow"
+      "target": "gaugedotnet_agents_workflow",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -18941,9 +18817,9 @@
       "source_file": "AGENTS.md",
       "source_location": "L59",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "gaugedotnet_agents_custom_gauge_system",
-      "target": "gaugedotnet_agents_element_types"
+      "target": "gaugedotnet_agents_element_types",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -18951,9 +18827,9 @@
       "source_file": "AGENTS.md",
       "source_location": "L92",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "gaugedotnet_agents_custom_gauge_system",
-      "target": "gaugedotnet_agents_key_files"
+      "target": "gaugedotnet_agents_key_files",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -18961,9 +18837,9 @@
       "source_file": "AGENTS.md",
       "source_location": "L101",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "gaugedotnet_agents_custom_gauge_system",
-      "target": "gaugedotnet_agents_smoothing"
+      "target": "gaugedotnet_agents_smoothing",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -18971,9 +18847,9 @@
       "source_file": "AGENTS.md",
       "source_location": "L105",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "gaugedotnet_agents_custom_gauge_system",
-      "target": "gaugedotnet_agents_needle_image_guide"
+      "target": "gaugedotnet_agents_needle_image_guide",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -18981,9 +18857,9 @@
       "source_file": "AGENTS.md",
       "source_location": "L120",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "gaugedotnet_agents_custom_gauge_system",
-      "target": "gaugedotnet_agents_designer_keyboard_shortcuts"
+      "target": "gaugedotnet_agents_designer_keyboard_shortcuts",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -18991,9 +18867,9 @@
       "source_file": "README.md",
       "source_location": "L1",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "readme_md",
-      "target": "gaugedotnet_readme_gaugedotnet"
+      "target": "gaugedotnet_readme_gaugedotnet",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -19001,9 +18877,9 @@
       "source_file": "README.md",
       "source_location": "L7",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "gaugedotnet_readme_gaugedotnet",
-      "target": "gaugedotnet_readme_features"
+      "target": "gaugedotnet_readme_features",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -19011,9 +18887,9 @@
       "source_file": "README.md",
       "source_location": "L21",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "gaugedotnet_readme_gaugedotnet",
-      "target": "gaugedotnet_readme_projects"
+      "target": "gaugedotnet_readme_projects",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -19021,9 +18897,9 @@
       "source_file": "README.md",
       "source_location": "L32",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "gaugedotnet_readme_gaugedotnet",
-      "target": "gaugedotnet_readme_prerequisites"
+      "target": "gaugedotnet_readme_prerequisites",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -19031,9 +18907,9 @@
       "source_file": "README.md",
       "source_location": "L38",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "gaugedotnet_readme_gaugedotnet",
-      "target": "gaugedotnet_readme_setup"
+      "target": "gaugedotnet_readme_setup",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -19041,9 +18917,9 @@
       "source_file": "README.md",
       "source_location": "L49",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "gaugedotnet_readme_gaugedotnet",
-      "target": "gaugedotnet_readme_build_run"
+      "target": "gaugedotnet_readme_build_run",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -19051,9 +18927,9 @@
       "source_file": "README.md",
       "source_location": "L66",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "gaugedotnet_readme_gaugedotnet",
-      "target": "gaugedotnet_readme_architecture"
+      "target": "gaugedotnet_readme_architecture",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -19061,9 +18937,9 @@
       "source_file": "README.md",
       "source_location": "L95",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "gaugedotnet_readme_gaugedotnet",
-      "target": "gaugedotnet_readme_custom_gauge_system"
+      "target": "gaugedotnet_readme_custom_gauge_system",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -19071,9 +18947,9 @@
       "source_file": "README.md",
       "source_location": "L154",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "gaugedotnet_readme_gaugedotnet",
-      "target": "gaugedotnet_readme_tests"
+      "target": "gaugedotnet_readme_tests",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -19081,9 +18957,9 @@
       "source_file": "README.md",
       "source_location": "L162",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "gaugedotnet_readme_gaugedotnet",
-      "target": "gaugedotnet_readme_license"
+      "target": "gaugedotnet_readme_license",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -19091,9 +18967,9 @@
       "source_file": "README.md",
       "source_location": "L42",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "gaugedotnet_readme_setup",
-      "target": "gaugedotnet_readme_codeblock_1"
+      "target": "gaugedotnet_readme_codeblock_1",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -19101,9 +18977,9 @@
       "source_file": "README.md",
       "source_location": "L51",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "gaugedotnet_readme_build_run",
-      "target": "gaugedotnet_readme_codeblock_2"
+      "target": "gaugedotnet_readme_codeblock_2",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -19111,9 +18987,9 @@
       "source_file": "README.md",
       "source_location": "L58",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "gaugedotnet_readme_build_run",
-      "target": "gaugedotnet_readme_deploy_to_device"
+      "target": "gaugedotnet_readme_deploy_to_device",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -19121,9 +18997,9 @@
       "source_file": "README.md",
       "source_location": "L60",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "gaugedotnet_readme_deploy_to_device",
-      "target": "gaugedotnet_readme_codeblock_3"
+      "target": "gaugedotnet_readme_codeblock_3",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -19131,9 +19007,9 @@
       "source_file": "README.md",
       "source_location": "L68",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "gaugedotnet_readme_architecture",
-      "target": "gaugedotnet_readme_codeblock_4"
+      "target": "gaugedotnet_readme_codeblock_4",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -19141,9 +19017,9 @@
       "source_file": "README.md",
       "source_location": "L99",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "gaugedotnet_readme_custom_gauge_system",
-      "target": "gaugedotnet_readme_workflow"
+      "target": "gaugedotnet_readme_workflow",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -19151,9 +19027,9 @@
       "source_file": "README.md",
       "source_location": "L109",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "gaugedotnet_readme_custom_gauge_system",
-      "target": "gaugedotnet_readme_element_types"
+      "target": "gaugedotnet_readme_element_types",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -19161,9 +19037,9 @@
       "source_file": "README.md",
       "source_location": "L130",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "gaugedotnet_readme_custom_gauge_system",
-      "target": "gaugedotnet_readme_background_image"
+      "target": "gaugedotnet_readme_background_image",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -19171,9 +19047,9 @@
       "source_file": "README.md",
       "source_location": "L144",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "gaugedotnet_readme_custom_gauge_system",
-      "target": "gaugedotnet_readme_needle_image_support"
+      "target": "gaugedotnet_readme_needle_image_support",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -19181,9 +19057,9 @@
       "source_file": "README.md",
       "source_location": "L150",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "gaugedotnet_readme_custom_gauge_system",
-      "target": "gaugedotnet_readme_value_smoothing"
+      "target": "gaugedotnet_readme_value_smoothing",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -19191,9 +19067,9 @@
       "source_file": "README.md",
       "source_location": "L105",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "gaugedotnet_readme_workflow",
-      "target": "gaugedotnet_readme_codeblock_5"
+      "target": "gaugedotnet_readme_codeblock_5",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -19201,9 +19077,9 @@
       "source_file": "README.md",
       "source_location": "L156",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "gaugedotnet_readme_tests",
-      "target": "gaugedotnet_readme_codeblock_6"
+      "target": "gaugedotnet_readme_codeblock_6",
+      "confidence_score": 1.0
     },
     {
       "relation": "references",
@@ -19688,5 +19564,5 @@
       "source_file": ".github/workflows/CI.yml"
     }
   ],
-  "built_at_commit": "475426d84ce69783a15f0e8594484a97526cd368"
+  "built_at_commit": "56e0165c5223c40ea11e62ef37a443ca270bc588"
 }
