@@ -10,7 +10,7 @@ Real-time automotive gauge display for the [RG35XX](https://anbernic.com) handhe
 - BLE connection to Motorsports Electronics ECU (CAN bus frames ME1_1–ME1_8)
 - Multiple built-in gauge styles: circular, sweep, needle, bar, digital, histogram, min/max, grid
 - **Custom gauge designer** — drag-and-drop Avalonia desktop app that exports JSON definitions for the device
-- 15 custom element types: arcs, zone arcs, needles (with image support), text, value displays, label+value boxes, tick rings, bars, warning indicators, images, mini graphs, peak markers, and more
+- 16 custom element types: arcs, zone arcs, needles (with image support), text, value displays, label+value boxes, tick rings, bars, warning indicators, images, value-driven gifs, mini graphs, peak markers, and more
 - **Calculated channels** — define virtual data sources as math expressions (`Rpm / 1000`, `OilTemp - Iat`) evaluated each frame
 - **Conditional element visibility** — show/hide elements based on a data source value range
 - **Grid snap** in designer (G key toggle, 10 px grid); **multi-select** with Shift+click for group drag/delete
@@ -125,6 +125,7 @@ Design gauges on your desktop, deploy JSON to the device.
 | Graph | `graph` | Yes | Rolling time-series plot with configurable depth, line + fill |
 | Label Value | `labelvalue` | Yes | Compound label + large value display with optional background box |
 | Peak Marker | `peak` | Yes | Tick at rolling peak value on arc ring; optional decay timeout |
+| Gif | `gif` | Yes | Multi-frame image; frame selected by value (Min→Max maps to first→last frame) |
 
 ### Background Image
 

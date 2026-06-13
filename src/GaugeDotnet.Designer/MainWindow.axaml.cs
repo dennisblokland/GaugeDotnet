@@ -77,6 +77,7 @@ public partial class MainWindow : Window
 		AddGraphBtn.Click += (_, _) => AddElement(new GraphElement());
 		AddLabelValueBtn.Click += (_, _) => AddElement(new LabelValueElement());
 		AddPeakBtn.Click += (_, _) => AddElement(new PeakMarkerElement());
+		AddGifBtn.Click += (_, _) => AddElement(new GifElement());
 
 		GridSnapBtn.IsCheckedChanged += (_, _) => _gridSnapEnabled = GridSnapBtn.IsChecked ?? false;
 
@@ -497,7 +498,7 @@ public partial class MainWindow : Window
 
 		bool supportsData = element is ArcElement or NeedleElement or ValueDisplayElement
 			or LinearBarElement or WarningIndicatorElement or ZoneArcElement or GraphElement
-			or LabelValueElement or PeakMarkerElement;
+			or LabelValueElement or PeakMarkerElement or GifElement;
 		if (supportsData)
 		{
 			AddDataSourceProp(element.DataSource, v =>
@@ -509,7 +510,8 @@ public partial class MainWindow : Window
 
 		bool hasRange = element is ArcElement or NeedleElement or ValueDisplayElement
 			or TickRingElement or LinearBarElement or WarningIndicatorElement
-			or ZoneArcElement or GraphElement or LabelValueElement or PeakMarkerElement;
+			or ZoneArcElement or GraphElement or LabelValueElement or PeakMarkerElement
+			or GifElement;
 		if (hasRange)
 		{
 			AddFloatProp("Min Value", element.MinValue, v => element.MinValue = v, -10000, 100000);
@@ -661,6 +663,13 @@ public partial class MainWindow : Window
 				AddFloatProp("Width", img.Width, v => img.Width = v, 1, 1280);
 				AddFloatProp("Height", img.Height, v => img.Height = v, 1, 960);
 				AddFloatProp("Rotation", img.Rotation, v => img.Rotation = v, -360, 360);
+				break;
+
+			case GifElement gif:
+				AddImagePathProp("Gif Path", gif.ImagePath, v => gif.ImagePath = v);
+				AddFloatProp("Width", gif.Width, v => gif.Width = v, 1, 1280);
+				AddFloatProp("Height", gif.Height, v => gif.Height = v, 1, 960);
+				AddFloatProp("Rotation", gif.Rotation, v => gif.Rotation = v, -360, 360);
 				break;
 
 			case ZoneArcElement zone:
@@ -916,7 +925,7 @@ public partial class MainWindow : Window
 				{
 					Title = $"Select {label}",
 					AllowMultiple = false,
-					FileTypeFilter = [new FilePickerFileType("Images") { Patterns = ["*.png", "*.jpg", "*.jpeg", "*.webp", "*.bmp"] }],
+					FileTypeFilter = [new FilePickerFileType("Images") { Patterns = ["*.png", "*.jpg", "*.jpeg", "*.webp", "*.bmp", "*.gif"] }],
 				});
 
 			if (files.Count > 0)
@@ -1071,6 +1080,8 @@ public partial class MainWindow : Window
 				img.ImagePath = SaveAndRelativize(img.ImagePath, imagesDir, ref dirCreated, ref imageIndex) ?? "";
 			else if (element is NeedleElement needle)
 				needle.ImagePath = SaveAndRelativize(needle.ImagePath, imagesDir, ref dirCreated, ref imageIndex);
+			else if (element is GifElement gif)
+				gif.ImagePath = CopyRawAndRelativize(gif.ImagePath, imagesDir, ref dirCreated, ref imageIndex) ?? "";
 		}
 
 		return export;
@@ -1084,6 +1095,22 @@ public partial class MainWindow : Window
 		string destPath = Path.Combine(imagesDir, $"image_{imageIndex}.png");
 		GaugeDotnet.Gauges.Custom.ElementRenderer.SaveImageFromCache(path, destPath);
 		return Path.Combine("images", $"image_{imageIndex}.png");
+	}
+
+	// Copies the source file verbatim (preserving extension). Used for animated GIFs,
+	// where re-encoding to PNG would collapse the frames into a single still image.
+	private static string? CopyRawAndRelativize(string? path, string imagesDir, ref bool dirCreated, ref int imageIndex)
+	{
+		if (string.IsNullOrEmpty(path)) return path;
+		if (!dirCreated) { Directory.CreateDirectory(imagesDir); dirCreated = true; }
+		imageIndex++;
+		string ext = Path.GetExtension(path);
+		if (string.IsNullOrEmpty(ext)) ext = ".gif";
+		string fileName = $"image_{imageIndex}{ext}";
+		string destPath = Path.Combine(imagesDir, fileName);
+		try { if (File.Exists(path)) File.Copy(path, destPath, overwrite: true); }
+		catch { /* keep original path on failure */ return path; }
+		return Path.Combine("images", fileName);
 	}
 
 	private async void OnLoadClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)

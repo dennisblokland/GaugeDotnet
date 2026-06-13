@@ -103,6 +103,7 @@ public static class ElementRenderer
 			case GraphElement graph:         GraphRenderer.Draw(canvas, graph, value); break;
 			case LabelValueElement lv:       TextRenderer.DrawLabelValue(canvas, lv, value); break;
 			case PeakMarkerElement peak:     PeakMarkerRenderer.Draw(canvas, peak, value); break;
+			case GifElement gif:             GifRenderer.Draw(canvas, gif, value, baseDirectory); break;
 			default: Debug.Fail($"No renderer for element type: {element.GetType().Name}"); break;
 		}
 
@@ -118,6 +119,7 @@ public static class ElementRenderer
 	public static void ClearImageCache()
 	{
 		ImageCache.Clear();
+		GifCache.Clear();
 		ColorCache.Clear();
 		RenderContext.ClearBlurCache();
 		GraphRenderer.ClearBuffers();

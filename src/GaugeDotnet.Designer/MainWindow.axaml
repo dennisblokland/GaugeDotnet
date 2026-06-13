@@ -47,6 +47,7 @@
           <Button x:Name="AddGraphBtn" Content="Graph" Padding="10,4"/>
           <Button x:Name="AddLabelValueBtn" Content="LabelVal" Padding="10,4"/>
           <Button x:Name="AddPeakBtn" Content="Peak" Padding="10,4"/>
+          <Button x:Name="AddGifBtn" Content="Gif" Padding="10,4"/>
         </StackPanel>
       </StackPanel>
     </Border>

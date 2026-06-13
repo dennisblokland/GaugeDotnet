@@ -48,6 +48,7 @@ public class CustomGaugeDefinition
 [JsonDerivedType(typeof(GraphElement), "graph")]
 [JsonDerivedType(typeof(LabelValueElement), "labelvalue")]
 [JsonDerivedType(typeof(PeakMarkerElement), "peak")]
+[JsonDerivedType(typeof(GifElement), "gif")]
 public abstract class GaugeElement
 {
 	public string Id { get; set; } = Guid.NewGuid().ToString("N")[..8];
@@ -313,4 +314,15 @@ public class PeakMarkerElement : GaugeElement
 
 	[JsonIgnore]
 	public override string TypeLabel => "Peak";
+}
+
+public class GifElement : GaugeElement
+{
+	public string ImagePath { get; set; } = "";
+	public float Width { get; set; } = 100f;
+	public float Height { get; set; } = 100f;
+	public float Rotation { get; set; }
+
+	[JsonIgnore]
+	public override string TypeLabel => "Gif";
 }

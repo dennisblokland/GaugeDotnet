@@ -124,6 +124,9 @@ public static class ElementRenderer
 			ImageElement img => new SKRect(
 				img.X, img.Y,
 				img.X + img.Width, img.Y + img.Height),
+			GifElement gif => new SKRect(
+				gif.X, gif.Y,
+				gif.X + gif.Width, gif.Y + gif.Height),
 			ZoneArcElement zone => new SKRect(
 				zone.X - zone.Radius - zone.StrokeWidth / 2,
 				zone.Y - zone.Radius - zone.StrokeWidth / 2,
