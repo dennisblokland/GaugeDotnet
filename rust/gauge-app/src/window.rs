@@ -7,7 +7,6 @@ use std::time::{Duration, Instant};
 use gauge_render::Canvas;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
-use sdl2::pixels::PixelFormatEnum;
 
 use crate::feed::Feed;
 use crate::{load, DrawFn, Loaded};
@@ -61,21 +60,7 @@ pub fn run(path: &Path, fullscreen: bool, mut feed: Feed) -> Result<(), String> 
 			.collect(),
 	};
 
-	let sdl = sdl2::init()?;
-	let video = sdl.video()?;
-	let mut builder = video.window("GaugeDotnet (Rust)", w, h);
-	builder.position_centered();
-	if fullscreen {
-		builder.fullscreen();
-	}
-	let window = builder.build().map_err(|e| e.to_string())?;
-	let mut sdl_canvas = window.into_canvas().present_vsync().build().map_err(|e| e.to_string())?;
-	let creator = sdl_canvas.texture_creator();
-	// tiny-skia stores bytes as R,G,B,A; frames are opaque so premultiplication is moot.
-	let mut texture = creator.create_texture_streaming(PixelFormatEnum::RGBA32, w, h).map_err(|e| e.to_string())?;
-	let mut events = sdl.event_pump()?;
-	let _joystick = sdl.joystick().ok().and_then(|j| j.open(0).ok());
-
+	let mut display = crate::display::Display::open("GaugeDotnet (Rust)", w, h, fullscreen)?;
 	let mut canvas = Canvas::new(w, h);
 	let mut current = 0usize;
 	let mut shown = usize::MAX;
@@ -83,18 +68,13 @@ pub fn run(path: &Path, fullscreen: bool, mut feed: Feed) -> Result<(), String> 
 	let (mut frames, mut fps_since) = (0u32, Instant::now());
 
 	'main: loop {
-		for event in events.poll_iter() {
+		for event in display.events.poll_iter() {
 			match event {
 				Event::Quit { .. } | Event::KeyDown { keycode: Some(Keycode::Escape), .. } => break 'main,
 				Event::KeyDown { keycode: Some(Keycode::Right), .. } => current = (current + 1) % screens.len(),
 				Event::KeyDown { keycode: Some(Keycode::Left), .. } => {
 					current = (current + screens.len() - 1) % screens.len()
 				}
-				Event::JoyHatMotion { state, .. } => match state {
-					sdl2::joystick::HatState::Right => current = (current + 1) % screens.len(),
-					sdl2::joystick::HatState::Left => current = (current + screens.len() - 1) % screens.len(),
-					_ => {}
-				},
 				_ => {}
 			}
 		}
@@ -111,23 +91,14 @@ pub fn run(path: &Path, fullscreen: bool, mut feed: Feed) -> Result<(), String> 
 			draw_banner(&mut canvas, text);
 			damage = gauge_render::Damage::full(w, h);
 		}
-		// Upload only what changed: on the device this is the costly copy.
-		let pitch = w as usize * 4;
-		let pixels = canvas.pixmap().data();
-		for r in &damage.rects {
-			let rect = sdl2::rect::Rect::new(r.x0, r.y0, r.width() as u32, r.height() as u32);
-			let start = r.y0 as usize * pitch + r.x0 as usize * 4;
-			texture.update(Some(rect), &pixels[start..], pitch).map_err(|e| e.to_string())?;
-		}
-		sdl_canvas.copy(&texture, None, None)?;
-		sdl_canvas.present();
+		display.present(&canvas, &damage)?;
 
 		frames += 1;
 		if fps_since.elapsed() >= Duration::from_secs(1) {
 			let link = status.as_deref().map_or("live".to_string(), |s| s.replace('\n', " "));
 			let title =
 				format!("GaugeDotnet (Rust) — screen {}/{} — {frames} fps — {link}", current + 1, screens.len());
-			let _ = sdl_canvas.window_mut().set_title(&title);
+			display.set_title(&title);
 			frames = 0;
 			fps_since = Instant::now();
 		}

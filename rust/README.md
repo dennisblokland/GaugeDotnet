@@ -31,7 +31,9 @@ A Rust port of GaugeDotnet's rendering stack. It loads the same `custom-gauge.js
 | `BleManager`, `MeDevice`, `RaceChronoIds` | `me-ble/src/device.rs`, `me-data/src/racechrono.rs` |
 | `RG35XX.Libraries/BluetoothHardwareInit` | `me-ble/src/hardware.rs` |
 | `SimulatedMeDevice` | `gauge-app/src/sim.rs` |
-| `GaugeSDL` / `GameLoop` | `gauge-app/src/window.rs` |
+| `Program`, `GameLoop`, `GaugeSDL` | `gauge-app/src/app.rs`, `display.rs` (the `run` viewer is `window.rs`) |
+| `SplashScreen`, `ErrorScreen`, `FpsCounter`, `BatteryOverlay`, `ScreenKeepAlive` | `gauge-app/src/screens.rs` |
+| `GamePads`, `LinuxGamePadReader`, `KeyBus`, `InputHandler` | `gauge-app/src/input.rs` |
 
 ## Build and run
 
@@ -51,6 +53,45 @@ cargo run --release --features sdl -- run examples/gauges.json
 ```
 
 Relative paths inside a definition (images, needle images, GIFs) resolve against the JSON file's folder, as in the C# app.
+
+### The device app
+
+`gauge app` is the port of the C# `Program` and `GameLoop`:
+1. It loads `gauges.json` (by default the one next to the binary; `--config` picks another). If the file is missing, it writes the same default as the C# app, a Bar gauge for AFR, and only the first 10 screens are kept.
+2. It shows the splash screen while Bluetooth comes up and the ECU connects. In `DemoMode`, or with `--demo`, it uses simulated data instead.
+3. It runs the screens. The FPS counter and the low-battery icon are drawn over them, and MuOS is kept from sleeping.
+4. When you quit, it plays the exit animation.
+
+If the connection fails, the error screen stays up until any button is pressed.
+
+```shell
+cargo run --release --features sdl -- app --demo                 # desktop, simulated data
+cargo run --release --features sdl,ble -- app --config my.json    # desktop, real ECU
+```
+
+Controls (the gamepad is read from `/dev/input/js0`, as in the C# release build; without one, the keyboard is used):
+
+| Button | Key | Action |
+|---|---|---|
+| D-pad left / right | ← / → | previous / next screen (wraps around) |
+| R1 | `.` or `r` | reset the screen's peaks and history |
+| MENU | Esc | quit |
+| SELECT | Tab | not ported yet: the on-device config editor. It logs a hint; edit `gauges.json` instead |
+
+On the RG35XX the Bluetooth bring-up (`rtk_hciattach`, `bluetoothd`) runs automatically when `rtk_hciattach` exists. Force it with `--init-bt` or skip it with `--no-init-bt`.
+
+### Building and deploying to the RG35XX
+
+```shell
+./build-arm64.sh          # -> target/aarch64-unknown-linux-gnu/release/gauge
+./deploy-arm64.sh         # build, then scp to the device (REMOTE_HOST, REMOTE_PASS, ... as in ../deploy-arm64.sh)
+```
+
+`build-arm64.sh` cross-compiles with `--features sdl,ble-vendored`. It needs the `aarch64-unknown-linux-gnu` rustup target, `gcc-aarch64-linux-gnu`, `curl` and `dpkg-deb`. On first use it fetches the arm64 `libSDL2` from Ubuntu's archive to link against. At run time the binary uses the device's own `libSDL2-2.0.so.0`, as the C# app does, and libdbus is compiled in. So the only thing installed is a single 5 MB `gauge` binary.
+
+`deploy-arm64.sh` copies the binary to `/mnt/mmc/ports/GaugeRust`, separate from the C# app, and copies the launcher `GaugeRust.sh` to `/mnt/mmc/roms/ports`, so it shows up under Ports. `gauges.json` lives next to the binary. Copy over the C# one, or use `UPLOAD_CONFIG=1` to upload `./gauges.json`. The log is `GaugeRust.log` in the same folder.
+
+**glibc:** built with Ubuntu 24.04's cross toolchain, the binary needs **glibc 2.38 or newer** on the device. That requirement comes from the vendored libdbus, which compiles against C23 `strtol`. Check with `ldd --version` on the device. If the device's glibc is older, run `build-arm64.sh` inside an older distribution, for example a `debian:bookworm` container (glibc 2.36) with the same packages.
 
 ### Bluetooth (ECU)
 
@@ -93,7 +134,7 @@ CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc \
   cargo build --release --target aarch64-unknown-linux-gnu -p gauge-app
 ```
 
-That produces a headless build: `render` and `bench` work, but there is no window. Add `--features ble-vendored` for the Bluetooth tools (`ble-scan`, `ble-monitor`). libdbus is then compiled into the binary, so it needs nothing on the device beyond libc; set `CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc` as well. The SDL window (`--features sdl`) also needs the device's `libSDL2` to link against, from a sysroot or by building on the device. The headless aarch64 binary has been checked under `qemu-aarch64`, and its output matches the x86 build pixel for pixel.
+(`build-arm64.sh` above does the full device build.) Built like this, without features, the binary is headless: `render` and `bench` work, but there is no window. Add `--features ble-vendored` for the Bluetooth tools (`ble-scan`, `ble-monitor`). libdbus is then compiled into the binary, so it needs nothing on the device beyond libc; set `CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc` as well. The SDL window (`--features sdl`) also needs the device's `libSDL2` to link against, from a sysroot or by building on the device. The headless aarch64 binary has been checked under `qemu-aarch64`, and its output matches the x86 build pixel for pixel.
 
 ## Performance
 

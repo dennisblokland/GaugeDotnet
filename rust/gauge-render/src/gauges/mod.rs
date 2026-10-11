@@ -135,6 +135,14 @@ impl Screen {
 		crate::Damage::full(canvas.width(), canvas.height())
 	}
 
+	/// Repaints `r` on the next draw, for areas an overlay drew over. Built-in
+	/// gauges repaint everything anyway.
+	pub fn add_damage(&mut self, r: crate::IRect) {
+		if let Screen::Custom(g) = self {
+			g.add_damage(r);
+		}
+	}
+
 	/// Forces a full repaint on the next draw (call when switching to this screen).
 	pub fn invalidate(&mut self) {
 		if let Screen::Custom(g) = self {

@@ -35,6 +35,19 @@ impl Feed {
 		}
 	}
 
+	/// Start-up progress for the splash screen: `(finished, error message)`.
+	pub fn startup_state(&self) -> (bool, Option<String>) {
+		match self {
+			Feed::Sim { .. } => (true, None),
+			#[cfg(feature = "ble")]
+			Feed::Ble(link) => match link.status() {
+				me_ble::LinkStatus::Connected => (true, None),
+				me_ble::LinkStatus::Failed(msg) => (true, Some(msg)),
+				_ => (false, None),
+			},
+		}
+	}
+
 	/// A message to show over the gauges while there is no live data.
 	pub fn status(&self) -> Option<String> {
 		match self {

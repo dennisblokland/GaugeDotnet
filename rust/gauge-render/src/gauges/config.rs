@@ -133,14 +133,97 @@ impl Default for AppConfig {
 }
 
 impl AppConfig {
+	/// Most screens a config may hold (`AppConfig.MaxScreens`).
+	pub const MAX_SCREENS: usize = 10;
+
 	pub fn from_json(json: &str) -> Result<Self, serde_json::Error> {
 		serde_json::from_str(json.trim_start_matches('\u{feff}'))
+	}
+
+	pub fn to_json(&self) -> String {
+		serde_json::to_string_pretty(self).expect("config serialises")
+	}
+
+	/// The config written when none exists (`ConfigService.CreateDefault`).
+	pub fn default_config() -> Self {
+		Self {
+			screens: vec![ScreenConfig {
+				gauge: GaugeConfig {
+					gauge_type: GaugeType::Bar,
+					data_source: "AfrCurr1".into(),
+					color_hex: "#00FFFF".into(),
+					title: "AFR".into(),
+					unit: String::new(),
+					min_value: 8.0,
+					max_value: 18.0,
+					initial_value: 14.7,
+					decimals: 2,
+					segment_count: 32,
+					smoothing: true,
+					..GaugeConfig::default()
+				},
+				custom_definition_file: None,
+			}],
+			..Self::default()
+		}
+	}
+
+	/// Loads `path` like `ConfigService.Load`: a missing, unreadable or empty
+	/// config is replaced by the default (and written back), and extra
+	/// screens beyond [`Self::MAX_SCREENS`] are dropped.
+	pub fn load_or_create(path: &std::path::Path) -> Self {
+		let loaded = std::fs::read_to_string(path).ok().and_then(|json| match Self::from_json(&json) {
+			Ok(c) => Some(c),
+			Err(e) => {
+				eprintln!("[config] {}: {e}; using defaults", path.display());
+				None
+			}
+		});
+		let mut config = match loaded {
+			Some(c) if !c.screens.is_empty() => c,
+			_ => {
+				let c = Self::default_config();
+				if let Err(e) = c.save(path) {
+					eprintln!("[config] could not write {}: {e}", path.display());
+				}
+				c
+			}
+		};
+		config.screens.truncate(Self::MAX_SCREENS);
+		config
+	}
+
+	pub fn save(&self, path: &std::path::Path) -> std::io::Result<()> {
+		std::fs::write(path, self.to_json())
 	}
 }
 
 #[cfg(test)]
 mod tests {
 	use super::*;
+
+	#[test]
+	fn load_or_create_writes_default_and_caps_screens() {
+		let dir = std::env::temp_dir().join(format!("gauge-config-{}", std::process::id()));
+		std::fs::create_dir_all(&dir).unwrap();
+		let path = dir.join("gauges.json");
+		let _ = std::fs::remove_file(&path);
+
+		let c = AppConfig::load_or_create(&path);
+		assert_eq!(c.screens.len(), 1);
+		assert_eq!(c.screens[0].gauge.data_source, "AfrCurr1");
+		let written = std::fs::read_to_string(&path).unwrap();
+		assert!(written.contains("\"Type\": \"Bar\""), "{written}");
+
+		let mut many = AppConfig::default_config();
+		many.screens = (0..14).map(|_| many.screens[0].clone()).collect();
+		many.save(&path).unwrap();
+		assert_eq!(AppConfig::load_or_create(&path).screens.len(), AppConfig::MAX_SCREENS);
+
+		std::fs::write(&path, "{ not json").unwrap();
+		assert_eq!(AppConfig::load_or_create(&path).screens.len(), 1);
+		let _ = std::fs::remove_dir_all(dir);
+	}
 
 	#[test]
 	fn tolerant_gauge_type() {

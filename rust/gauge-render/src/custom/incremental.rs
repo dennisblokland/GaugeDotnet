@@ -58,6 +58,8 @@ pub struct FrameState {
 	values: Vec<Option<f32>>,
 	valid: bool,
 	size: (u32, u32),
+	/// Areas the caller drew over since the last frame (overlays), repainted next frame.
+	extra_damage: Vec<IRect>,
 	/// Worker threads for large repaints (1 = render on the calling thread).
 	pub threads: usize,
 }
@@ -71,6 +73,7 @@ impl Default for FrameState {
 			values: Vec::new(),
 			valid: false,
 			size: (0, 0),
+			extra_damage: Vec::new(),
 			threads: default_threads(),
 		}
 	}
@@ -90,6 +93,12 @@ impl FrameState {
 	/// drew on the canvas (switching screens) or the definition changed.
 	pub fn invalidate(&mut self) {
 		self.valid = false;
+	}
+
+	/// Marks an area to repaint on the next frame, e.g. where an overlay
+	/// (FPS counter, battery icon) was drawn over the gauge.
+	pub fn add_damage(&mut self, r: IRect) {
+		self.extra_damage.push(r);
 	}
 
 	/// Also drops the pre-rendered static runs (after editing the definition).
@@ -228,7 +237,12 @@ impl ElementRenderer {
 			state.values[i] = resolved[i];
 		}
 
-		let rects = if full { Damage::full(size.0, size.1).rects } else { merge(damage) };
+		damage.append(&mut state.extra_damage);
+		let rects = if full {
+			Damage::full(size.0, size.1).rects
+		} else {
+			merge(damage.into_iter().filter_map(|r| r.clamp_to(size.0, size.1)).collect())
+		};
 		let segments = &state.cache.segments;
 		let bounds = &state.bounds;
 		let threads = state.threads.max(1);

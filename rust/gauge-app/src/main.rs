@@ -1,7 +1,15 @@
 //! `gauge`: renders GaugeDotnet gauge definitions with the Rust renderer.
 
 #[cfg(feature = "sdl")]
+mod app;
+#[cfg(feature = "sdl")]
+mod display;
+#[cfg(feature = "sdl")]
 mod feed;
+#[cfg(feature = "sdl")]
+mod input;
+#[cfg(feature = "sdl")]
+mod screens;
 mod sim;
 #[cfg(feature = "sdl")]
 mod window;
@@ -20,6 +28,14 @@ const USAGE: &str = "\
 gauge — GaugeDotnet renderer (Rust)
 
 USAGE:
+  gauge app [--config gauges.json] [--fullscreen] [--demo] [--init-bt | --no-init-bt]
+      The on-device app (port of the C# GaugeDotnet): loads gauges.json (next
+      to the executable by default, created if missing), connects to the ECU
+      over Bluetooth behind a splash screen (or simulates in DemoMode / --demo),
+      then shows the screens. D-pad left/right switches screens, R1 resets
+      peaks/history, MENU exits. On a desktop the keyboard stands in:
+      arrows, '.', Esc. Bluetooth bring-up runs automatically where
+      rtk_hciattach exists. Needs --features sdl (and ble for the ECU).
   gauge render <file.json> [-o out.png] [--set NAME=VALUE]... [--time T] [--frames N]
       Render a custom gauge definition, or every screen of a gauges.json
       (written as out-0.png, out-1.png, ...). Values come from the simulated
@@ -55,7 +71,9 @@ fn parse_args(raw: impl Iterator<Item = String>) -> Result<Args, String> {
 	let mut it = raw.peekable();
 	while let Some(a) = it.next() {
 		match a.as_str() {
-			"--fullscreen" | "--full" | "--ble" | "--init-bt" | "-h" | "--help" => args.flags.push(a),
+			"--fullscreen" | "--full" | "--ble" | "--init-bt" | "--no-init-bt" | "--demo" | "-h" | "--help" => {
+				args.flags.push(a)
+			}
 			"--set" => {
 				let kv = it.next().ok_or("--set needs NAME=VALUE")?;
 				let (k, v) = kv.split_once('=').ok_or_else(|| format!("bad --set '{kv}'"))?;
@@ -367,6 +385,28 @@ fn cmd_run(args: &Args) -> Result<(), String> {
 	window::run(Path::new(file), args.flags.iter().any(|f| f == "--fullscreen"), feed)
 }
 
+#[cfg(feature = "sdl")]
+fn cmd_app(args: &Args) -> Result<(), String> {
+	let flag = |f: &str| args.flags.iter().any(|x| x == f);
+	app::run(app::AppOptions {
+		config: args.options.get("config").map(PathBuf::from),
+		fullscreen: flag("--fullscreen"),
+		demo: flag("--demo"),
+		init_bt: if flag("--init-bt") {
+			Some(true)
+		} else if flag("--no-init-bt") {
+			Some(false)
+		} else {
+			None
+		},
+	})
+}
+
+#[cfg(not(feature = "sdl"))]
+fn cmd_app(_: &Args) -> Result<(), String> {
+	Err("this build has no window support; rebuild with `--features sdl`".into())
+}
+
 #[cfg(not(feature = "sdl"))]
 fn cmd_run(_: &Args) -> Result<(), String> {
 	Err("this build has no window support; rebuild with `--features sdl`".into())
@@ -438,6 +478,7 @@ fn main() -> ExitCode {
 		Some("render") => cmd_render(&args),
 		Some("builtin") => cmd_builtin(&args),
 		Some("bench") => cmd_bench(&args),
+		Some("app") => cmd_app(&args),
 		Some("run") => cmd_run(&args),
 		Some("ble-scan") => cmd_ble_scan(&args),
 		Some("ble-monitor") => cmd_ble_monitor(&args),

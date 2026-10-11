@@ -137,6 +137,11 @@ impl CustomGauge {
 		self.frame.invalidate();
 	}
 
+	/// Repaints `r` on the next draw (call for areas an overlay drew over).
+	pub fn add_damage(&mut self, r: crate::IRect) {
+		self.frame.add_damage(r);
+	}
+
 	/// Worker threads used for large repaints (default: cores, max 4).
 	pub fn set_threads(&mut self, threads: usize) {
 		self.frame.threads = threads.max(1);

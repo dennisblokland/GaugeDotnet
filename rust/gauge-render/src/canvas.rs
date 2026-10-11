@@ -751,6 +751,26 @@ impl Canvas {
 		}
 	}
 
+	/// Fills `r` with a vertical linear gradient from `top` to `bottom`.
+	pub fn draw_rect_vertical_gradient(&mut self, r: Rect, top: Rgba, bottom: Rgba) {
+		let Some(shader) = tiny_skia::LinearGradient::new(
+			tiny_skia::Point::from_xy(0.0, r.top()),
+			tiny_skia::Point::from_xy(0.0, r.bottom()),
+			vec![tiny_skia::GradientStop::new(0.0, top.to_skia()), tiny_skia::GradientStop::new(1.0, bottom.to_skia())],
+			SpreadMode::Pad,
+			Transform::identity(),
+		) else {
+			return;
+		};
+		self.mark_dirty_user(r.left(), r.top(), r.right(), r.bottom(), 0.0);
+		if self.recording {
+			return;
+		}
+		let paint = tiny_skia::Paint { shader, anti_alias: true, ..tiny_skia::Paint::default() };
+		let (target, state) = self.parts();
+		target.fill_rect(r, &paint, state.transform, state.clip.as_deref());
+	}
+
 	/// Draws `image` scaled into `dest` with the given opacity (0..=1).
 	pub fn draw_image(&mut self, image: &Pixmap, dest: Rect, opacity: f32) {
 		let sx = dest.width() / image.width() as f32;
