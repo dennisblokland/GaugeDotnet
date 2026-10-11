@@ -77,7 +77,7 @@ Everything is rasterised on the CPU. Glows are the expensive part, so the render
 - The built-in gauges cache their static backgrounds, and cache their active segments by (count, colour).
 - Opacity layers composite only the area that was drawn into.
 
-`bench examples/showcase.json` (19 elements covering 15 of the 17 element types, with glows) takes about 3.3 ms per frame on a desktop x86 core. That leaves room on the RG35XX's Cortex-A53 for 60 fps, but measure on the device with `gauge bench`.
+`bench examples/showcase.json` (19 elements covering 15 of the 17 element types, with glows) takes about 3.2 ms per frame (8.3 ms for the C# renderer on the same CPU; see [`bench/`](../bench/README.md)) on a desktop x86 core. That leaves room on the RG35XX's Cortex-A53 for 60 fps, but measure on the device with `gauge bench`.
 
 ## Differences from the C# renderer
 

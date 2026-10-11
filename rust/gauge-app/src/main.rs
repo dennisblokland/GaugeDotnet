@@ -25,8 +25,8 @@ USAGE:
   gauge builtin <type> [-o out.png] [--value V] [--min V] [--max V]
                 [--title S] [--unit S] [--color #RRGGBB] [--decimals N] [--segments N]
       Render a built-in gauge: bar, circular, needle, digital, sweep, minmax, histogram.
-  gauge bench <file.json> [--frames N]
-      Time N frames of a custom definition or gauges.json (first screen).
+  gauge bench <file.json> [--frames N] [--warmup N]
+      Time the draw call of a custom definition, or of every gauges.json screen.
   gauge run <file.json> [--fullscreen]
       Live SDL2 window with simulated data (build with --features sdl).
       Left/Right (or D-pad) switch screens, Esc quits.
@@ -77,6 +77,7 @@ impl Args {
 }
 
 /// Feeds simulated data to one screen and draws it.
+#[cfg_attr(not(feature = "sdl"), allow(dead_code))]
 pub type DrawFn = Box<dyn FnMut(&mut Canvas, &Simulator)>;
 
 /// What a JSON file contains.
@@ -220,28 +221,63 @@ fn cmd_builtin(args: &Args) -> Result<(), String> {
 
 fn cmd_bench(args: &Args) -> Result<(), String> {
 	let file = args.positional.get(1).ok_or("bench needs a JSON file")?;
-	let frames: u32 = args.opt(&["frames"], 300)?;
+	let frames: u32 = args.opt(&["frames"], 600)?;
+	let warmup: u32 = args.opt(&["warmup"], 300)?;
 	let (w, h) = dimensions(Path::new(file))?;
-	let mut sim = Simulator::new(0.0);
 	let mut canvas = Canvas::new(w, h);
-	let mut draw: DrawFn = match load(Path::new(file), w, h)? {
-		Loaded::Custom(mut g) => Box::new(move |c, s| {
-			g.update_from(|n| s.read(n));
-			g.draw_with_delta(c, 1.0 / 60.0);
-		}),
-		Loaded::Screens(mut screens) => Box::new(move |c, s| {
-			screens[0].update(|n| s.read(n));
-			screens[0].draw(c);
-		}),
+
+	// Same protocol as bench/csharp: fixed 60 Hz steps, warm-up, then only the draw is timed.
+	let mut run = |label: String, screen: &mut dyn FnMut(&mut Canvas, &Simulator, bool)| {
+		let mut sim = Simulator::new(0.0);
+		for _ in 0..warmup {
+			sim.advance(1.0 / 60.0);
+			screen(&mut canvas, &sim, true);
+			screen(&mut canvas, &sim, false);
+		}
+		let mut total = std::time::Duration::ZERO;
+		for _ in 0..frames {
+			sim.advance(1.0 / 60.0);
+			screen(&mut canvas, &sim, true);
+			let start = Instant::now();
+			screen(&mut canvas, &sim, false);
+			total += start.elapsed();
+		}
+		let ms = total.as_secs_f64() * 1000.0 / frames as f64;
+		println!("{label:<28} {ms:>9.3} {:>7.0}", 1000.0 / ms);
 	};
-	draw(&mut canvas, &sim); // warm caches
-	let start = Instant::now();
-	for _ in 0..frames {
-		sim.advance(1.0 / 60.0);
-		draw(&mut canvas, &sim);
+
+	println!("Rust / tiny-skia (CPU raster)");
+	println!("{:<28} {:>9} {:>7}", "screen", "ms/frame", "fps");
+	match load(Path::new(file), w, h)? {
+		Loaded::Custom(mut g) => run("Custom".into(), &mut |c, s, update| {
+			if update {
+				g.update_from(|n| s.read(n));
+			} else {
+				g.draw_with_delta(c, 1.0 / 60.0);
+			}
+		}),
+		Loaded::Screens(mut screens) => {
+			let json = std::fs::read_to_string(file).map_err(|e| e.to_string())?;
+			let config = AppConfig::from_json(&json).map_err(|e| e.to_string())?;
+			for (screen, cfg) in screens.iter_mut().zip(&config.screens) {
+				let g = &cfg.gauge;
+				let label = match (g.gauge_type, &cfg.custom_definition_file) {
+					(GaugeType::Custom, Some(f)) => format!("Custom ({f})"),
+					(GaugeType::Grid, _) => "Grid (4 cells)".into(),
+					(t, _) => format!("{t:?} ({})", g.data_source),
+				};
+				run(label, &mut |c, s, update| {
+					if update {
+						screen.update(|n| s.read(n));
+					} else if let Screen::Custom(g) = screen {
+						g.draw_with_delta(c, 1.0 / 60.0);
+					} else {
+						screen.draw(c);
+					}
+				});
+			}
+		}
 	}
-	let per_frame = start.elapsed().as_secs_f64() * 1000.0 / frames as f64;
-	println!("{frames} frames, {per_frame:.2} ms/frame ({:.0} fps)", 1000.0 / per_frame);
 	Ok(())
 }
 
