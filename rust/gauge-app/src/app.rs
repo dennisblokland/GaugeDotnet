@@ -10,6 +10,7 @@ use gauge_render::{Canvas, Damage};
 use me_data::MeData;
 
 use crate::display::Display;
+use crate::editor::ConfigEditor;
 use crate::feed::Feed;
 use crate::input::{GamepadKey, Input};
 use crate::screens::{self, BatteryOverlay, FpsCounter};
@@ -60,7 +61,6 @@ pub fn run(options: AppOptions) -> Result<(), String> {
 	let config_path = options.config.unwrap_or_else(default_config_path);
 	let config = AppConfig::load_or_create(&config_path);
 	eprintln!("[app] loaded {} screen(s) from {}", config.screens.len(), config_path.display());
-	let config_dir = std::fs::canonicalize(&config_path).ok().and_then(|p| p.parent().map(Path::to_path_buf));
 	let demo = options.demo || config.demo_mode;
 
 	let mut display = Display::open("GaugeDotnet", WIDTH, HEIGHT, options.fullscreen)?;
@@ -93,7 +93,7 @@ pub fn run(options: AppOptions) -> Result<(), String> {
 		std::thread::sleep(Duration::from_millis(16));
 	}
 
-	GameLoop::new(config, config_dir, feed).run(&mut display, &mut canvas, &mut input)?;
+	GameLoop::new(config, Some(config_path), feed).run(&mut display, &mut canvas, &mut input)?;
 
 	for i in 0..=20 {
 		screens::draw_exit(&mut canvas, i as f32 / 20.0);
@@ -133,6 +133,11 @@ fn show_error(display: &mut Display, canvas: &mut Canvas, input: &mut Input, mes
 }
 
 struct GameLoop {
+	config: AppConfig,
+	/// Where the editor saves; `None` keeps edits in memory (tests).
+	config_path: Option<PathBuf>,
+	config_dir: Option<PathBuf>,
+	editor: Option<ConfigEditor>,
 	screens: Vec<Screen>,
 	current: usize,
 	shown: Option<usize>,
@@ -145,15 +150,24 @@ struct GameLoop {
 }
 
 impl GameLoop {
-	fn new(config: AppConfig, config_dir: Option<PathBuf>, feed: Feed) -> Self {
+	fn new(config: AppConfig, config_path: Option<PathBuf>, feed: Feed) -> Self {
+		// Custom definition files are relative to the config's folder.
+		let config_dir = config_path
+			.as_deref()
+			.and_then(|p| std::fs::canonicalize(p).ok())
+			.and_then(|p| p.parent().map(Path::to_path_buf));
 		Self {
 			screens: build_screens(&config, config_dir.as_deref()),
+			battery: BatteryOverlay::new(config.simulate_battery_percent),
+			config,
+			config_path,
+			config_dir,
+			editor: None,
 			current: 0,
 			shown: None,
 			feed,
 			data: MeData::default(),
 			fps: FpsCounter::new(),
-			battery: BatteryOverlay::new(config.simulate_battery_percent),
 			last_update: None,
 			last_keep_alive: None,
 		}
@@ -167,17 +181,45 @@ impl GameLoop {
 	/// One frame: input, navigation, data, render. `false` once the user quits.
 	fn step(&mut self, display: &mut Display, canvas: &mut Canvas, input: &mut Input) -> Result<bool, String> {
 		input.poll(&mut display.events);
-		if input.quit || input.key == GamepadKey::MENU_DOWN {
+		if input.quit {
+			return Ok(false);
+		}
+		if let Some(editor) = &mut self.editor {
+			editor.handle_input(&mut self.config, self.config_path.as_deref(), input.key, input.sdl_key);
+			if editor.active {
+				editor.draw(&self.config, canvas);
+				display.present_full(canvas)?;
+				return Ok(true);
+			}
+			self.close_editor();
+			// The key that closed the editor is used up (on a keyboard, Escape
+			// is both B and MENU), so just show the gauges again.
+			self.render(display, canvas)?;
+			return Ok(true);
+		}
+		if input.key == GamepadKey::MENU_DOWN {
 			return Ok(false);
 		}
 		if input.key == GamepadKey::SELECT_DOWN || input.sdl_key == Some(sdl2::keyboard::Keycode::Tab) {
-			eprintln!("[app] the on-device config editor is not ported yet; edit gauges.json instead");
+			self.editor = Some(ConfigEditor::new());
+			return Ok(true);
 		}
 		self.handle_reset(input);
 		self.handle_navigation(input.key);
 		self.update_data();
 		self.render(display, canvas)?;
 		Ok(true)
+	}
+
+	/// Rebuilds the screens if the editor changed the config (`HandleConfigEditor`).
+	fn close_editor(&mut self) {
+		if self.editor.take().is_some_and(|e| e.changed) {
+			self.screens = build_screens(&self.config, self.config_dir.as_deref());
+			self.current = self.current.min(self.screens.len().saturating_sub(1));
+			self.last_update = None;
+		}
+		// The editor painted over everything.
+		self.shown = None;
 	}
 
 	/// R1 (or `r`) clears the current screen's saved state (peaks, history).
@@ -300,6 +342,20 @@ mod tests {
 		display.push_key(Keycode::Left);
 		game.step(&mut display, &mut canvas, &mut input).unwrap();
 		assert_eq!(game.current, 2, "wraps around");
+
+		// Tab opens the editor: delete screen 1 (Delete = X), then Escape closes it
+		// without quitting, and the screens are rebuilt.
+		for key in [Keycode::Tab, Keycode::Delete, Keycode::Escape] {
+			display.push_key(key);
+			assert!(game.step(&mut display, &mut canvas, &mut input).unwrap());
+			if key == Keycode::Delete {
+				assert!(game.editor.is_some());
+				assert!((60..300).any(|x| canvas.pixel(x, 80).is_some_and(|p| p.g > 200 && p.b > 200)), "editor drawn");
+			}
+		}
+		assert!(game.editor.is_none());
+		assert_eq!(game.screens.len(), 2);
+		assert_eq!(game.current, 1, "clamped to the last screen");
 
 		display.push_key(Keycode::Escape);
 		assert!(!game.step(&mut display, &mut canvas, &mut input).unwrap(), "MENU exits");

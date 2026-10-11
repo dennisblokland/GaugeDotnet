@@ -29,8 +29,23 @@ impl GaugeType {
 		Self::Custom,
 	];
 
+	/// The C# enum name (also its JSON spelling).
+	pub fn name(self) -> &'static str {
+		match self {
+			Self::Bar => "Bar",
+			Self::Circular => "Circular",
+			Self::Histogram => "Histogram",
+			Self::Needle => "Needle",
+			Self::Digital => "Digital",
+			Self::Sweep => "Sweep",
+			Self::MinMax => "MinMax",
+			Self::Grid => "Grid",
+			Self::Custom => "Custom",
+		}
+	}
+
 	pub fn parse(s: &str) -> Option<Self> {
-		Self::ALL.into_iter().find(|t| format!("{t:?}").eq_ignore_ascii_case(s))
+		Self::ALL.into_iter().find(|t| t.name().eq_ignore_ascii_case(s))
 	}
 }
 

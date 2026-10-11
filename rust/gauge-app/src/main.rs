@@ -5,6 +5,8 @@ mod app;
 #[cfg(feature = "sdl")]
 mod display;
 #[cfg(feature = "sdl")]
+mod editor;
+#[cfg(feature = "sdl")]
 mod feed;
 #[cfg(feature = "sdl")]
 mod input;

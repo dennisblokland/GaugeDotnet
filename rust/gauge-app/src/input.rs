@@ -60,9 +60,10 @@ impl GamepadKey {
 		Self(((number as i32) << 16) | value as i32)
 	}
 
-	/// A button press or d-pad push (releases have a zero value).
+	/// A button press or d-pad push. Releases have a zero value, except the
+	/// keyboard's `MENU_UP`, which C# gives a code of its own.
 	pub fn is_press(self) -> bool {
-		self != Self::NONE && self.0 & 0xFFFF != 0
+		self != Self::NONE && self != Self::MENU_UP && self.0 & 0xFFFF != 0
 	}
 
 	/// The C# `KeyBus` keyboard mapping (desktop builds).
@@ -223,5 +224,9 @@ mod tests {
 		assert_eq!(GamepadKey::from_keycode(Keycode::Right, true), Some(GamepadKey::RIGHT));
 		assert_eq!(GamepadKey::from_keycode(Keycode::Right, false), Some(GamepadKey::LEFT_RIGHT_UP));
 		assert_eq!(GamepadKey::from_keycode(Keycode::Q, true), None);
+		assert!(GamepadKey::MENU_DOWN.is_press() && GamepadKey::LEFT.is_press());
+		assert!(
+			!GamepadKey::MENU_UP.is_press() && !GamepadKey::A_UP.is_press() && !GamepadKey::LEFT_RIGHT_UP.is_press()
+		);
 	}
 }

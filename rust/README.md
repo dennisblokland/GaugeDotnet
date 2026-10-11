@@ -32,6 +32,7 @@ A Rust port of GaugeDotnet's rendering stack. It loads the same `custom-gauge.js
 | `RG35XX.Libraries/BluetoothHardwareInit` | `me-ble/src/hardware.rs` |
 | `SimulatedMeDevice` | `gauge-app/src/sim.rs` |
 | `Program`, `GameLoop`, `GaugeSDL` | `gauge-app/src/app.rs`, `display.rs` (the `run` viewer is `window.rs`) |
+| `ConfigEditor` | `gauge-app/src/editor.rs` |
 | `SplashScreen`, `ErrorScreen`, `FpsCounter`, `BatteryOverlay`, `ScreenKeepAlive` | `gauge-app/src/screens.rs` |
 | `GamePads`, `LinuxGamePadReader`, `KeyBus`, `InputHandler` | `gauge-app/src/input.rs` |
 
@@ -76,7 +77,14 @@ Controls (the gamepad is read from `/dev/input/js0`, as in the C# release build;
 | D-pad left / right | ← / → | previous / next screen (wraps around) |
 | R1 | `.` or `r` | reset the screen's peaks and history |
 | MENU | Esc | quit |
-| SELECT | Tab | not ported yet: the on-device config editor. It logs a hint; edit `gauges.json` instead |
+| SELECT | Tab | open the config editor |
+
+**Config editor**, a port of the C# `ConfigEditor`, has three pages:
+- **Screens:** the screen list. A edits the highlighted screen, the last row adds a screen (up to 10), and X deletes one (the last screen can't be deleted).
+- **Gauge settings:** one row per setting of the gauge type. LEFT/RIGHT cycles the value (type, data source, title, colour, min/max, decimals, segments, smoothing, …). On a Grid gauge, A opens a cell.
+- **Grid cell:** data source, title, unit and decimals.
+
+START saves `gauges.json`, and B goes back a page. Leaving the editor rebuilds the screens. On a keyboard, use the arrows, Return/`z` for A, Escape/`x` for B, `s` for START and Delete/Backspace for X (the C# app had no keyboard key for X).
 
 On the RG35XX the Bluetooth bring-up (`rtk_hciattach`, `bluetoothd`) runs automatically when `rtk_hciattach` exists. Force it with `--init-bt` or skip it with `--no-init-bt`.
 
@@ -171,9 +179,14 @@ The C# renderer takes 8.7 ms for a full frame on the same CPU; see [`bench/`](..
 - **CPU rendering** instead of Skia on GLES2. Antialiasing and blur falloff differ slightly: the gaussian is approximated with three box blurs.
 - **Calculated-channel inputs are tracked.** The C# `CustomGauge` only polls sources bound directly to an element, so `Rpm / 1000` read 0 unless some element also used `Rpm`. Visibility sources are tracked too.
 - **Invalid colours render black** instead of throwing from `SKColor.Parse`. Likewise, the `D`/`X` number formats render a rounded integer, where .NET would throw for a float.
+- **Config editor fixes:**
+  - On a keyboard, Escape leaves the editor without also quitting the app. In C# it is both B and MENU.
+  - Delete/Backspace act as X.
+  - Saving writes to the `gauges.json` the app loaded, and shows "Save failed!" if it can't.
+- **Key releases don't delay presses.** A quick tap (a press and release in the same frame) no longer holds back the next button by a frame.
 - **No global state.** Graph history, peak-hold values and image caches live in each `ElementRenderer`, not in static dictionaries.
 - `GraphElement.HistoryDepth` below 2 is treated as 2. In C# it divides by zero.
 
-Not ported yet: the app shell (`Program`/`GameLoop` start-up flow, gamepad reader, splash/battery/error overlays), the on-device config editor, and the Avalonia designer (which can stay in C#: it only writes JSON the Rust renderer reads).
+Everything the device runs is ported. The exception is the Avalonia designer, which can stay in C#: it only writes JSON that the Rust renderer reads. Small helpers the Rust app has no use for (`AppLauncher`, `StorageProvider`, `DeviceInfo`) are not ported.
 
 The Bluetooth link builds and handles errors, but it hasn't run against a real ECU yet: this environment has no Bluetooth controller. Before relying on it, check it on the device with `gauge ble-monitor --init-bt`.
