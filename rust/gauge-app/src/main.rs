@@ -1,5 +1,7 @@
 //! `gauge`: renders GaugeDotnet gauge definitions with the Rust renderer.
 
+#[cfg(feature = "sdl")]
+mod feed;
 mod sim;
 #[cfg(feature = "sdl")]
 mod window;
@@ -29,9 +31,16 @@ USAGE:
       Time the draw call of a custom definition, or of every gauges.json screen.
       --data-hz sets how often new values arrive (default 60 = every frame);
       --full repaints the whole frame every time (no damage tracking).
-  gauge run <file.json> [--fullscreen]
-      Live SDL2 window with simulated data (build with --features sdl).
-      Left/Right (or D-pad) switch screens, Esc quits.
+  gauge run <file.json> [--fullscreen] [--ble [--mac AA:BB:CC:DD:EE:FF] [--init-bt]]
+      Live SDL2 window (build with --features sdl). Simulated data by default;
+      --ble reads the ECU over Bluetooth (build with --features ble). The MAC
+      comes from --mac or DeviceMacAddress in gauges.json; without one the
+      first ME device found is used. --init-bt runs the RG35XX Bluetooth
+      bring-up first. Left/Right (or D-pad) switch screens, Esc quits.
+  gauge ble-scan [--seconds N]
+      List nearby ME devices (RaceChrono BLE service).
+  gauge ble-monitor [--mac AA:BB:CC:DD:EE:FF] [--init-bt] [--seconds N]
+      Connect to the ECU and print live decoded values.
 ";
 
 struct Args {
@@ -46,7 +55,7 @@ fn parse_args(raw: impl Iterator<Item = String>) -> Result<Args, String> {
 	let mut it = raw.peekable();
 	while let Some(a) = it.next() {
 		match a.as_str() {
-			"--fullscreen" | "--full" | "-h" | "--help" => args.flags.push(a),
+			"--fullscreen" | "--full" | "--ble" | "--init-bt" | "-h" | "--help" => args.flags.push(a),
 			"--set" => {
 				let kv = it.next().ok_or("--set needs NAME=VALUE")?;
 				let (k, v) = kv.split_once('=').ok_or_else(|| format!("bad --set '{kv}'"))?;
@@ -81,7 +90,7 @@ impl Args {
 /// Feeds simulated data to one screen and draws it; `true` forces a full
 /// repaint (after switching screens). Returns what changed.
 #[cfg_attr(not(feature = "sdl"), allow(dead_code))]
-pub type DrawFn = Box<dyn FnMut(&mut Canvas, &Simulator, bool) -> gauge_render::Damage>;
+pub type DrawFn = Box<dyn FnMut(&mut Canvas, &me_data::MeData, bool) -> gauge_render::Damage>;
 
 /// What a JSON file contains.
 pub enum Loaded {
@@ -320,15 +329,101 @@ fn cmd_bench(args: &Args) -> Result<(), String> {
 	Ok(())
 }
 
+/// MAC from `--mac`, else `DeviceMacAddress` when the file is a gauges.json.
+#[cfg_attr(not(feature = "ble"), allow(dead_code))]
+fn configured_mac(args: &Args, file: Option<&String>) -> Option<String> {
+	if let Some(mac) = args.options.get("mac") {
+		return Some(mac.clone());
+	}
+	let json = std::fs::read_to_string(file?).ok()?;
+	if !is_app_config(&json) {
+		return None;
+	}
+	AppConfig::from_json(&json).ok()?.device_mac_address.filter(|m| !m.trim().is_empty())
+}
+
+#[cfg(feature = "ble")]
+fn ble_link(args: &Args, file: Option<&String>) -> me_ble::BleLink {
+	me_ble::BleLink::start(me_ble::LinkOptions {
+		mac: configured_mac(args, file),
+		init_hardware: args.flags.iter().any(|f| f == "--init-bt"),
+		..Default::default()
+	})
+}
+
 #[cfg(feature = "sdl")]
 fn cmd_run(args: &Args) -> Result<(), String> {
 	let file = args.positional.get(1).ok_or("run needs a JSON file")?;
-	window::run(Path::new(file), args.flags.iter().any(|f| f == "--fullscreen"))
+	let feed = if args.flags.iter().any(|f| f == "--ble") {
+		#[cfg(feature = "ble")]
+		{
+			feed::Feed::Ble(ble_link(args, Some(file)))
+		}
+		#[cfg(not(feature = "ble"))]
+		return Err("this build has no Bluetooth support; rebuild with `--features ble`".into());
+	} else {
+		feed::Feed::simulated()
+	};
+	window::run(Path::new(file), args.flags.iter().any(|f| f == "--fullscreen"), feed)
 }
 
 #[cfg(not(feature = "sdl"))]
 fn cmd_run(_: &Args) -> Result<(), String> {
 	Err("this build has no window support; rebuild with `--features sdl`".into())
+}
+
+#[cfg(feature = "ble")]
+fn cmd_ble_scan(args: &Args) -> Result<(), String> {
+	let seconds: u64 = args.opt(&["seconds"], 10)?;
+	println!("Scanning {seconds} s for ME devices...");
+	let found = me_ble::scan_blocking(std::time::Duration::from_secs(seconds)).map_err(|e| e.to_string())?;
+	if found.is_empty() {
+		println!("No ME devices found.");
+	}
+	for d in found {
+		let rssi = d.rssi.map_or("?".to_string(), |r| format!("{r} dBm"));
+		println!("{}  {:<20} {rssi}", d.address, d.name.as_deref().unwrap_or("(no name)"));
+	}
+	Ok(())
+}
+
+#[cfg(feature = "ble")]
+fn cmd_ble_monitor(args: &Args) -> Result<(), String> {
+	let seconds: u64 = args.opt(&["seconds"], 0)?;
+	let link = ble_link(args, None);
+	let start = Instant::now();
+	let mut last_status = None;
+	loop {
+		let status = link.status();
+		if Some(&status) != last_status.as_ref() {
+			println!("status: {status:?}");
+			last_status = Some(status.clone());
+		}
+		if let me_ble::LinkStatus::Failed(msg) = &status {
+			return Err(msg.replace('\n', " "));
+		}
+		if status == me_ble::LinkStatus::Connected {
+			let d = link.snapshot();
+			println!(
+				"rpm {:5}  map {:6.1}  tps {:5.1}  afr {:5.2}  clt {:5.1}  oil {:5.1}/{:6.1}  vbat {:4.1}  gear {}  speed {}",
+				d.rpm, d.map, d.throttle_position, d.afr_curr1, d.clt, d.oil_temp, d.oil_pressure, d.vbat, d.gear_pos, d.vehicle_speed
+			);
+		}
+		if seconds > 0 && start.elapsed().as_secs() >= seconds {
+			return Ok(());
+		}
+		std::thread::sleep(std::time::Duration::from_millis(500));
+	}
+}
+
+#[cfg(not(feature = "ble"))]
+fn cmd_ble_scan(_: &Args) -> Result<(), String> {
+	Err("this build has no Bluetooth support; rebuild with `--features ble`".into())
+}
+
+#[cfg(not(feature = "ble"))]
+fn cmd_ble_monitor(_: &Args) -> Result<(), String> {
+	cmd_ble_scan(&Args { positional: vec![], options: HashMap::new(), sets: vec![], flags: vec![] })
 }
 
 fn main() -> ExitCode {
@@ -344,6 +439,8 @@ fn main() -> ExitCode {
 		Some("builtin") => cmd_builtin(&args),
 		Some("bench") => cmd_bench(&args),
 		Some("run") => cmd_run(&args),
+		Some("ble-scan") => cmd_ble_scan(&args),
+		Some("ble-monitor") => cmd_ble_monitor(&args),
 		_ => {
 			print!("{USAGE}");
 			return if args.flags.iter().any(|f| f == "-h" || f == "--help") {

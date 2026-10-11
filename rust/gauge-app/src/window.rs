@@ -9,10 +9,35 @@ use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::PixelFormatEnum;
 
-use crate::sim::Simulator;
+use crate::feed::Feed;
 use crate::{load, DrawFn, Loaded};
 
-pub fn run(path: &Path, fullscreen: bool) -> Result<(), String> {
+/// Draws a status banner (connection state / errors) over the bottom of the frame.
+fn draw_banner(canvas: &mut Canvas, text: &str) {
+	use gauge_render::canvas::{rect, Paint};
+	use gauge_render::text::{default_typeface, TextAlign};
+	let (w, h) = (canvas.width() as f32, canvas.height() as f32);
+	let lines: Vec<&str> = text.lines().collect();
+	let size = 22.0;
+	let top = h - 16.0 - lines.len() as f32 * (size + 4.0) - 12.0;
+	if let Some(r) = rect(0.0, top, w, h) {
+		canvas.draw_rect(r, &Paint::fill(gauge_render::Rgba::new(0, 0, 0, 200)));
+	}
+	for (i, line) in lines.iter().enumerate() {
+		let y = top + 12.0 + size + i as f32 * (size + 4.0);
+		canvas.draw_text(
+			line,
+			w / 2.0,
+			y,
+			TextAlign::Center,
+			default_typeface(),
+			size,
+			&Paint::fill(gauge_render::Rgba::rgb(255, 204, 0)),
+		);
+	}
+}
+
+pub fn run(path: &Path, fullscreen: bool, mut feed: Feed) -> Result<(), String> {
 	let (w, h) = crate::dimensions(path)?;
 	let mut screens: Vec<DrawFn> = match load(path, w, h)? {
 		Loaded::Custom(mut g) => vec![Box::new(move |c, s, reset| {
@@ -52,10 +77,9 @@ pub fn run(path: &Path, fullscreen: bool) -> Result<(), String> {
 	let _joystick = sdl.joystick().ok().and_then(|j| j.open(0).ok());
 
 	let mut canvas = Canvas::new(w, h);
-	let mut sim = Simulator::new(0.0);
 	let mut current = 0usize;
 	let mut shown = usize::MAX;
-	let mut last = Instant::now();
+	let mut last_status: Option<String> = None;
 	let (mut frames, mut fps_since) = (0u32, Instant::now());
 
 	'main: loop {
@@ -75,27 +99,34 @@ pub fn run(path: &Path, fullscreen: bool) -> Result<(), String> {
 			}
 		}
 
-		let now = Instant::now();
-		sim.advance(now.duration_since(last).as_secs_f64());
-		last = now;
-
-		let switched = shown != current;
+		let data = feed.tick();
+		let status = feed.status();
+		// The banner is drawn over the frame, so repaint fully whenever it is
+		// shown or changes; otherwise partial redraws would leave it behind.
+		let reset = shown != current || status.is_some() || status != last_status;
 		shown = current;
-		let damage = screens[current](&mut canvas, &sim, switched);
+		last_status.clone_from(&status);
+		let mut damage = screens[current](&mut canvas, &data, reset);
+		if let Some(text) = &status {
+			draw_banner(&mut canvas, text);
+			damage = gauge_render::Damage::full(w, h);
+		}
 		// Upload only what changed: on the device this is the costly copy.
 		let pitch = w as usize * 4;
-		let data = canvas.pixmap().data();
+		let pixels = canvas.pixmap().data();
 		for r in &damage.rects {
 			let rect = sdl2::rect::Rect::new(r.x0, r.y0, r.width() as u32, r.height() as u32);
 			let start = r.y0 as usize * pitch + r.x0 as usize * 4;
-			texture.update(Some(rect), &data[start..], pitch).map_err(|e| e.to_string())?;
+			texture.update(Some(rect), &pixels[start..], pitch).map_err(|e| e.to_string())?;
 		}
 		sdl_canvas.copy(&texture, None, None)?;
 		sdl_canvas.present();
 
 		frames += 1;
 		if fps_since.elapsed() >= Duration::from_secs(1) {
-			let title = format!("GaugeDotnet (Rust) — screen {}/{} — {frames} fps", current + 1, screens.len());
+			let link = status.as_deref().map_or("live".to_string(), |s| s.replace('\n', " "));
+			let title =
+				format!("GaugeDotnet (Rust) — screen {}/{} — {frames} fps — {link}", current + 1, screens.len());
 			let _ = sdl_canvas.window_mut().set_title(&title);
 			frames = 0;
 			fps_since = Instant::now();

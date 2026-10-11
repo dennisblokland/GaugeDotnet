@@ -9,7 +9,9 @@ A Rust port of GaugeDotnet's rendering stack. It loads the same `custom-gauge.js
 | Crate | Purpose |
 |-------|---------|
 | `gauge-render` | Library: canvas, fonts, the 17 custom element renderers, calculated channels, the 8 built-in gauges and the `gauges.json` factory |
-| `gauge-app` | `gauge` binary: PNG snapshots, a benchmark and an optional SDL2 window, all driven by a port of `SimulatedMeDevice` |
+| `me-data` | ECU data: CAN frame decoding ME1_1–ME1_8 (port of `ME1_4NET`, with all its tests), `MeData`, data-source names (`DataSourceMapper`) and the RaceChrono BLE packet format |
+| `me-ble` | Bluetooth link to the ECU on btleplug (port of `BleManager`, `MeDevice` and `BluetoothHardwareInit`), with a synchronous `BleLink` handle for render loops |
+| `gauge-app` | `gauge` binary: PNG snapshots, a benchmark, an optional SDL2 window, and Bluetooth tools. Fed by a port of `SimulatedMeDevice` or by the ECU |
 
 ### C# → Rust map
 
@@ -25,6 +27,9 @@ A Rust port of GaugeDotnet's rendering stack. It loads the same `custom-gauge.js
 | `GaugeFactory`, `AppConfig`, `GaugeConfig`, `TolerantGaugeTypeConverter` | `gauges/mod.rs`, `gauges/config.rs` |
 | `SKCanvas` / `SKPaint` / `SKMaskFilter` | `canvas.rs` (save/restore, transforms, clips, `SaveLayer` opacity, arcs, round rects, text, normal and outer blur) |
 | `value.ToString("F1")`, `DateTime.ToString("HH:mm")` | `format.rs` (standard and custom .NET numeric and date format strings, invariant culture) |
+| `ME1_4NET` (`CanDecoder`, `Frames/*`, `MEData`), `DataSourceMapper` | `me-data` |
+| `BleManager`, `MeDevice`, `RaceChronoIds` | `me-ble/src/device.rs`, `me-data/src/racechrono.rs` |
+| `RG35XX.Libraries/BluetoothHardwareInit` | `me-ble/src/hardware.rs` |
 | `SimulatedMeDevice` | `gauge-app/src/sim.rs` |
 | `GaugeSDL` / `GameLoop` | `gauge-app/src/window.rs` |
 
@@ -46,6 +51,18 @@ cargo run --release --features sdl -- run examples/gauges.json
 ```
 
 Relative paths inside a definition (images, needle images, GIFs) resolve against the JSON file's folder, as in the C# app.
+
+### Bluetooth (ECU)
+
+Build with `--features ble`, which needs `libdbus-1-dev`; `ble-vendored` compiles libdbus in instead:
+
+```shell
+cargo run --release --features ble -- ble-scan                     # list nearby ME devices
+cargo run --release --features ble -- ble-monitor --mac 20:E7:C8:B9:20:2A   # print live values
+cargo run --release --features sdl,ble -- run examples/gauges.json --ble    # gauges from the ECU
+```
+
+`run --ble` takes the MAC from `--mac`, or else from `DeviceMacAddress` in `gauges.json`. Without either, it uses the first device advertising the RaceChrono service. On the RG35XX, add `--init-bt`: it runs the controller and BlueZ bring-up the C# app does at startup (`rtk_hciattach`, `bluetoothd`, clearing stale links) and clears BlueZ's cache for the MAC. While the ECU isn't connected, a banner shows the state (searching, reconnecting, or the error message). The link reconnects on its own, with a 1–10 s backoff, and re-subscribes after every reconnect.
 
 ### Using the library
 
@@ -76,7 +93,7 @@ CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc \
   cargo build --release --target aarch64-unknown-linux-gnu -p gauge-app
 ```
 
-That produces a headless build: `render` and `bench` work, but there is no window. The SDL window (`--features sdl`) also needs the device's `libSDL2` to link against, from a sysroot or by building on the device. The headless aarch64 binary has been checked under `qemu-aarch64`, and its output matches the x86 build pixel for pixel.
+That produces a headless build: `render` and `bench` work, but there is no window. Add `--features ble-vendored` for the Bluetooth tools (`ble-scan`, `ble-monitor`). libdbus is then compiled into the binary, so it needs nothing on the device beyond libc; set `CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc` as well. The SDL window (`--features sdl`) also needs the device's `libSDL2` to link against, from a sysroot or by building on the device. The headless aarch64 binary has been checked under `qemu-aarch64`, and its output matches the x86 build pixel for pixel.
 
 ## Performance
 
@@ -108,10 +125,14 @@ The C# renderer takes 8.7 ms for a full frame on the same CPU; see [`bench/`](..
 
 ## Differences from the C# renderer
 
+- **Unknown data sources no longer crash the update loop.** In C#, `CustomGauge.UpdateFromDevice` asks `DataSourceMapper.ReadValue` for every bound source, and that throws for names it doesn't know. So an element bound to a calculated channel such as `RpmK` threw on the device. Here unknown names just aren't fed, and calculated channels are computed from their inputs.
+
 - **CPU rendering** instead of Skia on GLES2. Antialiasing and blur falloff differ slightly: the gaussian is approximated with three box blurs.
 - **Calculated-channel inputs are tracked.** The C# `CustomGauge` only polls sources bound directly to an element, so `Rpm / 1000` read 0 unless some element also used `Rpm`. Visibility sources are tracked too.
 - **Invalid colours render black** instead of throwing from `SKColor.Parse`. Likewise, the `D`/`X` number formats render a rounded integer, where .NET would throw for a float.
 - **No global state.** Graph history, peak-hold values and image caches live in each `ElementRenderer`, not in static dictionaries.
 - `GraphElement.HistoryDepth` below 2 is treated as 2. In C# it divides by zero.
 
-Not ported, because they are outside the renderer: BLE and CAN decoding (`ME1_4NET`), the Avalonia designer, the on-device config editor, splash, battery and error overlays, and gamepad input.
+Not ported yet: the app shell (`Program`/`GameLoop` start-up flow, gamepad reader, splash/battery/error overlays), the on-device config editor, and the Avalonia designer (which can stay in C#: it only writes JSON the Rust renderer reads).
+
+The Bluetooth link builds and handles errors, but it hasn't run against a real ECU yet: this environment has no Bluetooth controller. Before relying on it, check it on the device with `gauge ble-monitor --init-bt`.
