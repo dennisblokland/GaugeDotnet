@@ -25,8 +25,10 @@ USAGE:
   gauge builtin <type> [-o out.png] [--value V] [--min V] [--max V]
                 [--title S] [--unit S] [--color #RRGGBB] [--decimals N] [--segments N]
       Render a built-in gauge: bar, circular, needle, digital, sweep, minmax, histogram.
-  gauge bench <file.json> [--frames N] [--warmup N]
+  gauge bench <file.json> [--frames N] [--warmup N] [--threads N] [--data-hz HZ] [--full]
       Time the draw call of a custom definition, or of every gauges.json screen.
+      --data-hz sets how often new values arrive (default 60 = every frame);
+      --full repaints the whole frame every time (no damage tracking).
   gauge run <file.json> [--fullscreen]
       Live SDL2 window with simulated data (build with --features sdl).
       Left/Right (or D-pad) switch screens, Esc quits.
@@ -44,7 +46,7 @@ fn parse_args(raw: impl Iterator<Item = String>) -> Result<Args, String> {
 	let mut it = raw.peekable();
 	while let Some(a) = it.next() {
 		match a.as_str() {
-			"--fullscreen" | "-h" | "--help" => args.flags.push(a),
+			"--fullscreen" | "--full" | "-h" | "--help" => args.flags.push(a),
 			"--set" => {
 				let kv = it.next().ok_or("--set needs NAME=VALUE")?;
 				let (k, v) = kv.split_once('=').ok_or_else(|| format!("bad --set '{kv}'"))?;
@@ -76,9 +78,10 @@ impl Args {
 	}
 }
 
-/// Feeds simulated data to one screen and draws it.
+/// Feeds simulated data to one screen and draws it; `true` forces a full
+/// repaint (after switching screens). Returns what changed.
 #[cfg_attr(not(feature = "sdl"), allow(dead_code))]
-pub type DrawFn = Box<dyn FnMut(&mut Canvas, &Simulator)>;
+pub type DrawFn = Box<dyn FnMut(&mut Canvas, &Simulator, bool) -> gauge_render::Damage>;
 
 /// What a JSON file contains.
 pub enum Loaded {
@@ -153,7 +156,7 @@ fn cmd_render(args: &Args) -> Result<(), String> {
 					match &mut *screen {
 						Screen::Custom(g) => g.draw_with_delta(&mut canvas, 1.0 / 30.0),
 						other => other.draw(&mut canvas),
-					}
+					};
 				}
 				if let Screen::Custom(g) = screen {
 					g.snap_to_targets();
@@ -223,39 +226,67 @@ fn cmd_bench(args: &Args) -> Result<(), String> {
 	let file = args.positional.get(1).ok_or("bench needs a JSON file")?;
 	let frames: u32 = args.opt(&["frames"], 600)?;
 	let warmup: u32 = args.opt(&["warmup"], 300)?;
+	let threads: usize = args.opt(&["threads"], gauge_render::custom::default_threads())?;
+	// How often new data arrives; 60 = every frame (worst case for caching).
+	let data_hz: f64 = args.opt(&["data-hz"], 60.0)?;
+	// Repaint everything every frame (worst case: what a screen switch costs).
+	let force_full = args.flags.iter().any(|f| f == "--full");
 	let (w, h) = dimensions(Path::new(file))?;
 	let mut canvas = Canvas::new(w, h);
+	let frame_px = (w * h) as f64;
 
 	// Same protocol as bench/csharp: fixed 60 Hz steps, warm-up, then only the draw is timed.
-	let mut run = |label: String, screen: &mut dyn FnMut(&mut Canvas, &Simulator, bool)| {
+	let mut run = |label: String, screen: &mut dyn FnMut(&mut Canvas, &Simulator, bool) -> usize| {
 		let mut sim = Simulator::new(0.0);
-		for _ in 0..warmup {
+		let mut since_data = f64::MAX;
+		// Advances the simulation one frame; true when new data is due.
+		let mut data_due = |sim: &mut Simulator| {
 			sim.advance(1.0 / 60.0);
-			screen(&mut canvas, &sim, true);
+			since_data += 1.0 / 60.0;
+			let due = since_data >= 1.0 / data_hz - 1e-9;
+			if due {
+				since_data = 0.0;
+			}
+			due
+		};
+		for _ in 0..warmup {
+			if data_due(&mut sim) {
+				screen(&mut canvas, &sim, true);
+			}
 			screen(&mut canvas, &sim, false);
 		}
 		let mut total = std::time::Duration::ZERO;
+		let mut damaged = 0usize;
 		for _ in 0..frames {
-			sim.advance(1.0 / 60.0);
-			screen(&mut canvas, &sim, true);
+			if data_due(&mut sim) {
+				screen(&mut canvas, &sim, true);
+			}
 			let start = Instant::now();
-			screen(&mut canvas, &sim, false);
+			damaged += screen(&mut canvas, &sim, false);
 			total += start.elapsed();
 		}
 		let ms = total.as_secs_f64() * 1000.0 / frames as f64;
-		println!("{label:<28} {ms:>9.3} {:>7.0}", 1000.0 / ms);
+		let pct = damaged as f64 * 100.0 / frames as f64 / frame_px;
+		println!("{label:<28} {ms:>9.3} {:>7.0} {pct:>8.1}%", 1000.0 / ms);
 	};
 
-	println!("Rust / tiny-skia (CPU raster)");
-	println!("{:<28} {:>9} {:>7}", "screen", "ms/frame", "fps");
+	println!("Rust / tiny-skia (CPU raster), {threads} thread(s), data at {data_hz} Hz");
+	println!("{:<28} {:>9} {:>7} {:>9}", "screen", "ms/frame", "fps", "repainted");
 	match load(Path::new(file), w, h)? {
-		Loaded::Custom(mut g) => run("Custom".into(), &mut |c, s, update| {
-			if update {
-				g.update_from(|n| s.read(n));
-			} else {
-				g.draw_with_delta(c, 1.0 / 60.0);
-			}
-		}),
+		Loaded::Custom(mut g) => {
+			g.set_threads(threads);
+			run("Custom".into(), &mut |c, s, update| {
+				if update {
+					g.update_from(|n| s.read(n));
+					0
+				} else {
+					if force_full {
+						g.invalidate();
+					}
+					g.draw_with_delta(c, 1.0 / 60.0).area()
+				}
+			})
+		}
 		Loaded::Screens(mut screens) => {
 			let json = std::fs::read_to_string(file).map_err(|e| e.to_string())?;
 			let config = AppConfig::from_json(&json).map_err(|e| e.to_string())?;
@@ -266,13 +297,21 @@ fn cmd_bench(args: &Args) -> Result<(), String> {
 					(GaugeType::Grid, _) => "Grid (4 cells)".into(),
 					(t, _) => format!("{t:?} ({})", g.data_source),
 				};
+				if let Screen::Custom(g) = screen {
+					g.set_threads(threads);
+				}
+				screen.invalidate();
 				run(label, &mut |c, s, update| {
 					if update {
 						screen.update(|n| s.read(n));
+						0
 					} else if let Screen::Custom(g) = screen {
-						g.draw_with_delta(c, 1.0 / 60.0);
+						if force_full {
+							g.invalidate();
+						}
+						g.draw_with_delta(c, 1.0 / 60.0).area()
 					} else {
-						screen.draw(c);
+						screen.draw(c).area()
 					}
 				});
 			}

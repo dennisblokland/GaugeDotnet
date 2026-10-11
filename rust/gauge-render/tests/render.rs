@@ -172,3 +172,67 @@ fn cached_static_runs_match_uncached_render() {
 		assert!(max_diff <= 3, "rpm {rpm}: cached render differs by {max_diff}");
 	}
 }
+
+/// Asserts two frames match, allowing at most one anti-aliasing sample of
+/// difference (tiny-skia samples 4x4, so 1/16 ≈ 16 levels) on a few edge
+/// pixels: tiles clip paths at different places than a full-frame render.
+fn assert_frames_match(a: &Canvas, b: &Canvas, what: &str) {
+	let diffs: Vec<i32> = a
+		.pixmap()
+		.data()
+		.chunks_exact(4)
+		.zip(b.pixmap().data().chunks_exact(4))
+		.map(|(p, q)| p.iter().zip(q).map(|(x, y)| (*x as i32 - *y as i32).abs()).max().unwrap())
+		.filter(|&d| d > 3)
+		.collect();
+	let worst = diffs.iter().copied().max().unwrap_or(0);
+	assert!(worst <= 17 && diffs.len() <= 40, "{what}: {} pixels differ, worst by {worst}", diffs.len());
+}
+
+#[test]
+fn incremental_and_threaded_renders_match_full_render() {
+	use gauge_render::FrameState;
+
+	let def = CustomGaugeDefinition::load(examples_dir().join("showcase.json")).unwrap();
+	let (mut full, mut inc1, mut inc4) = (ElementRenderer::new(), ElementRenderer::new(), ElementRenderer::new());
+	let (mut st1, mut st4) = (FrameState::new(), FrameState::new());
+	st1.threads = 1;
+	st4.threads = 4;
+	let (mut a, mut b, mut c) = (Canvas::new(640, 480), Canvas::new(640, 480), Canvas::new(640, 480));
+
+	// (rpm, afr, oil, clt, minute): repeats, small changes, a visibility toggle (oil - clt > 12) and a clock tick.
+	let frames = [
+		(3000.0, 14.7, 90.0, 85.0, 0),
+		(3000.0, 14.7, 90.0, 85.0, 0),
+		(3000.0, 14.9, 90.0, 85.0, 0),
+		(3100.0, 14.9, 92.0, 85.0, 0),
+		(3150.0, 14.9, 93.5, 85.0, 0),
+		(2900.0, 14.9, 91.0, 85.0, 0),
+		(6900.0, 12.1, 120.0, 80.0, 0),
+		(6900.0, 12.1, 120.0, 80.0, 1),
+		(1200.0, 16.0, 95.0, 90.0, 1),
+		(1200.0, 16.0, 95.0, 90.0, 1),
+	];
+	let mut damages = Vec::new();
+	for (n, &(rpm, afr, oil, clt, minute)) in frames.iter().enumerate() {
+		let time = chrono::NaiveDate::from_ymd_opt(2026, 1, 1).unwrap().and_hms_opt(9, minute, 0);
+		for r in [&mut full, &mut inc1, &mut inc4] {
+			r.fixed_time = time;
+		}
+		let v = values(&[("Rpm", rpm), ("AfrCurr1", afr), ("OilTemp", oil), ("Clt", clt), ("BoostCtrlDuty", 40.0)]);
+		full.render(&mut a, &def, &v, Some(&v));
+		let d1 = inc1.render_incremental(&mut b, &def, &v, Some(&v), &mut st1);
+		let d4 = inc4.render_incremental(&mut c, &def, &v, Some(&v), &mut st4);
+		assert_eq!(d1, d4, "frame {n}: damage should not depend on threads");
+		assert_frames_match(&a, &b, &format!("frame {n}, incremental"));
+		assert_frames_match(&a, &c, &format!("frame {n}, threaded"));
+		damages.push(d1.area());
+	}
+	assert_eq!(damages[0], 640 * 480, "first frame repaints everything");
+	// Unchanged values: only the scrolling graph repaints.
+	assert!(damages[1] < 640 * 480 / 10, "repeat frame repainted {} px", damages[1]);
+	assert!(damages[9] < 640 * 480 / 10, "repeat frame repainted {} px", damages[9]);
+	// Small same-colour arc/bar moves only repaint the changed strips.
+	assert!(damages[3] < 640 * 480 / 3, "small rpm move repainted {} px", damages[3]);
+	assert!(damages[2] < damages[6], "an AFR-only change is smaller than an everything change");
+}

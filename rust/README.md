@@ -37,7 +37,9 @@ cargo run --release -- render examples/showcase.json -o out.png
 cargo run --release -- render examples/gauges.json -o screen.png     # one PNG per screen
 cargo run --release -- render my-gauge.json --set Rpm=6500 --set OilTemp=104
 cargo run --release -- builtin needle --value 72 --title SPEED --unit KMH --color '#FF8800'
-cargo run --release -- bench examples/showcase.json
+cargo run --release -- bench examples/showcase.json                  # values change every frame
+cargo run --release -- bench examples/showcase.json --data-hz 20     # realistic ECU rate
+cargo run --release -- bench examples/showcase.json --full --threads 1  # worst case
 
 # Live window (needs libsdl2-dev). Left/Right or the D-pad switch screens; Esc quits.
 cargo run --release --features sdl -- run examples/gauges.json
@@ -54,10 +56,16 @@ let mut gauge = CustomGauge::load("custom-gauge.json")?;
 let mut canvas = Canvas::new(640, 480);
 loop {
     gauge.update_from(|source| ecu.read(source)); // e.g. "Rpm", "OilTemp"
-    gauge.draw(&mut canvas);                      // smooths toward the targets, then renders
-    present(canvas.pixmap().data());              // RGBA8, premultiplied (opaque frames)
+    let damage = gauge.draw(&mut canvas);         // smooths, then repaints only what changed
+    for r in &damage.rects {
+        upload(canvas.pixmap(), r);               // RGBA8, premultiplied (opaque frames)
+    }
 }
 ```
+
+`draw` assumes the canvas still holds the previous frame. After anything
+else draws on it (switching screens, an overlay), call
+`gauge.invalidate()` so the next frame is repainted in full.
 
 ### Cross-compiling for the RG35XX (aarch64)
 
@@ -75,10 +83,28 @@ That produces a headless build: `render` and `bench` work, but there is no windo
 Everything is rasterised on the CPU. Glows are the expensive part, so:
 - **Large blurs run downscaled:** sigmas of 3 or more are blurred on a 2× or 4× smaller buffer and upscaled bilinearly, the way Skia's GPU backend does.
 - **Glows are alpha-only:** each glow is one colour, so only its coverage (A8) is rasterised and blurred, then composited with that colour.
-- **Static content is cached as trimmed `Sprite`s.** The built-in gauges cache their backgrounds, lit segments (keyed by count and colour), segment-display digits (keyed by text and colour) and Histogram bars (keyed by sample version). `CustomGauge` pre-renders each run of static elements, together with the background (`ElementRenderer::render_cached`).
+- **Static content is cached as trimmed `Sprite`s.** The built-in gauges cache their backgrounds, lit segments (keyed by count and colour), segment-display digits (keyed by text and colour) and Histogram bars (keyed by sample version). Custom gauges pre-render each run of static elements, together with the background.
 - **Opacity layers composite only the area that was drawn into.**
 
-`bench examples/showcase.json` (19 elements covering 15 of the 17 element types, with glows) takes about 1.9 ms per frame on a desktop x86 core. The C# renderer takes 8.7 ms on the same CPU; see [`bench/`](../bench/README.md). That leaves plenty of room for 60 fps on the RG35XX's Cortex-A53, but measure on the device with `gauge bench`.
+Custom gauges also redraw incrementally, using several cores (`ElementRenderer::render_incremental`, which `CustomGauge::draw` uses):
+- **Damage tracking:** each dynamic element is fingerprinted every frame (its value, or its clock text, peak or graph history). Only regions touched by changed elements are repainted, and their rects are returned so the window uploads just those to the texture. A moving arc or bar fill only damages the wedge or strip between its old and new value.
+- **Tiles:** each damaged rect is re-rendered from the full draw list into a small tile canvas and pasted in. Large rects are split into bands, and all tiles are shared out over up to 4 threads (`CustomGauge::set_threads`).
+- **Exact by construction:**
+  - Paths are flattened to line segments in device space, so tiles clip them consistently.
+  - Arcs are built from fixed 15° segments, so a growing arc leaves its old pixels unchanged.
+  - Blur grids are aligned to frame coordinates.
+  - Tests check that incremental and threaded frames match a full render.
+
+`bench examples/showcase.json` (19 elements covering 15 of the 17 element types, with glows), desktop x86 core:
+
+| Situation | 1 thread | 4 threads | Repainted |
+|---|---:|---:|---:|
+| Full repaint (screen switch, `--full`) | 2.24 ms | 1.46 ms | 100 % |
+| Values gliding (new data every frame) | 1.36 ms | 0.96 ms | 26 % |
+| Values gliding (20 Hz data) | 1.36 ms | 1.03 ms | 25 % |
+| Values settled (only the graph scrolls) | 0.09 ms | 0.08 ms | 3 % |
+
+The C# renderer takes 8.7 ms for a full frame on the same CPU; see [`bench/`](../bench/README.md). Measure on the RG35XX's Cortex-A53 with `gauge bench`.
 
 ## Differences from the C# renderer
 

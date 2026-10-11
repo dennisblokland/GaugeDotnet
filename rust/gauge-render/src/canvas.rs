@@ -138,12 +138,91 @@ pub struct Canvas {
 	layer_pool: Vec<Pixmap>,
 	state: State,
 	stack: Vec<State>,
+	/// Logical size (a recording canvas has no real pixels).
+	size: (u32, u32),
+	/// Position of this canvas's pixel (0, 0) on the full frame. Used to keep
+	/// downscaled blur grids aligned when a frame is rendered in tiles.
+	origin: (i32, i32),
+	/// Bounds-only mode: draw calls just accumulate `recorded`.
+	recording: bool,
+	recorded: Option<IRect>,
+}
+
+/// Integer offset when `ts` is a pure whole-pixel translation.
+fn integer_translation(ts: &Transform) -> Option<(i32, i32)> {
+	let whole = |v: f32| (v.fract() == 0.0).then_some(v as i32);
+	if ts.sx == 1.0 && ts.sy == 1.0 && ts.kx == 0.0 && ts.ky == 0.0 {
+		Some((whole(ts.tx)?, whole(ts.ty)?))
+	} else {
+		None
+	}
+}
+
+/// Maximum distance (device px) between a curve and its flattened polyline.
+const FLATTEN_TOLERANCE: f32 = 0.05;
+
+/// Transforms `path` to device space and replaces curves with line segments
+/// (Wang's formula). Rasterising lines is invariant to how tiny-skia clips a
+/// path at the canvas edge, whereas clipped curves are re-split and land on
+/// slightly different samples. Flattening up front therefore makes a tile of
+/// a frame render exactly like the same area of a full-frame render.
+fn flatten_device(path: &Path, ts: Transform) -> Option<Path> {
+	use tiny_skia::PathSegment;
+	let path = path.clone().transform(ts)?;
+	let mut pb = PathBuilder::with_capacity(path.len() * 2, path.len() * 2);
+	let mut last = tiny_skia::Point::zero();
+	let steps = |d: f32, factor: f32| ((factor * d / FLATTEN_TOLERANCE).sqrt().ceil() as usize).clamp(1, 256);
+	for seg in path.segments() {
+		match seg {
+			PathSegment::MoveTo(p) => {
+				pb.move_to(p.x, p.y);
+				last = p;
+			}
+			PathSegment::LineTo(p) => {
+				pb.line_to(p.x, p.y);
+				last = p;
+			}
+			PathSegment::QuadTo(c, p) => {
+				let d = ((last.x - 2.0 * c.x + p.x).powi(2) + (last.y - 2.0 * c.y + p.y).powi(2)).sqrt();
+				let n = steps(d, 0.25);
+				for i in 1..=n {
+					let t = i as f32 / n as f32;
+					let mt = 1.0 - t;
+					pb.line_to(
+						mt * mt * last.x + 2.0 * mt * t * c.x + t * t * p.x,
+						mt * mt * last.y + 2.0 * mt * t * c.y + t * t * p.y,
+					);
+				}
+				last = p;
+			}
+			PathSegment::CubicTo(c1, c2, p) => {
+				let dd = |a: f32, b: f32, c: f32| a - 2.0 * b + c;
+				let d1 = dd(last.x, c1.x, c2.x).hypot(dd(last.y, c1.y, c2.y));
+				let d2 = dd(c1.x, c2.x, p.x).hypot(dd(c1.y, c2.y, p.y));
+				let n = steps(d1.max(d2), 0.75);
+				for i in 1..=n {
+					let t = i as f32 / n as f32;
+					let mt = 1.0 - t;
+					let (a, b, c, e) = (mt * mt * mt, 3.0 * mt * mt * t, 3.0 * mt * t * t, t * t * t);
+					pb.line_to(a * last.x + b * c1.x + c * c2.x + e * p.x, a * last.y + b * c1.y + c * c2.y + e * p.y);
+				}
+				last = p;
+			}
+			PathSegment::Close => pb.close(),
+		}
+	}
+	pb.finish()
 }
 
 /// Sorted rect from left/top/right/bottom (Skia sorts rects before drawing).
 pub fn rect(l: f32, t: f32, r: f32, b: f32) -> Option<Rect> {
 	Rect::from_ltrb(l.min(r), t.min(b), l.max(r), t.max(b))
 }
+
+/// Arcs are built from cubic segments at fixed angular steps from the start
+/// angle, so lengthening an arc leaves its existing segments bit-identical
+/// (incremental redraw relies on this: only the changed wedge repaints).
+pub const ARC_SEGMENT_DEG: f32 = 15.0;
 
 /// Cubic-bezier approximation of an oval arc, angles in degrees, clockwise
 /// from +x in y-down space (Skia's `DrawArc` convention, `useCenter = false`).
@@ -158,15 +237,22 @@ pub fn arc_path(oval: Rect, start_deg: f32, sweep_deg: f32) -> Option<Path> {
 	let cy = (oval.top() + oval.bottom()) / 2.0;
 	let rx = oval.width() / 2.0;
 	let ry = oval.height() / 2.0;
-	let segments = (sweep_deg.abs() / 90.0).ceil().max(1.0) as usize;
-	let step = sweep_deg.to_radians() / segments as f32;
-	let mut a0 = start_deg.to_radians();
-	let k = 4.0 / 3.0 * (step / 4.0).tan();
+	let sign = sweep_deg.signum();
+	let total = sweep_deg.abs();
 
+	let point = |deg: f32| {
+		let a = deg.to_radians();
+		(cx + rx * a.cos(), cy + ry * a.sin())
+	};
 	let mut pb = PathBuilder::new();
-	pb.move_to(cx + rx * a0.cos(), cy + ry * a0.sin());
-	for _ in 0..segments {
-		let a1 = a0 + step;
+	let (sx, sy) = point(start_deg);
+	pb.move_to(sx, sy);
+	let mut done = 0.0;
+	while done < total {
+		let step = ARC_SEGMENT_DEG.min(total - done);
+		let a0 = (start_deg + sign * done).to_radians();
+		let a1 = (start_deg + sign * (done + step)).to_radians();
+		let k = 4.0 / 3.0 * ((a1 - a0) / 4.0).tan();
 		let (s0, c0) = a0.sin_cos();
 		let (s1, c1) = a1.sin_cos();
 		pb.cubic_to(
@@ -177,7 +263,7 @@ pub fn arc_path(oval: Rect, start_deg: f32, sweep_deg: f32) -> Option<Path> {
 			cx + rx * c1,
 			cy + ry * s1,
 		);
-		a0 = a1;
+		done += step;
 	}
 	pb.finish()
 }
@@ -237,10 +323,17 @@ impl Sprite {
 	/// for caches that are rebuilt often.
 	pub fn render_in(x: i32, y: i32, width: u32, height: u32, draw: impl FnOnce(&mut Canvas)) -> Self {
 		let mut c = Canvas::new(width.max(1), height.max(1));
+		c.set_origin(x, y);
 		c.translate(-x as f32, -y as f32);
 		draw(&mut c);
 		// The region is already tight, so skip trimming (it is rebuilt often).
 		Self { pixmap: Some(c.into_pixmap()), x, y, opaque: false }
+	}
+
+	/// Device rect covered by the sprite (`None` if fully transparent).
+	pub fn bounds(&self) -> Option<IRect> {
+		let p = self.pixmap.as_ref()?;
+		Some(IRect { x0: self.x, y0: self.y, x1: self.x + p.width() as i32, y1: self.y + p.height() as i32 })
 	}
 
 	/// Renders `draw` onto a transparent `width`×`height` canvas and trims it.
@@ -259,20 +352,57 @@ impl Canvas {
 
 	pub fn from_pixmap(pixmap: Pixmap) -> Self {
 		Self {
+			size: (pixmap.width(), pixmap.height()),
 			base: pixmap,
 			layers: Vec::new(),
 			layer_pool: Vec::new(),
 			state: State { transform: Transform::identity(), clip: None, pushes_layer: false },
 			stack: Vec::new(),
+			origin: (0, 0),
+			recording: false,
+			recorded: None,
 		}
 	}
 
+	/// A canvas that rasterises nothing and only records the device bounds of
+	/// what would be drawn (see [`Canvas::recorded`]). Bounds are conservative:
+	/// clips are ignored and strokes/glows are padded.
+	pub fn recorder(width: u32, height: u32) -> Self {
+		let mut c = Self::from_pixmap(Pixmap::new(1, 1).expect("1x1"));
+		c.size = (width, height);
+		c.recording = true;
+		c
+	}
+
+	/// Device bounds accumulated by a [`Canvas::recorder`].
+	pub fn recorded(&self) -> Option<IRect> {
+		self.recorded
+	}
+
+	/// Declares where this canvas's pixel (0, 0) sits on the full frame, for
+	/// canvases that render one tile of a larger frame.
+	pub fn set_origin(&mut self, x: i32, y: i32) {
+		self.origin = (x, y);
+	}
+
 	pub fn width(&self) -> u32 {
-		self.base.width()
+		self.size.0
 	}
 
 	pub fn height(&self) -> u32 {
-		self.base.height()
+		self.size.1
+	}
+
+	/// The finished frame, writable (for compositors that assemble frames
+	/// from cached layers).
+	pub fn pixmap_mut(&mut self) -> &mut Pixmap {
+		&mut self.base
+	}
+
+	/// Replaces the pixels at (`x`, `y`) with `src` (no blending, no
+	/// transform), e.g. to paste a separately rendered tile.
+	pub fn replace_pixels(&mut self, src: &Pixmap, x: i32, y: i32) {
+		copy_rows(&mut self.base, src.data(), src.width() as usize * 4, src.width(), src.height(), x, y);
 	}
 
 	/// The finished frame (premultiplied RGBA8). Unbalanced layers are not included.
@@ -308,6 +438,9 @@ impl Canvas {
 	/// matching `restore` is composited at `opacity`.
 	pub fn save_layer(&mut self, opacity: u8) {
 		self.save();
+		if self.recording {
+			return;
+		}
 		let pixmap = match self.layer_pool.pop() {
 			Some(p) => p,
 			None => Pixmap::new(self.width(), self.height()).expect("non-zero size"),
@@ -348,6 +481,9 @@ impl Canvas {
 
 	/// Records that device area `r` of the current layer was drawn into.
 	fn mark_dirty(&mut self, r: IRect) {
+		if self.recording {
+			self.recorded = Some(self.recorded.map_or(r, |d| d.union(r)));
+		}
 		if let Some(layer) = self.layers.last_mut() {
 			layer.dirty = Some(layer.dirty.map_or(r, |d| d.union(r)));
 		}
@@ -355,7 +491,7 @@ impl Canvas {
 
 	/// Marks the device bounds of a user-space rect, grown by `pad`.
 	fn mark_dirty_user(&mut self, l: f32, t: f32, r: f32, b: f32, pad: f32) {
-		if self.layers.is_empty() {
+		if self.layers.is_empty() && !self.recording {
 			return;
 		}
 		let mut pts = [
@@ -406,6 +542,9 @@ impl Canvas {
 	}
 
 	pub fn clip_path(&mut self, path: &Path) {
+		if self.recording {
+			return;
+		}
 		let ts = self.state.transform;
 		let mask = match &self.state.clip {
 			Some(existing) => {
@@ -428,6 +567,9 @@ impl Canvas {
 	pub fn clear(&mut self, color: Rgba) {
 		let (w, h) = (self.width() as i32, self.height() as i32);
 		self.mark_dirty(IRect { x0: 0, y0: 0, x1: w, y1: h });
+		if self.recording {
+			return;
+		}
 		let (target, state) = self.parts();
 		match &state.clip {
 			None => target.fill(color.to_skia()),
@@ -446,7 +588,7 @@ impl Canvas {
 			self.draw_blurred(path, paint, blur);
 			return;
 		}
-		if !self.layers.is_empty() {
+		if !self.layers.is_empty() || self.recording {
 			let b = path.bounds();
 			let pad = match paint.style {
 				PaintStyle::Fill => 0.0,
@@ -454,13 +596,28 @@ impl Canvas {
 				PaintStyle::Stroke => paint.stroke_width * 2.0,
 			};
 			self.mark_dirty_user(b.left(), b.top(), b.right(), b.bottom(), pad);
+			if self.recording {
+				return;
+			}
 		}
+		let ts = self.state.transform;
+		// Strokes become filled outlines first (hairlines excepted), so every
+		// shape is filled from a flattened device-space path.
+		let outline = match paint.style {
+			PaintStyle::Stroke if paint.stroke_width > 0.0 => {
+				path.stroke(&paint.to_stroke(), PathStroker::compute_resolution_scale(&ts))
+			}
+			_ => Some(path.clone()),
+		};
 		let (target, state) = self.parts();
 		let clip = state.clip.as_deref();
 		let sp = paint.to_skia();
-		match paint.style {
-			PaintStyle::Fill => target.fill_path(path, &sp, FillRule::Winding, state.transform, clip),
-			PaintStyle::Stroke => target.stroke_path(path, &sp, &paint.to_stroke(), state.transform, clip),
+		match (paint.style, outline.and_then(|o| flatten_device(&o, ts))) {
+			(PaintStyle::Stroke, _) if paint.stroke_width <= 0.0 => {
+				target.stroke_path(path, &sp, &paint.to_stroke(), ts, clip)
+			}
+			(_, Some(device)) => target.fill_path(&device, &sp, FillRule::Winding, Transform::identity(), clip),
+			_ => {}
 		}
 	}
 
@@ -475,21 +632,9 @@ impl Canvas {
 				path.stroke(&paint.to_stroke(), res_scale)
 			}
 		};
-		let Some(device_path) = outline.and_then(|p| p.transform(ts)) else {
+		let Some(device_path) = outline.and_then(|p| flatten_device(&p, ts)) else {
 			return;
 		};
-
-		let pad = (blur.sigma * 3.0).ceil() + 1.0;
-		let b = device_path.bounds();
-		let (cw, ch) = (self.width() as f32, self.height() as f32);
-		let x0 = (b.left() - pad).floor().max(-pad);
-		let y0 = (b.top() - pad).floor().max(-pad);
-		let x1 = (b.right() + pad).ceil().min(cw + pad);
-		let y1 = (b.bottom() + pad).ceil().min(ch + pad);
-		if x1 <= x0 || y1 <= y0 || x1 <= 0.0 || y1 <= 0.0 || x0 >= cw || y0 >= ch {
-			return;
-		}
-		let (w, h) = ((x1 - x0) as u32, (y1 - y0) as u32);
 
 		// Like Skia, large blurs run on a downscaled copy: a wide gaussian has
 		// no high frequencies left to lose, and this cuts the cost ~scale².
@@ -500,6 +645,28 @@ impl Canvas {
 		} else {
 			1
 		};
+
+		// Reach of the glow: ~3 sigma, plus what downscaling adds (coarse
+		// rasterisation and the bilinear upscale each spread one low-res pixel).
+		let pad = (blur.sigma * 3.0).ceil() + 3.0 * scale as f32;
+		let b = device_path.bounds();
+		let (cw, ch) = (self.width() as f32, self.height() as f32);
+		let mut x0 = (b.left() - pad).floor().max(-pad);
+		let mut y0 = (b.top() - pad).floor().max(-pad);
+		// Snap the low-res grid to frame coordinates so tiles of one frame
+		// produce the same glow as a single full render.
+		x0 -= ((x0 as i32 + self.origin.0).rem_euclid(scale as i32)) as f32;
+		y0 -= ((y0 as i32 + self.origin.1).rem_euclid(scale as i32)) as f32;
+		let x1 = (b.right() + pad).ceil().min(cw + pad);
+		let y1 = (b.bottom() + pad).ceil().min(ch + pad);
+		if x1 <= x0 || y1 <= y0 || x1 <= 0.0 || y1 <= 0.0 || x0 >= cw || y0 >= ch {
+			return;
+		}
+		let (w, h) = ((x1 - x0) as u32, (y1 - y0) as u32);
+		if self.recording {
+			self.mark_dirty(IRect::from_bounds(x0, y0, x1, y1));
+			return;
+		}
 		// A glow is a single colour, so only its coverage is rasterised and blurred.
 		let (lw, lh) = (w.div_ceil(scale) + 1, h.div_ceil(scale) + 1);
 		let Some(mut low) = Mask::new(lw, lh) else {
@@ -510,27 +677,37 @@ impl Canvas {
 		low.fill_path(&device_path, FillRule::Winding, paint.anti_alias, to_low);
 		gaussian_blur_a8(low.data_mut(), lw as usize, lh as usize, blur.sigma * inv);
 
-		let (mut glow, stride) = if scale == 1 {
-			(low.data().to_vec(), lw as usize)
+		// Only the part of the region that lands on the canvas is upscaled
+		// and composited (the region extends `pad` beyond the canvas edges).
+		let Some(vis) = IRect::from_bounds(x0, y0, x1, y1).clamp_to(self.width(), self.height()) else {
+			return;
+		};
+		let (ox, oy) = ((vis.x0 as f32 - x0) as u32, (vis.y0 as f32 - y0) as u32);
+		let (vw, vh) = (vis.width() as u32, vis.height() as u32);
+		let mut glow = if scale == 1 {
+			let mut g = Vec::with_capacity((vw * vh) as usize);
+			for row in low.data().chunks_exact(lw as usize).skip(oy as usize).take(vh as usize) {
+				g.extend_from_slice(&row[ox as usize..(ox + vw) as usize]);
+			}
+			g
 		} else {
-			(upscale_bilinear_a8(low.data(), lw as usize, lh as usize, scale, w, h), w as usize)
+			upscale_bilinear_a8(low.data(), lw as usize, lh as usize, scale, ox, oy, vw, vh)
 		};
 
 		if blur.style == BlurStyle::Outer {
 			// Knock out the shape itself, using a full-resolution coverage mask.
-			if let Some(mut shape) = Mask::new(w, h) {
-				shape.fill_path(&device_path, FillRule::Winding, true, Transform::from_translate(-x0, -y0));
-				for (grow, srow) in glow.chunks_exact_mut(stride).zip(shape.data().chunks_exact(w as usize)) {
-					for (g, &m) in grow.iter_mut().zip(srow) {
-						*g = ((*g as u32 * (255 - m as u32) + 127) / 255) as u8;
-					}
+			if let Some(mut shape) = Mask::new(vw, vh) {
+				let to_vis = Transform::from_translate(-(vis.x0 as f32), -(vis.y0 as f32));
+				shape.fill_path(&device_path, FillRule::Winding, true, to_vis);
+				for (g, &m) in glow.iter_mut().zip(shape.data()) {
+					*g = ((*g as u32 * (255 - m as u32) + 127) / 255) as u8;
 				}
 			}
 		}
 
-		self.mark_dirty(IRect::from_bounds(x0, y0, x0 + w as f32, y0 + h as f32));
+		self.mark_dirty(vis);
 		let (target, state) = self.parts();
-		src_over_color(target, &glow, stride, w, h, x0 as i32, y0 as i32, paint.color, state.clip.as_deref());
+		src_over_color(target, &glow, vw as usize, vw, vh, vis.x0, vis.y0, paint.color, state.clip.as_deref());
 	}
 
 	/// `DrawLine`: always stroked, whatever the paint style.
@@ -587,6 +764,9 @@ impl Canvas {
 		);
 		let paint = tiny_skia::Paint { shader, anti_alias: true, ..tiny_skia::Paint::default() };
 		self.mark_dirty_user(dest.left(), dest.top(), dest.right(), dest.bottom(), 0.0);
+		if self.recording {
+			return;
+		}
 		let (target, state) = self.parts();
 		target.fill_rect(dest, &paint, state.transform, state.clip.as_deref());
 	}
@@ -599,13 +779,20 @@ impl Canvas {
 		let (x, y) = (sprite.x, sprite.y);
 		let (w, h) = (p.width(), p.height());
 		self.mark_dirty_user(x as f32, y as f32, (x + w as i32) as f32, (y + h as i32) as f32, 0.0);
+		if self.recording {
+			return;
+		}
 		let (target, state) = self.parts();
-		if !state.transform.is_identity() {
-			target.draw_pixmap(x, y, p.as_ref(), &PixmapPaint::default(), state.transform, state.clip.as_deref());
-		} else if sprite.opaque && state.clip.is_none() {
-			copy_rows(target, p.data(), w as usize * 4, w, h, x, y);
-		} else {
-			src_over(target, p.data(), w as usize * 4, w, h, x, y, 255, state.clip.as_deref());
+		match integer_translation(&state.transform) {
+			Some((tx, ty)) if sprite.opaque && state.clip.is_none() => {
+				copy_rows(target, p.data(), w as usize * 4, w, h, x + tx, y + ty)
+			}
+			Some((tx, ty)) => {
+				src_over(target, p.data(), w as usize * 4, w, h, x + tx, y + ty, 255, state.clip.as_deref())
+			}
+			None => {
+				target.draw_pixmap(x, y, p.as_ref(), &PixmapPaint::default(), state.transform, state.clip.as_deref())
+			}
 		}
 	}
 
@@ -613,10 +800,14 @@ impl Canvas {
 	pub fn draw_pixmap(&mut self, image: &Pixmap, x: i32, y: i32) {
 		let (x0, y0) = (x as f32, y as f32);
 		self.mark_dirty_user(x0, y0, x0 + image.width() as f32, y0 + image.height() as f32, 0.0);
+		if self.recording {
+			return;
+		}
 		let (target, state) = self.parts();
-		if state.transform.is_identity() {
+		if let Some((tx, ty)) = integer_translation(&state.transform) {
 			let stride = image.width() as usize * 4;
-			src_over(target, image.data(), stride, image.width(), image.height(), x, y, 255, state.clip.as_deref());
+			let (w, h) = (image.width(), image.height());
+			src_over(target, image.data(), stride, w, h, x + tx, y + ty, 255, state.clip.as_deref());
 		} else {
 			target.draw_pixmap(x, y, image.as_ref(), &PixmapPaint::default(), state.transform, state.clip.as_deref());
 		}

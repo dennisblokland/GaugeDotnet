@@ -124,11 +124,21 @@ pub enum Screen {
 }
 
 impl Screen {
-	pub fn draw(&mut self, canvas: &mut Canvas) {
+	/// Draws the screen and returns what changed. Built-in gauges always
+	/// report the full frame; custom gauges report only repainted regions.
+	pub fn draw(&mut self, canvas: &mut Canvas) -> crate::Damage {
 		match self {
 			Screen::Builtin { gauge, .. } => gauge.draw(canvas),
 			Screen::Grid(g) => g.draw(canvas),
-			Screen::Custom(g) => g.draw(canvas),
+			Screen::Custom(g) => return g.draw(canvas),
+		}
+		crate::Damage::full(canvas.width(), canvas.height())
+	}
+
+	/// Forces a full repaint on the next draw (call when switching to this screen).
+	pub fn invalidate(&mut self) {
+		if let Screen::Custom(g) = self {
+			g.invalidate();
 		}
 	}
 

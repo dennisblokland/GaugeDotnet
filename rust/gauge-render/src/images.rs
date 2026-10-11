@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
-use std::rc::Rc;
+use std::sync::Arc;
 
 use image::{AnimationDecoder, RgbaImage};
 use tiny_skia::{Pixmap, PremultipliedColorU8};
@@ -75,19 +75,29 @@ fn decode_frames(path: &Path) -> Option<Vec<Pixmap>> {
 /// missing file is not re-read every frame.
 #[derive(Default)]
 pub struct ImageCache {
-	stills: HashMap<PathBuf, Option<Rc<Pixmap>>>,
-	animations: HashMap<PathBuf, Option<Rc<Vec<Pixmap>>>>,
+	stills: HashMap<PathBuf, Option<Arc<Pixmap>>>,
+	animations: HashMap<PathBuf, Option<Arc<Vec<Pixmap>>>>,
 }
 
 impl ImageCache {
-	pub fn load(&mut self, path: &str, base_dir: Option<&Path>) -> Option<Rc<Pixmap>> {
+	pub fn load(&mut self, path: &str, base_dir: Option<&Path>) -> Option<Arc<Pixmap>> {
 		let resolved = resolve(path, base_dir);
-		self.stills.entry(resolved).or_insert_with_key(|p| decode_still(p).map(Rc::new)).clone()
+		self.stills.entry(resolved).or_insert_with_key(|p| decode_still(p).map(Arc::new)).clone()
 	}
 
-	pub fn load_frames(&mut self, path: &str, base_dir: Option<&Path>) -> Option<Rc<Vec<Pixmap>>> {
+	pub fn load_frames(&mut self, path: &str, base_dir: Option<&Path>) -> Option<Arc<Vec<Pixmap>>> {
 		let resolved = resolve(path, base_dir);
-		self.animations.entry(resolved).or_insert_with_key(|p| decode_frames(p).map(Rc::new)).clone()
+		self.animations.entry(resolved).or_insert_with_key(|p| decode_frames(p).map(Arc::new)).clone()
+	}
+
+	/// Read-only lookup of an image previously [`load`](Self::load)ed.
+	pub fn get(&self, path: &str, base_dir: Option<&Path>) -> Option<Arc<Pixmap>> {
+		self.stills.get(&resolve(path, base_dir)).cloned().flatten()
+	}
+
+	/// Read-only lookup of frames previously [`load_frames`](Self::load_frames)ed.
+	pub fn get_frames(&self, path: &str, base_dir: Option<&Path>) -> Option<Arc<Vec<Pixmap>>> {
+		self.animations.get(&resolve(path, base_dir)).cloned().flatten()
 	}
 
 	pub fn clear(&mut self) {

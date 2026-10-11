@@ -15,16 +15,22 @@ use crate::{load, DrawFn, Loaded};
 pub fn run(path: &Path, fullscreen: bool) -> Result<(), String> {
 	let (w, h) = crate::dimensions(path)?;
 	let mut screens: Vec<DrawFn> = match load(path, w, h)? {
-		Loaded::Custom(mut g) => vec![Box::new(move |c, s| {
+		Loaded::Custom(mut g) => vec![Box::new(move |c, s, reset| {
+			if reset {
+				g.invalidate();
+			}
 			g.update_from(|n| s.read(n));
-			g.draw(c);
+			g.draw(c)
 		})],
 		Loaded::Screens(screens) => screens
 			.into_iter()
 			.map(|mut screen| -> DrawFn {
-				Box::new(move |c, s| {
+				Box::new(move |c, s, reset| {
+					if reset {
+						screen.invalidate();
+					}
 					screen.update(|n| s.read(n));
-					screen.draw(c);
+					screen.draw(c)
 				})
 			})
 			.collect(),
@@ -48,6 +54,7 @@ pub fn run(path: &Path, fullscreen: bool) -> Result<(), String> {
 	let mut canvas = Canvas::new(w, h);
 	let mut sim = Simulator::new(0.0);
 	let mut current = 0usize;
+	let mut shown = usize::MAX;
 	let mut last = Instant::now();
 	let (mut frames, mut fps_since) = (0u32, Instant::now());
 
@@ -72,8 +79,17 @@ pub fn run(path: &Path, fullscreen: bool) -> Result<(), String> {
 		sim.advance(now.duration_since(last).as_secs_f64());
 		last = now;
 
-		screens[current](&mut canvas, &sim);
-		texture.update(None, canvas.pixmap().data(), w as usize * 4).map_err(|e| e.to_string())?;
+		let switched = shown != current;
+		shown = current;
+		let damage = screens[current](&mut canvas, &sim, switched);
+		// Upload only what changed: on the device this is the costly copy.
+		let pitch = w as usize * 4;
+		let data = canvas.pixmap().data();
+		for r in &damage.rects {
+			let rect = sdl2::rect::Rect::new(r.x0, r.y0, r.width() as u32, r.height() as u32);
+			let start = r.y0 as usize * pitch + r.x0 as usize * 4;
+			texture.update(Some(rect), &data[start..], pitch).map_err(|e| e.to_string())?;
+		}
 		sdl_canvas.copy(&texture, None, None)?;
 		sdl_canvas.present();
 

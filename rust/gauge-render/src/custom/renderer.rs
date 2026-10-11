@@ -10,8 +10,9 @@ use std::time::Instant;
 
 use chrono::NaiveDateTime;
 
-use crate::canvas::{rect, Blur, Canvas, LineCap, LineJoin, Paint, PaintStyle, Sprite};
+use crate::canvas::{rect, Blur, Canvas, LineCap, LineJoin, Paint, PaintStyle, Sprite, ARC_SEGMENT_DEG};
 use crate::color::Rgba;
+use crate::composite::IRect;
 use crate::format::{format_datetime, format_number};
 use crate::images::ImageCache;
 use crate::model::*;
@@ -40,14 +41,22 @@ fn circle_rect(cx: f32, cy: f32, r: f32) -> Option<tiny_skia::Rect> {
 /// Renders custom gauge definitions. Holds the state the C# version keeps in
 /// static caches: decoded images, graph history and peak-hold values (keyed
 /// by element `Id`).
+///
+/// A frame is two steps: [`prepare`](Self::prepare) resolves values and
+/// advances per-element state once, then a [`Painter`] draws. Painting is
+/// read-only, so it can be repeated (bounds passes, several dirty regions)
+/// or shared between threads.
 #[derive(Default)]
 pub struct ElementRenderer {
 	images: ImageCache,
-	graph_buffers: HashMap<String, VecDeque<f32>>,
+	/// History per graph `Id`, plus how many samples were ever pushed.
+	graph_buffers: HashMap<String, (VecDeque<f32>, u64)>,
 	peak_state: HashMap<String, (f32, Instant)>,
 	/// When set, clock elements show this time instead of the system clock
 	/// (deterministic snapshots, designer previews).
 	pub fixed_time: Option<NaiveDateTime>,
+	/// Local and UTC time sampled by the last `prepare`.
+	frame_time: Option<(NaiveDateTime, NaiveDateTime)>,
 }
 
 impl ElementRenderer {
@@ -72,9 +81,14 @@ impl ElementRenderer {
 		values: &Values,
 		target_values: Option<&Values>,
 	) {
-		self.draw_backdrop(canvas, definition);
-		let (all_values, all_targets) = merge_calculated(definition, values, target_values);
-		self.draw_range(canvas, definition, 0..definition.elements.len(), &all_values, all_targets.as_deref());
+		let resolved = self.prepare(definition, values, target_values);
+		let painter = self.painter(definition);
+		painter.draw_backdrop(canvas);
+		for (element, value) in definition.elements.iter().zip(&resolved) {
+			if let Some(v) = value {
+				painter.draw_element(canvas, element, *v);
+			}
+		}
 	}
 
 	/// Same output as [`ElementRenderer::render`], but runs of elements that
@@ -90,82 +104,188 @@ impl ElementRenderer {
 		target_values: Option<&Values>,
 		cache: &mut StaticCache,
 	) {
-		let size = (canvas.width(), canvas.height());
-		if cache.size != size || cache.segments.is_empty() {
-			cache.build(definition, size);
-		}
-		let (all_values, all_targets) = merge_calculated(definition, values, target_values);
-		let empty = Values::new();
-		for segment in &mut cache.segments {
+		let resolved = self.prepare(definition, values, target_values);
+		let painter = self.painter(definition);
+		cache.ensure(&painter, (canvas.width(), canvas.height()));
+		for segment in &cache.segments {
 			match segment {
-				Segment::Static { range, backdrop, sprite } => {
-					let sprite = sprite.get_or_insert_with(|| {
-						Sprite::render(size.0, size.1, |c| {
-							if *backdrop {
-								self.draw_backdrop(c, definition);
-							}
-							self.draw_range(c, definition, range.clone(), &empty, None);
-						})
-					});
-					canvas.draw_sprite(sprite);
+				Segment::Static { sprite, .. } => {
+					if let Some(sprite) = sprite {
+						canvas.draw_sprite(sprite);
+					}
 				}
 				Segment::Dynamic(i) => {
-					self.draw_range(canvas, definition, *i..*i + 1, &all_values, all_targets.as_deref());
+					if let Some(v) = resolved[*i] {
+						painter.draw_element(canvas, &definition.elements[*i], v);
+					}
 				}
 			}
 		}
 	}
 
-	/// Background colour and image.
-	fn draw_backdrop(&mut self, canvas: &mut Canvas, definition: &CustomGaugeDefinition) {
+	/// Starts a frame: merges calculated channels, applies visibility rules
+	/// and picks each element's value (`None` = hidden), then advances graph
+	/// history, peak hold and the clock, and loads any images. Call once per
+	/// frame, before painting.
+	pub fn prepare(
+		&mut self,
+		definition: &CustomGaugeDefinition,
+		values: &Values,
+		target_values: Option<&Values>,
+	) -> Vec<Option<f32>> {
+		let (all_values, all_targets) = merge_calculated(definition, values, target_values);
 		let base_dir = definition.base_directory.as_deref();
-		canvas.clear(color(&definition.background_color));
+		self.frame_time = Some(match self.fixed_time {
+			Some(t) => (t, t),
+			None => (chrono::Local::now().naive_local(), chrono::Utc::now().naive_utc()),
+		});
 		if let Some(bg) = definition.background_image.as_deref().filter(|s| !s.is_empty()) {
-			if let Some(img) = self.images.load(bg, base_dir) {
+			self.images.load(bg, base_dir);
+		}
+
+		let mut resolved = Vec::with_capacity(definition.elements.len());
+		for element in &definition.elements {
+			let base = element.base();
+			if base.use_visibility {
+				if let Some(src) = base.visibility_source.as_deref().filter(|s| !s.is_empty()) {
+					let v = lookup(&all_values, src).unwrap_or(0.0);
+					if v < base.visible_above || v > base.visible_below {
+						resolved.push(None);
+						continue;
+					}
+				}
+			}
+			let source = match all_targets.as_deref() {
+				Some(t) if element.uses_target_value() => t,
+				_ => &all_values,
+			};
+			let value = base.source().and_then(|s| lookup(source, s)).unwrap_or(0.0);
+			self.prepare_element(element, value, base_dir);
+			resolved.push(Some(value));
+		}
+		resolved
+	}
+
+	/// Advances the per-element state that drawing reads.
+	fn prepare_element(&mut self, element: &Element, value: f32, base_dir: Option<&Path>) {
+		match element {
+			Element::Needle(n) => {
+				if let Some(path) = n.image_path.as_deref().filter(|s| !s.is_empty()) {
+					self.images.load(path, base_dir);
+				}
+			}
+			Element::Image(img) if !img.image_path.is_empty() => {
+				self.images.load(&img.image_path, base_dir);
+			}
+			Element::Gif(gif) if !gif.image_path.is_empty() => {
+				self.images.load_frames(&gif.image_path, base_dir);
+			}
+			Element::Graph(g) => {
+				let depth = g.history_depth.max(2) as usize;
+				let (buffer, pushes) = self.graph_buffers.entry(g.base.id.clone()).or_default();
+				buffer.push_back(value);
+				*pushes += 1;
+				while buffer.len() > depth {
+					buffer.pop_front();
+				}
+			}
+			Element::Peak(p) if p.base.has_source() => {
+				let now = Instant::now();
+				let (mut peak, mut seen) = *self.peak_state.entry(p.base.id.clone()).or_insert((value, now));
+				if p.decay_seconds > 0.0 && now.duration_since(seen).as_secs_f32() > p.decay_seconds {
+					peak = value;
+					seen = now;
+				}
+				if value > peak {
+					peak = value;
+					seen = now;
+				}
+				self.peak_state.insert(p.base.id.clone(), (peak, seen));
+			}
+			_ => {}
+		}
+	}
+
+	/// Read-only drawing view for this frame.
+	pub fn painter<'a>(&'a self, definition: &'a CustomGaugeDefinition) -> Painter<'a> {
+		Painter { renderer: self, definition }
+	}
+
+	/// Draws one element outside a frame (prepares and paints it).
+	pub fn draw_element(&mut self, canvas: &mut Canvas, element: &Element, value: f32, base_dir: Option<&Path>) {
+		if self.frame_time.is_none() || self.fixed_time.is_none() {
+			let now = self.fixed_time.unwrap_or_else(|| chrono::Local::now().naive_local());
+			self.frame_time = Some((now, self.fixed_time.unwrap_or_else(|| chrono::Utc::now().naive_utc())));
+		}
+		self.prepare_element(element, value, base_dir);
+		let definition =
+			CustomGaugeDefinition { base_directory: base_dir.map(Path::to_path_buf), ..Default::default() };
+		Painter { renderer: self, definition: &definition }.draw_element(canvas, element, value);
+	}
+
+	/// A fingerprint of everything that decides how an element looks this
+	/// frame (its value, plus clock text, peak value or graph history), used
+	/// to skip redrawing elements that did not change.
+	pub fn element_key(&self, element: &Element, value: Option<f32>) -> u64 {
+		use std::hash::{Hash, Hasher};
+		let mut h = std::collections::hash_map::DefaultHasher::new();
+		value.map(f32::to_bits).hash(&mut h);
+		match element {
+			Element::Clock(c) => self.clock_text(c).hash(&mut h),
+			Element::Peak(p) => self.peak_state.get(&p.base.id).map(|(v, _)| v.to_bits()).hash(&mut h),
+			Element::Graph(g) => self.graph_buffers.get(&g.base.id).map(|(_, n)| *n).hash(&mut h),
+			_ => {}
+		}
+		h.finish()
+	}
+
+	fn clock_text(&self, c: &ClockElement) -> String {
+		let (local, utc) = self.frame_time.unwrap_or_else(|| {
+			let now = chrono::Local::now().naive_local();
+			(now, now)
+		});
+		let now = if c.use_utc { utc } else { local };
+		format_datetime(&now, &c.format).unwrap_or_else(|| format_datetime(&now, "HH:mm:ss").unwrap_or_default())
+	}
+}
+
+/// Immutable drawing view of an [`ElementRenderer`] for one frame. `Sync`,
+/// so several threads can paint different tiles of the same frame.
+#[derive(Clone, Copy)]
+pub struct Painter<'a> {
+	renderer: &'a ElementRenderer,
+	definition: &'a CustomGaugeDefinition,
+}
+
+impl<'a> Painter<'a> {
+	pub fn definition(&self) -> &'a CustomGaugeDefinition {
+		self.definition
+	}
+
+	fn base_dir(&self) -> Option<&'a Path> {
+		self.definition.base_directory.as_deref()
+	}
+
+	/// Background colour and image.
+	pub fn draw_backdrop(&self, canvas: &mut Canvas) {
+		let d = self.definition;
+		canvas.clear(color(&d.background_color));
+		if let Some(bg) = d.background_image.as_deref().filter(|s| !s.is_empty()) {
+			if let Some(img) = self.renderer.images.get(bg, self.base_dir()) {
 				draw_background(
 					canvas,
 					&img,
-					definition.width as f32,
-					definition.height as f32,
-					definition.background_image_mode,
-					definition.background_image_opacity,
+					d.width as f32,
+					d.height as f32,
+					d.background_image_mode,
+					d.background_image_opacity,
 				);
 			}
 		}
 	}
 
-	/// Draws `range` of the definition's elements, applying visibility rules.
-	fn draw_range(
-		&mut self,
-		canvas: &mut Canvas,
-		definition: &CustomGaugeDefinition,
-		range: Range<usize>,
-		all_values: &Values,
-		all_targets: Option<&Values>,
-	) {
-		let base_dir = definition.base_directory.as_deref();
-		for element in &definition.elements[range] {
-			let base = element.base();
-			if base.use_visibility {
-				if let Some(src) = base.visibility_source.as_deref().filter(|s| !s.is_empty()) {
-					let v = lookup(all_values, src).unwrap_or(0.0);
-					if v < base.visible_above || v > base.visible_below {
-						continue;
-					}
-				}
-			}
-
-			let source = match all_targets {
-				Some(t) if element.uses_target_value() => t,
-				_ => all_values,
-			};
-			let value = base.source().and_then(|s| lookup(source, s)).unwrap_or(0.0);
-			self.draw_element(canvas, element, value, base_dir);
-		}
-	}
-
 	/// Draws one element with the given value (`ElementRenderer.DrawElement`).
-	pub fn draw_element(&mut self, canvas: &mut Canvas, element: &Element, value: f32, base_dir: Option<&Path>) {
+	pub fn draw_element(&self, canvas: &mut Canvas, element: &Element, value: f32) {
 		let opacity = element.base().opacity;
 		let use_layer = opacity < 255;
 		if use_layer {
@@ -174,7 +294,7 @@ impl ElementRenderer {
 
 		match element {
 			Element::Arc(e) => draw_arc(canvas, e, value),
-			Element::Needle(e) => self.draw_needle(canvas, e, value, base_dir),
+			Element::Needle(e) => self.draw_needle(canvas, e, value),
 			Element::Text(e) => draw_text(canvas, e),
 			Element::Value(e) => draw_value(canvas, e, value),
 			Element::Ticks(e) => draw_ticks(canvas, e),
@@ -183,12 +303,12 @@ impl ElementRenderer {
 			Element::Line(e) => draw_line(canvas, e),
 			Element::LinearBar(e) => draw_linear_bar(canvas, e, value),
 			Element::Warning(e) => draw_warning(canvas, e, value),
-			Element::Image(e) => self.draw_image(canvas, e, base_dir),
+			Element::Image(e) => self.draw_image(canvas, e),
 			Element::ZoneArc(e) => draw_zone_arc(canvas, e, value),
-			Element::Graph(e) => self.draw_graph(canvas, e, value),
+			Element::Graph(e) => self.draw_graph(canvas, e),
 			Element::LabelValue(e) => draw_label_value(canvas, e, value),
-			Element::Peak(e) => self.draw_peak(canvas, e, value),
-			Element::Gif(e) => self.draw_gif(canvas, e, value, base_dir),
+			Element::Peak(e) => self.draw_peak(canvas, e),
+			Element::Gif(e) => self.draw_gif(canvas, e, value),
 			Element::Clock(e) => self.draw_clock(canvas, e),
 		}
 
@@ -197,7 +317,7 @@ impl ElementRenderer {
 		}
 	}
 
-	fn draw_needle(&mut self, canvas: &mut Canvas, n: &NeedleElement, value: f32, base_dir: Option<&Path>) {
+	fn draw_needle(&self, canvas: &mut Canvas, n: &NeedleElement, value: f32) {
 		const GLOW_ALPHA: u8 = 50;
 		const GLOW_SIGMA: f32 = 6.0;
 		const GLOW_STROKE_EXTRA: f32 = 6.0;
@@ -207,7 +327,7 @@ impl ElementRenderer {
 		let (x, y) = (n.base.x, n.base.y);
 
 		if let Some(path) = n.image_path.as_deref().filter(|s| !s.is_empty()) {
-			if let Some(img) = self.images.load(path, base_dir) {
+			if let Some(img) = self.renderer.images.get(path, self.base_dir()) {
 				canvas.save();
 				canvas.translate(x, y);
 				canvas.rotate_degrees(angle + 90.0);
@@ -238,20 +358,20 @@ impl ElementRenderer {
 		}
 	}
 
-	fn draw_image(&mut self, canvas: &mut Canvas, img: &ImageElement, base_dir: Option<&Path>) {
+	fn draw_image(&self, canvas: &mut Canvas, img: &ImageElement) {
 		if img.image_path.is_empty() {
 			return;
 		}
-		if let Some(bitmap) = self.images.load(&img.image_path, base_dir) {
+		if let Some(bitmap) = self.renderer.images.get(&img.image_path, self.base_dir()) {
 			draw_rotated_image(canvas, &bitmap, img.base.x, img.base.y, img.width, img.height, img.rotation);
 		}
 	}
 
-	fn draw_gif(&mut self, canvas: &mut Canvas, gif: &GifElement, value: f32, base_dir: Option<&Path>) {
+	fn draw_gif(&self, canvas: &mut Canvas, gif: &GifElement, value: f32) {
 		if gif.image_path.is_empty() {
 			return;
 		}
-		let Some(frames) = self.images.load_frames(&gif.image_path, base_dir) else {
+		let Some(frames) = self.renderer.images.get_frames(&gif.image_path, self.base_dir()) else {
 			return;
 		};
 		if frames.is_empty() {
@@ -261,7 +381,7 @@ impl ElementRenderer {
 		draw_rotated_image(canvas, &frames[index], gif.base.x, gif.base.y, gif.width, gif.height, gif.rotation);
 	}
 
-	fn draw_graph(&mut self, canvas: &mut Canvas, g: &GraphElement, value: f32) {
+	fn draw_graph(&self, canvas: &mut Canvas, g: &GraphElement) {
 		let (x, y) = (g.base.x, g.base.y);
 		let Some(bounds) = rect(x, y, x + g.width, y + g.height) else {
 			return;
@@ -269,11 +389,9 @@ impl ElementRenderer {
 		canvas.draw_rect(bounds, &Paint::fill(color(&g.back_color)));
 
 		let depth = g.history_depth.max(2) as usize;
-		let buffer = self.graph_buffers.entry(g.base.id.clone()).or_default();
-		buffer.push_back(value);
-		while buffer.len() > depth {
-			buffer.pop_front();
-		}
+		let Some((buffer, _)) = self.renderer.graph_buffers.get(&g.base.id) else {
+			return;
+		};
 		if buffer.len() < 2 {
 			return;
 		}
@@ -323,22 +441,13 @@ impl ElementRenderer {
 		canvas.restore();
 	}
 
-	fn draw_peak(&mut self, canvas: &mut Canvas, p: &PeakMarkerElement, value: f32) {
+	fn draw_peak(&self, canvas: &mut Canvas, p: &PeakMarkerElement) {
 		if !p.base.has_source() {
 			return;
 		}
-		let now = Instant::now();
-		let (mut peak, mut seen) = *self.peak_state.entry(p.base.id.clone()).or_insert((value, now));
-		if p.decay_seconds > 0.0 && now.duration_since(seen).as_secs_f32() > p.decay_seconds {
-			peak = value;
-			seen = now;
-		}
-		if value > peak {
-			peak = value;
-			seen = now;
-		}
-		self.peak_state.insert(p.base.id.clone(), (peak, seen));
-
+		let Some(&(peak, _)) = self.renderer.peak_state.get(&p.base.id) else {
+			return;
+		};
 		let t = p.base.normalized(peak);
 		let angle = sweep_angle(p.start_angle_deg, p.sweep_angle_deg, p.anti_clockwise, t);
 		let (ix, iy) = polar(p.base.x, p.base.y, p.radius - p.stroke_width / 2.0, angle);
@@ -346,16 +455,8 @@ impl ElementRenderer {
 		canvas.draw_line(ix, iy, ox, oy, &Paint::stroke(color(&p.marker_color), p.marker_width));
 	}
 
-	fn draw_clock(&mut self, canvas: &mut Canvas, c: &ClockElement) {
-		let now = self.fixed_time.unwrap_or_else(|| {
-			if c.use_utc {
-				chrono::Utc::now().naive_utc()
-			} else {
-				chrono::Local::now().naive_local()
-			}
-		});
-		let text =
-			format_datetime(&now, &c.format).unwrap_or_else(|| format_datetime(&now, "HH:mm:ss").unwrap_or_default());
+	fn draw_clock(&self, canvas: &mut Canvas, c: &ClockElement) {
+		let text = self.renderer.clock_text(c);
 		draw_boxed_text(
 			canvas,
 			&text,
@@ -410,7 +511,7 @@ pub fn is_static(element: &Element) -> bool {
 	}
 }
 
-enum Segment {
+pub(crate) enum Segment {
 	/// A run of static elements, pre-rendered on first use.
 	Static { range: Range<usize>, backdrop: bool, sprite: Option<Sprite> },
 	/// An element redrawn every frame.
@@ -420,7 +521,7 @@ enum Segment {
 /// Pre-rendered static runs of one definition, for [`ElementRenderer::render_cached`].
 #[derive(Default)]
 pub struct StaticCache {
-	segments: Vec<Segment>,
+	pub(crate) segments: Vec<Segment>,
 	size: (u32, u32),
 }
 
@@ -432,6 +533,26 @@ impl StaticCache {
 	/// Drops the pre-rendered runs (after the definition or its images change).
 	pub fn invalidate(&mut self) {
 		self.segments.clear();
+	}
+
+	/// Builds the segment plan and renders static runs if needed.
+	pub(crate) fn ensure(&mut self, painter: &Painter, size: (u32, u32)) {
+		if self.size != size || self.segments.is_empty() {
+			self.build(painter.definition(), size);
+		}
+		let elements = &painter.definition().elements;
+		for segment in &mut self.segments {
+			if let Segment::Static { range, backdrop, sprite: sprite @ None } = segment {
+				*sprite = Some(Sprite::render(size.0, size.1, |c| {
+					if *backdrop {
+						painter.draw_backdrop(c);
+					}
+					for element in &elements[range.clone()] {
+						painter.draw_element(c, element, 0.0);
+					}
+				}));
+			}
+		}
 	}
 
 	fn build(&mut self, definition: &CustomGaugeDefinition, size: (u32, u32)) {
@@ -456,6 +577,90 @@ impl StaticCache {
 			}
 		}
 	}
+}
+
+/// Fill colour an arc or bar uses at `value` (conditional colours).
+fn conditional_fill<'a>(
+	base: &ElementBase,
+	normal: &'a str,
+	on: bool,
+	warn: (f32, &'a str),
+	danger: (f32, &'a str),
+	value: f32,
+) -> &'a str {
+	if on && base.has_source() {
+		if value >= danger.0 {
+			return danger.1;
+		} else if value >= warn.0 {
+			return warn.1;
+		}
+	}
+	normal
+}
+
+/// For elements whose change between two values is confined to a small
+/// region (the wedge between an arc's old and new fill angle, the strip
+/// between a bar's old and new fill edge), the device bounds of that region,
+/// including glow. `None` when the whole element must be repainted.
+pub(crate) fn partial_damage(element: &Element, old: f32, new: f32, size: (u32, u32)) -> Option<Option<IRect>> {
+	let mut rec = Canvas::recorder(size.0, size.1);
+	match element {
+		Element::Arc(arc) if arc.is_dynamic && arc.base.has_source() => {
+			let fill = |v| {
+				conditional_fill(
+					&arc.base,
+					&arc.color,
+					arc.use_conditional_color,
+					(arc.warn_threshold, &arc.warn_color),
+					(arc.danger_threshold, &arc.danger_color),
+					v,
+				)
+			};
+			// A colour change, or the fill appearing/disappearing, repaints the whole arc.
+			let (t0, t1) = (arc.base.normalized(old), arc.base.normalized(new));
+			if fill(old) != fill(new) || t0 == 0.0 || t1 == 0.0 {
+				return None;
+			}
+			let oval = circle_rect(arc.base.x, arc.base.y, arc.radius)?;
+			let sign = if arc.anti_clockwise { -1.0 } else { 1.0 };
+			// The arc's last cubic segment (from the previous ARC_SEGMENT_DEG
+			// boundary) is rebuilt when the end moves, so start the wedge there.
+			let lo = arc.sweep_angle_deg * t0.min(t1);
+			let lo = (lo / ARC_SEGMENT_DEG).floor() * ARC_SEGMENT_DEG;
+			let hi = arc.sweep_angle_deg * t0.max(t1);
+			let a0 = arc.start_angle_deg + lo * sign;
+			let sweep = (hi - lo) * sign;
+			// Same geometry as the glow pass (the widest one), wedge only.
+			let glow = Paint::stroke(Rgba::WHITE, arc.stroke_width + 12.0).with_blur(Some(Blur::normal(8.0)));
+			rec.draw_arc(oval, a0, sweep, &glow);
+		}
+		Element::LinearBar(bar) => {
+			let fill = |v| {
+				conditional_fill(
+					&bar.base,
+					&bar.fill_color,
+					bar.use_conditional_color,
+					(bar.warn_threshold, &bar.warn_color),
+					(bar.danger_threshold, &bar.danger_color),
+					v,
+				)
+			};
+			let (t0, t1) = (bar.base.normalized(old), bar.base.normalized(new));
+			if fill(old) != fill(new) || t0 == 0.0 || t1 == 0.0 {
+				return None;
+			}
+			let (x, y) = (bar.base.x, bar.base.y);
+			let (lo, hi) = (t0.min(t1), t0.max(t1));
+			let strip = if bar.is_vertical {
+				rect(x, y + bar.height * (1.0 - hi), x + bar.width, y + bar.height * (1.0 - lo))
+			} else {
+				rect(x + bar.width * lo, y, x + bar.width * hi, y + bar.height)
+			}?;
+			rec.draw_rect(strip, &Paint::fill(Rgba::WHITE).with_blur(Some(Blur::normal(6.0))));
+		}
+		_ => return None,
+	}
+	Some(rec.recorded().and_then(|r| r.clamp_to(size.0, size.1)))
 }
 
 /// Frame index for a value mapped `min..max` → `0..frame_count-1`.

@@ -34,6 +34,15 @@ impl IRect {
 		(r.x0 < r.x1 && r.y0 < r.y1).then_some(r)
 	}
 
+	pub fn intersect(self, o: IRect) -> Option<IRect> {
+		let r = IRect { x0: self.x0.max(o.x0), y0: self.y0.max(o.y0), x1: self.x1.min(o.x1), y1: self.y1.min(o.y1) };
+		(r.x0 < r.x1 && r.y0 < r.y1).then_some(r)
+	}
+
+	pub fn area(self) -> usize {
+		self.width() * self.height()
+	}
+
 	pub fn width(self) -> usize {
 		(self.x1 - self.x0) as usize
 	}
@@ -207,15 +216,17 @@ pub fn src_over_color(
 	}
 }
 
-/// Bilinear upscale of an 8-bit buffer by an integer factor into `w`×`h`,
-/// sampling pixel centres (`(dst + 0.5) / scale - 0.5`).
-pub fn upscale_bilinear_a8(src: &[u8], sw: usize, sh: usize, scale: u32, w: u32, h: u32) -> Vec<u8> {
+/// Bilinear upscale of an 8-bit buffer by an integer factor, producing only
+/// the `w`×`h` window starting at (`ox`, `oy`) of the upscaled image
+/// (sampling pixel centres: `(dst + 0.5) / scale - 0.5`).
+#[allow(clippy::too_many_arguments)]
+pub fn upscale_bilinear_a8(src: &[u8], sw: usize, sh: usize, scale: u32, ox: u32, oy: u32, w: u32, h: u32) -> Vec<u8> {
 	let (sw, sh) = (sw as i32, sh as i32);
 	let mut out = vec![0u8; (w * h) as usize];
 	let s = scale as i32;
 	// 8-bit fixed point source coordinates.
 	let coord = |d: i32| ((d * 2 + 1) * 256 / (2 * s)) - 128;
-	let xs: Vec<(usize, usize, u32)> = (0..w as i32)
+	let xs: Vec<(usize, usize, u32)> = (ox as i32..(ox + w) as i32)
 		.map(|dx| {
 			let fx = coord(dx);
 			let x0 = (fx >> 8).clamp(0, sw - 1);
@@ -224,8 +235,8 @@ pub fn upscale_bilinear_a8(src: &[u8], sw: usize, sh: usize, scale: u32, w: u32,
 			(x0 as usize, x1 as usize, wx)
 		})
 		.collect();
-	for (dy, orow) in out.chunks_exact_mut(w as usize).enumerate() {
-		let fy = coord(dy as i32);
+	for (row, orow) in out.chunks_exact_mut(w as usize).enumerate() {
+		let fy = coord(oy as i32 + row as i32);
 		let y0 = (fy >> 8).clamp(0, sh - 1);
 		let y1 = (y0 + 1).min(sh - 1);
 		let wy = if fy < 0 { 0 } else { (fy & 255) as u32 };
@@ -268,7 +279,11 @@ mod tests {
 
 	#[test]
 	fn upscale_keeps_flat_value() {
-		let out = upscale_bilinear_a8(&[90; 9], 3, 3, 4, 12, 12);
+		let out = upscale_bilinear_a8(&[90; 9], 3, 3, 4, 0, 0, 12, 12);
+		assert!(out.iter().all(|&v| v == 90));
+		let win = upscale_bilinear_a8(&[0, 40, 80, 0, 40, 80], 3, 2, 2, 2, 1, 3, 2);
+		let full = upscale_bilinear_a8(&[0, 40, 80, 0, 40, 80], 3, 2, 2, 0, 0, 6, 4);
+		assert_eq!(win, [full[8], full[9], full[10], full[14], full[15], full[16]]);
 		assert!(out.iter().all(|&v| v == 90));
 	}
 

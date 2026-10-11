@@ -4,7 +4,7 @@
 use std::time::Instant;
 
 use crate::canvas::Canvas;
-use crate::custom::{ElementRenderer, StaticCache};
+use crate::custom::{Damage, ElementRenderer, FrameState};
 use crate::model::CustomGaugeDefinition;
 use crate::{expression, Values};
 
@@ -16,7 +16,7 @@ pub struct CustomGauge {
 	values: Values,
 	targets: Values,
 	renderer: ElementRenderer,
-	static_cache: StaticCache,
+	frame: FrameState,
 	last_frame: Option<Instant>,
 }
 
@@ -58,7 +58,7 @@ impl CustomGauge {
 			values,
 			definition,
 			renderer: ElementRenderer::new(),
-			static_cache: StaticCache::new(),
+			frame: FrameState::new(),
 			last_frame: None,
 		}
 	}
@@ -105,28 +105,40 @@ impl CustomGauge {
 	}
 
 	/// Smooths using wall-clock time since the previous draw, then renders.
-	pub fn draw(&mut self, canvas: &mut Canvas) {
+	/// Only regions that changed since the previous draw are repainted; the
+	/// returned [`Damage`] lists them.
+	pub fn draw(&mut self, canvas: &mut Canvas) -> Damage {
 		let now = Instant::now();
 		let dt = self.last_frame.map(|t| now.duration_since(t).as_secs_f32()).unwrap_or(1.0 / 60.0);
 		self.last_frame = Some(now);
-		self.draw_with_delta(canvas, dt);
+		self.draw_with_delta(canvas, dt)
 	}
 
 	/// Smooths assuming `dt` seconds elapsed, then renders. Frame-rate
 	/// independent: the same feel as 10 %/frame at 60 fps.
-	pub fn draw_with_delta(&mut self, canvas: &mut Canvas, dt: f32) {
+	pub fn draw_with_delta(&mut self, canvas: &mut Canvas, dt: f32) -> Damage {
 		let alpha = 1.0 - (1.0 - SMOOTHING_FACTOR).powf(dt.max(0.0) * 60.0);
 		for (name, target) in &self.targets {
 			if let Some(v) = self.values.get_mut(name) {
 				*v += (target - *v) * alpha;
+				// Land exactly on the target once visually there, so a settled
+				// gauge stops producing damage.
+				if (target - *v).abs() <= 1e-4 * (1.0 + target.abs()) {
+					*v = *target;
+				}
 			}
 		}
-		self.renderer.render_cached(
-			canvas,
-			&self.definition,
-			&self.values,
-			Some(&self.targets),
-			&mut self.static_cache,
-		);
+		self.renderer.render_incremental(canvas, &self.definition, &self.values, Some(&self.targets), &mut self.frame)
+	}
+
+	/// Forces the next draw to repaint the whole canvas. Call this when the
+	/// canvas was drawn on by something else (e.g. after switching screens).
+	pub fn invalidate(&mut self) {
+		self.frame.invalidate();
+	}
+
+	/// Worker threads used for large repaints (default: cores, max 4).
+	pub fn set_threads(&mut self, threads: usize) {
+		self.frame.threads = threads.max(1);
 	}
 }

@@ -27,7 +27,7 @@ Intel Xeon @ 2.10 GHz (cloud VM), Linux x64, .NET 10.0.12, Rust 1.97. Each figur
 | Peak RSS (whole benchmark) | 81 MB | 22 MB |
 | Deployable size | .NET runtime + app + 11 MB `libSkiaSharp.so` | 2.5 MB static binary (fonts embedded) |
 
-"First port" is the initial Rust version; "optimised" adds the changes listed under "Where the Rust time goes" below. The C# column is from the same session as the optimised run.
+"First port" is the initial Rust version; "optimised" adds the changes listed under "How to read this" below. All rows are full repaints every frame; the Custom row was measured before incremental redraw was added, which is covered in its own section below. The C# column is from the same session as the optimised run.
 
 ## How to read this
 
@@ -40,8 +40,19 @@ Intel Xeon @ 2.10 GHz (cloud VM), Linux x64, .NET 10.0.12, Rust 1.97. Each figur
 - **On the device, the C# app renders through Skia's GPU backend (GLES2), which this benchmark does not cover.** The cloud VM has no GPU. What matters there is how the RG35XX's GPU compares with the Rust renderer on its Cortex-A53 cores. Run `gauge bench` on the device for that.
 - Same machine, alternating runs; expect ±10 % noise between runs.
 
+## Partial redraw and threads (custom gauges)
+
+The table above times full repaints, as the C# app does every frame. The Rust custom-gauge renderer also tracks damage and spreads work over cores; see [rust/README.md](../rust/README.md#performance). Showcase, desktop x86:
+
+| Situation | 1 thread | 4 threads | Repainted |
+|---|---:|---:|---:|
+| Full repaint (`--full`) | 2.24 ms | 1.46 ms | 100 % |
+| Values gliding, new data every frame | 1.36 ms | 0.96 ms | 26 % |
+| Values gliding, 20 Hz data (`--data-hz 20`) | 1.36 ms | 1.03 ms | 25 % |
+| Values settled (only the graph scrolls) | 0.09 ms | 0.08 ms | 3 % |
+
+The full-repaint figure is above the 1.86 ms in the main table. Making tiled and partial frames match a full render exactly costs extra work: curves are flattened up front, every changed element gets a bounds pass, and glow padding is wider. The partial-redraw and multicore paths more than repay that.
+
 ## Where the Rust time goes now
 
-Profiling the custom showcase shows most of the remaining time in tiny-skia's anti-aliased path filling (arc strokes, glyph outlines). That is the actual geometry work. Glow upscale and composite come next. Further gains would need structural changes:
-- dirty-region redraw, which only repaints the bounds of elements whose value changed;
-- multithreading independent elements.
+Profiling the custom showcase shows most of the remaining time in tiny-skia's anti-aliased path filling (arc strokes, glyph outlines). That is the actual geometry work. Glow upscale and composite come next. Both of the next steps suggested here, partial redraw and multithreading, have since been done for custom gauges; see the section above.
