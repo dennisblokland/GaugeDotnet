@@ -1,0 +1,17 @@
+{
+  "Screens": [
+    { "Gauge": { "Type": "Custom" }, "CustomDefinitionFile": "showcase.json" },
+    { "Gauge": { "Type": "Circular", "DataSource": "Rpm", "Title": "ENGINE", "Unit": "RPM", "MaxValue": 8000, "SegmentCount": 64 } },
+    { "Gauge": { "Type": "Needle", "DataSource": "VehicleSpeed", "Title": "SPEED", "Unit": "KMH", "MaxValue": 160, "ColorHex": "#FF8800" } },
+    { "Gauge": { "Type": "Sweep", "DataSource": "Map", "Title": "BOOST", "Unit": "KPA", "MaxValue": 120, "ColorHex": "#FF33AA" } },
+    { "Gauge": { "Type": "Bar", "DataSource": "AfrCurr1", "Title": "WIDEBAND", "Unit": "AFR", "MinValue": 10, "MaxValue": 20, "Decimals": 1 } },
+    { "Gauge": { "Type": "Digital", "DataSource": "Vbat", "Title": "BATTERY", "Unit": "VOLT", "MinValue": 10, "MaxValue": 16, "Decimals": 2, "ColorHex": "#66FF66" } },
+    { "Gauge": { "Type": "MinMax", "DataSource": "OilTemp", "Title": "OIL", "Unit": "C", "MinValue": 60, "MaxValue": 130, "ColorHex": "#FFCC00" } },
+    { "Gauge": { "Type": "Histogram", "DataSource": "Clt", "Title": "COOLANT", "Unit": "C", "MinValue": 60, "MaxValue": 110, "IntervalMs": 0 } },
+    { "Gauge": { "Type": "Grid", "Cells": [
+      { "DataSource": "Rpm", "Title": "RPM" },
+      { "DataSource": "AfrCurr1", "Title": "AFR", "Decimals": 1 },
+      { "DataSource": "OilTemp", "Title": "OIL", "Unit": "C" },
+      { "DataSource": "Vbat", "Title": "BATT", "Unit": "V", "Decimals": 1 } ] } }
+  ]
+}

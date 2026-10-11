@@ -1,0 +1,21 @@
+[package]
+name = "gauge-app"
+version = "0.1.0"
+description = "GaugeDotnet runner: PNG snapshots and an SDL2 window driven by simulated ECU data"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "gauge"
+path = "src/main.rs"
+
+[features]
+default = []
+# Live window via SDL2 (needs libsdl2-dev, or the device's libSDL2).
+sdl = ["dep:sdl2"]
+
+[dependencies]
+gauge-render = { path = "../gauge-render" }
+sdl2 = { version = "0.37", optional = true }
+serde_json = "1"

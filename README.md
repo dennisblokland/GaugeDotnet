@@ -28,6 +28,7 @@ Real-time automotive gauge display for the [RG35XX](https://anbernic.com) handhe
 | `ME1_4NET.Tests` | xUnit tests for CAN frame decoding |
 | `RG35XX.Core` | Platform abstractions (gamepad, storage interfaces) |
 | `RG35XX.Libraries` | Linux implementations (joystick, keyboard, storage) |
+| `rust/` | Rust port of the renderer (custom + built-in gauges, tiny-skia, optional SDL2 window) — see [rust/README.md](rust/README.md) |
 
 ## Prerequisites
 

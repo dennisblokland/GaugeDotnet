@@ -1,0 +1,51 @@
+{
+  "Width": 640,
+  "Height": 480,
+  "BackgroundColor": "#05080A",
+  "CalculatedChannels": [
+    { "Name": "RpmK", "Expression": "Rpm / 1000" },
+    { "Name": "OilDelta", "Expression": "OilTemp - Clt" }
+  ],
+  "Elements": [
+    { "$type": "zonearc", "Id": "zone", "X": 230, "Y": 240, "Radius": 200, "StrokeWidth": 8,
+      "DataSource": "Rpm", "MinValue": 0, "MaxValue": 8000, "Zone2Start": 5500, "Zone3Start": 6800,
+      "Zone1Color": "#1F3A2A", "Zone2Color": "#806600", "Zone3Color": "#A01818" },
+    { "$type": "arc", "Id": "rpmarc", "X": 230, "Y": 240, "Radius": 175, "StrokeWidth": 26,
+      "DataSource": "Rpm", "MinValue": 0, "MaxValue": 8000,
+      "UseConditionalColor": true, "WarnThreshold": 5500, "DangerThreshold": 6800 },
+    { "$type": "peak", "Id": "rpmpeak", "X": 230, "Y": 240, "Radius": 175, "StrokeWidth": 30,
+      "DataSource": "Rpm", "MinValue": 0, "MaxValue": 8000, "MarkerColor": "#FFFFFF", "DecaySeconds": 3 },
+    { "$type": "ticks", "Id": "rpmticks", "X": 230, "Y": 240, "Radius": 158, "MinValue": 0, "MaxValue": 8,
+      "MajorCount": 8, "MinorPerMajor": 4, "LabelFontSize": 18, "LabelOffset": 14 },
+    { "$type": "needle", "Id": "rpmneedle", "X": 230, "Y": 240, "Length": 150, "TailLength": 20, "NeedleWidth": 5,
+      "DataSource": "Rpm", "MinValue": 0, "MaxValue": 8000, "HubRadius": 12, "HubColor": "#202020" },
+    { "$type": "labelvalue", "Id": "rpmlv", "X": 230, "Y": 330, "Label": "RPM x1000",
+      "DataSource": "RpmK", "ValueFormat": "0.0", "ValueFontSize": 40, "ShowBox": true, "BoxColor": "#101820" },
+
+    { "$type": "rectangle", "Id": "panel", "X": 455, "Y": 20, "Width": 170, "Height": 300,
+      "FillColor": "#0B1116", "StrokeColor": "#23313B", "CornerRadius": 10 },
+    { "$type": "text", "Id": "afrlabel", "X": 540, "Y": 52, "Text": "AFR", "FontSize": 18, "Color": "#7FA0B0" },
+    { "$type": "value", "Id": "afr", "X": 540, "Y": 100, "DataSource": "AfrCurr1", "Format": "F1",
+      "FontSize": 38, "Color": "#00FFC8" },
+    { "$type": "graph", "Id": "afrgraph", "X": 465, "Y": 115, "Width": 150, "Height": 60,
+      "DataSource": "AfrCurr1", "MinValue": 11, "MaxValue": 18, "HistoryDepth": 90 },
+    { "$type": "linearbar", "Id": "oilbar", "X": 470, "Y": 200, "Width": 140, "Height": 16,
+      "DataSource": "OilTemp", "MinValue": 60, "MaxValue": 130,
+      "UseConditionalColor": true, "WarnThreshold": 100, "DangerThreshold": 110, "CornerRadius": 6 },
+    { "$type": "text", "Id": "oiltext", "X": 540, "Y": 240, "Text": "OIL TEMP", "FontSize": 12, "Color": "#7FA0B0",
+      "Font": "Barlow Condensed" },
+    { "$type": "linearbar", "Id": "boostbar", "X": 592, "Y": 255, "Width": 18, "Height": 55, "IsVertical": true,
+      "DataSource": "BoostCtrlDuty", "FillColor": "#FF8800" },
+    { "$type": "warning", "Id": "shift", "X": 500, "Y": 272, "Radius": 14, "DataSource": "Rpm",
+      "Threshold": 6000, "Label": "SHIFT", "LabelFontSize": 13 },
+
+    { "$type": "line", "Id": "divider", "X": 455, "Y": 345, "X2": 625, "Y2": 345, "LineWidth": 2, "Color": "#23313B" },
+    { "$type": "clock", "Id": "clock", "X": 540, "Y": 395, "Format": "HH:mm", "FontSize": 34, "Color": "#C0D0D8",
+      "ShowBox": true, "BoxColor": "#0B1116", "BoxCornerRadius": 6 },
+    { "$type": "circle", "Id": "dot", "X": 470, "Y": 450, "Radius": 6, "FillColor": "#00FFC8", "CircleStrokeWidth": 0 },
+    { "$type": "text", "Id": "gear", "X": 560, "Y": 458, "Text": "Rust renderer", "FontSize": 14, "Color": "#5A7080",
+      "Font": "Barlow Condensed", "Opacity": 180 },
+    { "$type": "text", "Id": "hot", "X": 230, "Y": 420, "Text": "OIL HOT", "FontSize": 20, "Color": "#FF3333",
+      "UseVisibility": true, "VisibilitySource": "OilDelta", "VisibleAbove": 12 }
+  ]
+}
