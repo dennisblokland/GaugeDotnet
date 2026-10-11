@@ -1,5 +1,7 @@
 # C# vs Rust renderer benchmark
 
+Complete, current numbers are in [RESULTS.md](RESULTS.md).
+
 `./run.sh` renders every screen in [`rust/examples/gauges.json`](../rust/examples/gauges.json) with both renderers:
 - **C#:** the app's real, unmodified renderer sources (linked into [`csharp/`](csharp)) drawing through SkiaSharp 3.119.
 - **Rust:** `gauge bench` from [`rust/`](../rust) drawing through tiny-skia.
