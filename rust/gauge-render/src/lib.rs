@@ -22,7 +22,7 @@ pub mod text;
 
 use std::collections::HashMap;
 
-pub use canvas::{Blur, BlurStyle, Canvas, Paint, PaintStyle};
+pub use canvas::{Blur, BlurStyle, Canvas, Paint, PaintStyle, Sprite};
 pub use color::Rgba;
 pub use custom::{CustomGauge, ElementRenderer};
 pub use model::{CustomGaugeDefinition, Element};

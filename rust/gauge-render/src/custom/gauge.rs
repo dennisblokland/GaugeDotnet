@@ -4,7 +4,7 @@
 use std::time::Instant;
 
 use crate::canvas::Canvas;
-use crate::custom::ElementRenderer;
+use crate::custom::{ElementRenderer, StaticCache};
 use crate::model::CustomGaugeDefinition;
 use crate::{expression, Values};
 
@@ -16,6 +16,7 @@ pub struct CustomGauge {
 	values: Values,
 	targets: Values,
 	renderer: ElementRenderer,
+	static_cache: StaticCache,
 	last_frame: Option<Instant>,
 }
 
@@ -52,7 +53,14 @@ impl CustomGauge {
 		}
 
 		let values: Values = sources.iter().map(|s| (s.clone(), 0.0)).collect();
-		Self { targets: values.clone(), values, definition, renderer: ElementRenderer::new(), last_frame: None }
+		Self {
+			targets: values.clone(),
+			values,
+			definition,
+			renderer: ElementRenderer::new(),
+			static_cache: StaticCache::new(),
+			last_frame: None,
+		}
 	}
 
 	pub fn load(path: impl AsRef<std::path::Path>) -> Result<Self, String> {
@@ -113,6 +121,12 @@ impl CustomGauge {
 				*v += (target - *v) * alpha;
 			}
 		}
-		self.renderer.render(canvas, &self.definition, &self.values, Some(&self.targets));
+		self.renderer.render_cached(
+			canvas,
+			&self.definition,
+			&self.values,
+			Some(&self.targets),
+			&mut self.static_cache,
+		);
 	}
 }

@@ -12,8 +12,6 @@ mod needle;
 mod segment_display;
 mod sweep;
 
-use tiny_skia::Pixmap;
-
 pub use bar::BarGauge;
 pub use circular::CircularGauge;
 pub use config::{AppConfig, GaugeConfig, GaugeType, GridCellConfig, ScreenConfig};
@@ -25,7 +23,7 @@ pub use needle::NeedleGauge;
 pub use segment_display::SegmentDisplay;
 pub use sweep::SweepGauge;
 
-use crate::canvas::{rect, Canvas, Paint};
+use crate::canvas::{rect, Canvas, Paint, Sprite};
 use crate::color::Rgba;
 use crate::custom::CustomGauge;
 
@@ -90,11 +88,9 @@ pub(crate) fn draw_background(canvas: &mut Canvas) {
 	}
 }
 
-/// Renders a static layer into a new full-size pixmap.
-pub(crate) fn render_static(width: u32, height: u32, draw: impl FnOnce(&mut Canvas)) -> Pixmap {
-	let mut c = Canvas::new(width, height);
-	draw(&mut c);
-	c.into_pixmap()
+/// Renders a static layer and trims it to its content.
+pub(crate) fn render_static(width: u32, height: u32, draw: impl FnOnce(&mut Canvas)) -> Sprite {
+	Sprite::render(width, height, draw)
 }
 
 /// `Math.Round(v)` (banker's rounding) printed like `double.ToString()`.

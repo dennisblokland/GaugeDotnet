@@ -72,12 +72,13 @@ That produces a headless build: `render` and `bench` work, but there is no windo
 
 ## Performance
 
-Everything is rasterised on the CPU. Glows are the expensive part, so the renderer handles them the way Skia does:
-- Large blur sigmas run on a 2× or 4× downscaled buffer, then are upscaled bilinearly.
-- The built-in gauges cache their static backgrounds, and cache their active segments by (count, colour).
-- Opacity layers composite only the area that was drawn into.
+Everything is rasterised on the CPU. Glows are the expensive part, so:
+- **Large blurs run downscaled:** sigmas of 3 or more are blurred on a 2× or 4× smaller buffer and upscaled bilinearly, the way Skia's GPU backend does.
+- **Glows are alpha-only:** each glow is one colour, so only its coverage (A8) is rasterised and blurred, then composited with that colour.
+- **Static content is cached as trimmed `Sprite`s.** The built-in gauges cache their backgrounds, lit segments (keyed by count and colour), segment-display digits (keyed by text and colour) and Histogram bars (keyed by sample version). `CustomGauge` pre-renders each run of static elements, together with the background (`ElementRenderer::render_cached`).
+- **Opacity layers composite only the area that was drawn into.**
 
-`bench examples/showcase.json` (19 elements covering 15 of the 17 element types, with glows) takes about 3.2 ms per frame (8.3 ms for the C# renderer on the same CPU; see [`bench/`](../bench/README.md)) on a desktop x86 core. That leaves room on the RG35XX's Cortex-A53 for 60 fps, but measure on the device with `gauge bench`.
+`bench examples/showcase.json` (19 elements covering 15 of the 17 element types, with glows) takes about 1.9 ms per frame on a desktop x86 core. The C# renderer takes 8.7 ms on the same CPU; see [`bench/`](../bench/README.md). That leaves plenty of room for 60 fps on the RG35XX's Cortex-A53, but measure on the device with `gauge bench`.
 
 ## Differences from the C# renderer
 

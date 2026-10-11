@@ -1,6 +1,6 @@
 //! Port of `SweepGauge`: solid rounded arc with a leading dot.
 
-use tiny_skia::Pixmap;
+use crate::canvas::Sprite;
 
 use crate::canvas::{rect, Blur, Canvas, LineCap, Paint};
 use crate::color::Rgba;
@@ -23,7 +23,7 @@ pub struct SweepGauge {
 	smoothing: bool,
 	value_display: SegmentDisplay,
 	size: (u32, u32),
-	static_layer: Option<Pixmap>,
+	static_layer: Option<Sprite>,
 }
 
 fn arc_rect() -> Option<tiny_skia::Rect> {
@@ -140,7 +140,7 @@ impl Gauge for SweepGauge {
 			self.update_static();
 		}
 		if let Some(p) = &self.static_layer {
-			canvas.draw_pixmap(p, 0, 0);
+			canvas.draw_sprite(p);
 		}
 
 		let pct = self.base.fraction(self.current_value);

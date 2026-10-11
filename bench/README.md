@@ -10,32 +10,38 @@ Both use a 640×480 CPU raster surface and the same simulated ECU data stepped a
 
 Intel Xeon @ 2.10 GHz (cloud VM), Linux x64, .NET 10.0.12, Rust 1.97. Each figure is the median of 3 runs.
 
-| Screen | C# ms/frame | Rust ms/frame | Rust speedup | Rust with full-res blur¹ |
+| Screen | C# ms/frame | Rust, first port | Rust, optimised | Speedup vs C# |
 |---|---:|---:|---:|---:|
-| Custom (showcase.json, 19 elements) | 8.30 | 3.15 | 2.6× | 6.2 |
-| Circular | 10.30 | 4.26 | 2.4× | 7.7 |
-| Needle | 6.12 | 1.76 | 3.5× | 3.0 |
-| Sweep | 7.97 | 3.46 | 2.3× | 8.5 |
-| Bar | 8.77 | 2.20 | 4.0×² | 3.2 |
-| Digital | 6.12 | 1.70 | 3.6× | 2.5 |
-| MinMax | 8.47 | 2.83 | 3.0×² | 5.1 |
-| Histogram | 9.77 | 7.57 | 1.3× | 16.9 |
-| Grid | 2.83 | 0.80 | 3.5× | 0.7 |
+| Custom (showcase.json, 19 elements) | 8.65 | 3.15 | 1.86 | 4.7× |
+| Circular | 10.34 | 4.26 | 1.90 | 5.5× |
+| Needle | 6.24 | 1.76 | 0.59 | 10.6× |
+| Sweep | 8.65 | 3.46 | 1.43 | 6.0× |
+| Bar | 8.92 | 2.20 | 0.56 | 15.9× |
+| Digital | 6.16 | 1.70 | 0.73 | 8.5× |
+| MinMax | 8.82 | 2.83 | 0.98 | 9.0× |
+| Histogram | 10.58 | 7.57 | 3.90 | 2.7× |
+| Grid | 2.92 | 0.80 | 0.38 | 7.6× |
 
 | | C# | Rust |
 |---|---:|---:|
 | Peak RSS (whole benchmark) | 81 MB | 22 MB |
 | Deployable size | .NET runtime + app + 11 MB `libSkiaSharp.so` | 2.5 MB static binary (fonts embedded) |
 
-¹ An ablation run (not committed) that forced the Rust blur to full resolution, the way Skia's CPU blur works.
-² Partly algorithmic: the Rust Bar and MinMax gauges cache their lit segments (as C#'s `CircularGauge` already does). The C# versions re-blur every lit segment on every frame.
+"First port" is the initial Rust version; "optimised" adds the changes listed under "Where the Rust time goes" below. The C# column is from the same session as the optimised run.
 
 ## How to read this
 
-- **Most of the Rust lead comes from the blur strategy, not the language.** Glows dominate the frame cost. The Rust canvas blurs large sigmas on a 2×/4× downscaled buffer, as Skia's GPU backend does. Forced to full resolution, Rust is roughly on par with Skia's SIMD-optimised CPU blur:
-  - faster on Needle, Digital, Bar and Grid;
-  - about the same on Custom, Circular and Sweep;
-  - slower on Histogram, which draws 50 separately blurred bars.
-- **Without glows, Rust is faster** (Grid, which has no blur: 0.8 vs 2.8 ms). That comes from lower per-call overhead: no P/Invoke boundary, plus integer compositing.
+- **The gap is mostly rendering strategy, not language.** An earlier ablation (not committed) forced the first Rust port's glows to full resolution, the way Skia's CPU blur works. That made Rust roughly even with SkiaSharp: faster on light screens, slower on Histogram (16.9 ms). The optimised Rust numbers come from doing less work per frame:
+  - **Downscaled blurs:** large glows are blurred at 1/2 or 1/4 resolution, as Skia's GPU backend does.
+  - **Alpha-only glows:** a glow is one colour, so only its coverage (A8) is blurred and upscaled. That is ¼ of the RGBA work, and the vertical pass walks rows for cache locality.
+  - **Trimmed sprites:** cached layers are cropped to their content, and opaque ones are copied row by row. Previously a full 640×480 mostly-transparent layer was blended per cache per frame.
+  - **More caching:** lit segments (Bar, MinMax, Circular), segment-display digits (until the text changes), Histogram bars (until a sample arrives), and runs of static custom elements together with the background.
+- **Some of these caches are worst-cased by the benchmark.** It changes every value on every frame. With real ECU data (about 20 Hz against 60 fps) and the default 1 s Histogram interval, most frames hit the caches, so the device will do better than these numbers suggest.
 - **On the device, the C# app renders through Skia's GPU backend (GLES2), which this benchmark does not cover.** The cloud VM has no GPU. What matters there is how the RG35XX's GPU compares with the Rust renderer on its Cortex-A53 cores. Run `gauge bench` on the device for that.
 - Same machine, alternating runs; expect ±10 % noise between runs.
+
+## Where the Rust time goes now
+
+Profiling the custom showcase shows most of the remaining time in tiny-skia's anti-aliased path filling (arc strokes, glyph outlines). That is the actual geometry work. Glow upscale and composite come next. Further gains would need structural changes:
+- dirty-region redraw, which only repaints the bounds of elements whose value changed;
+- multithreading independent elements.

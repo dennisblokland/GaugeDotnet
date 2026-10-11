@@ -2,13 +2,15 @@
 //! `Gauges/Custom/Renderers`. Drawing math mirrors the C# code line for line
 //! so definitions look the same on both implementations.
 
+use std::borrow::Cow;
 use std::collections::{HashMap, VecDeque};
+use std::ops::Range;
 use std::path::Path;
 use std::time::Instant;
 
 use chrono::NaiveDateTime;
 
-use crate::canvas::{rect, Blur, Canvas, LineCap, LineJoin, Paint, PaintStyle};
+use crate::canvas::{rect, Blur, Canvas, LineCap, LineJoin, Paint, PaintStyle, Sprite};
 use crate::color::Rgba;
 use crate::format::{format_datetime, format_number};
 use crate::images::ImageCache;
@@ -70,9 +72,54 @@ impl ElementRenderer {
 		values: &Values,
 		target_values: Option<&Values>,
 	) {
+		self.draw_backdrop(canvas, definition);
+		let (all_values, all_targets) = merge_calculated(definition, values, target_values);
+		self.draw_range(canvas, definition, 0..definition.elements.len(), &all_values, all_targets.as_deref());
+	}
+
+	/// Same output as [`ElementRenderer::render`], but runs of elements that
+	/// cannot change between frames (no data source, no visibility rule) are
+	/// rendered once into sprites held by `cache`, together with the
+	/// background. Use one cache per definition and call
+	/// [`StaticCache::invalidate`] after editing that definition.
+	pub fn render_cached(
+		&mut self,
+		canvas: &mut Canvas,
+		definition: &CustomGaugeDefinition,
+		values: &Values,
+		target_values: Option<&Values>,
+		cache: &mut StaticCache,
+	) {
+		let size = (canvas.width(), canvas.height());
+		if cache.size != size || cache.segments.is_empty() {
+			cache.build(definition, size);
+		}
+		let (all_values, all_targets) = merge_calculated(definition, values, target_values);
+		let empty = Values::new();
+		for segment in &mut cache.segments {
+			match segment {
+				Segment::Static { range, backdrop, sprite } => {
+					let sprite = sprite.get_or_insert_with(|| {
+						Sprite::render(size.0, size.1, |c| {
+							if *backdrop {
+								self.draw_backdrop(c, definition);
+							}
+							self.draw_range(c, definition, range.clone(), &empty, None);
+						})
+					});
+					canvas.draw_sprite(sprite);
+				}
+				Segment::Dynamic(i) => {
+					self.draw_range(canvas, definition, *i..*i + 1, &all_values, all_targets.as_deref());
+				}
+			}
+		}
+	}
+
+	/// Background colour and image.
+	fn draw_backdrop(&mut self, canvas: &mut Canvas, definition: &CustomGaugeDefinition) {
 		let base_dir = definition.base_directory.as_deref();
 		canvas.clear(color(&definition.background_color));
-
 		if let Some(bg) = definition.background_image.as_deref().filter(|s| !s.is_empty()) {
 			if let Some(img) = self.images.load(bg, base_dir) {
 				draw_background(
@@ -85,29 +132,19 @@ impl ElementRenderer {
 				);
 			}
 		}
+	}
 
-		// Calculated channels are merged into local copies so the caller's maps are untouched.
-		let mut owned_values;
-		let mut owned_targets;
-		let (all_values, all_targets) = if definition.calculated_channels.is_empty() {
-			(values, target_values)
-		} else {
-			owned_values = values.clone();
-			owned_targets = target_values.cloned();
-			for ch in &definition.calculated_channels {
-				if ch.name.is_empty() || ch.expression.is_empty() {
-					continue;
-				}
-				let result = expression::evaluate(&ch.expression, &owned_values);
-				owned_values.insert(ch.name.clone(), result);
-				if let Some(t) = owned_targets.as_mut() {
-					t.insert(ch.name.clone(), result);
-				}
-			}
-			(&owned_values, owned_targets.as_ref())
-		};
-
-		for element in &definition.elements {
+	/// Draws `range` of the definition's elements, applying visibility rules.
+	fn draw_range(
+		&mut self,
+		canvas: &mut Canvas,
+		definition: &CustomGaugeDefinition,
+		range: Range<usize>,
+		all_values: &Values,
+		all_targets: Option<&Values>,
+	) {
+		let base_dir = definition.base_directory.as_deref();
+		for element in &definition.elements[range] {
 			let base = element.base();
 			if base.use_visibility {
 				if let Some(src) = base.visibility_source.as_deref().filter(|s| !s.is_empty()) {
@@ -329,6 +366,95 @@ impl ElementRenderer {
 			color(&c.color),
 			c.show_box.then(|| (color(&c.box_color), c.box_padding, c.box_corner_radius)),
 		);
+	}
+}
+
+/// Merges calculated channels into copies of the value maps (the caller's
+/// maps are untouched); borrows them unchanged when there are none.
+fn merge_calculated<'a>(
+	definition: &CustomGaugeDefinition,
+	values: &'a Values,
+	targets: Option<&'a Values>,
+) -> (Cow<'a, Values>, Option<Cow<'a, Values>>) {
+	if definition.calculated_channels.is_empty() {
+		return (Cow::Borrowed(values), targets.map(Cow::Borrowed));
+	}
+	let mut owned_values = values.clone();
+	let mut owned_targets = targets.cloned();
+	for ch in &definition.calculated_channels {
+		if ch.name.is_empty() || ch.expression.is_empty() {
+			continue;
+		}
+		let result = expression::evaluate(&ch.expression, &owned_values);
+		owned_values.insert(ch.name.clone(), result);
+		if let Some(t) = owned_targets.as_mut() {
+			t.insert(ch.name.clone(), result);
+		}
+	}
+	(Cow::Owned(owned_values), owned_targets.map(Cow::Owned))
+}
+
+/// Whether an element draws the same pixels every frame: no visibility rule,
+/// and either no data source or one it ignores. Clocks and graphs change on
+/// their own.
+pub fn is_static(element: &Element) -> bool {
+	let base = element.base();
+	if base.use_visibility && base.visibility_source.as_deref().is_some_and(|s| !s.is_empty()) {
+		return false;
+	}
+	match element {
+		Element::Clock(_) | Element::Graph(_) => false,
+		Element::Text(_) => true,
+		Element::ZoneArc(z) => !(z.show_pointer && base.has_source()),
+		_ => !base.has_source(),
+	}
+}
+
+enum Segment {
+	/// A run of static elements, pre-rendered on first use.
+	Static { range: Range<usize>, backdrop: bool, sprite: Option<Sprite> },
+	/// An element redrawn every frame.
+	Dynamic(usize),
+}
+
+/// Pre-rendered static runs of one definition, for [`ElementRenderer::render_cached`].
+#[derive(Default)]
+pub struct StaticCache {
+	segments: Vec<Segment>,
+	size: (u32, u32),
+}
+
+impl StaticCache {
+	pub fn new() -> Self {
+		Self::default()
+	}
+
+	/// Drops the pre-rendered runs (after the definition or its images change).
+	pub fn invalidate(&mut self) {
+		self.segments.clear();
+	}
+
+	fn build(&mut self, definition: &CustomGaugeDefinition, size: (u32, u32)) {
+		self.size = size;
+		self.segments.clear();
+		let n = definition.elements.len();
+		let mut i = 0;
+		let mut first = true;
+		while i < n || first {
+			let start = i;
+			while i < n && is_static(&definition.elements[i]) {
+				i += 1;
+			}
+			// The first run always exists: it carries the background.
+			if first || i > start {
+				self.segments.push(Segment::Static { range: start..i, backdrop: first, sprite: None });
+			}
+			first = false;
+			if i < n {
+				self.segments.push(Segment::Dynamic(i));
+				i += 1;
+			}
+		}
 	}
 }
 

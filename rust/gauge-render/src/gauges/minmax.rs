@@ -1,6 +1,8 @@
 //! Port of `MinMaxGauge`: segmented bar plus persistent min/max markers.
 
-use tiny_skia::{PathBuilder, Pixmap};
+use tiny_skia::PathBuilder;
+
+use crate::canvas::Sprite;
 
 use crate::canvas::{rect, Blur, Canvas, Paint};
 use crate::color::Rgba;
@@ -13,6 +15,8 @@ const BAR_Y: f32 = 210.0;
 const BAR_WIDTH: f32 = 500.0;
 const BAR_HEIGHT: f32 = 60.0;
 
+const GLOW_PAD: i32 = (SHADOW_BLUR * 3.0) as i32 + 2;
+
 pub struct MinMaxGauge {
 	base: GaugeBase,
 	current_value: f32,
@@ -24,8 +28,8 @@ pub struct MinMaxGauge {
 	segment_width: f32,
 	value_display: SegmentDisplay,
 	size: (u32, u32),
-	static_layer: Option<Pixmap>,
-	active_layer: Option<(usize, Rgba, Pixmap)>,
+	static_layer: Option<Sprite>,
+	active_layer: Option<(usize, Rgba, Sprite)>,
 }
 
 impl MinMaxGauge {
@@ -145,14 +149,20 @@ impl Gauge for MinMaxGauge {
 			self.update_static();
 		}
 		if let Some(p) = &self.static_layer {
-			canvas.draw_pixmap(p, 0, 0);
+			canvas.draw_sprite(p);
 		}
 
 		let active_segs = (self.base.fraction(self.current_value) * self.segment_count as f32).round() as usize;
 		let stale = !matches!(&self.active_layer, Some((n, c, _)) if *n == active_segs && *c == active);
 		if stale {
 			let rects: Vec<_> = (0..active_segs).filter_map(|i| self.segment_rect(i)).collect();
-			let layer = render_static(self.size.0, self.size.1, |c| {
+			let (rx, ry, rw, rh) = (
+				BAR_X as i32 - GLOW_PAD,
+				BAR_Y as i32 - GLOW_PAD,
+				(BAR_WIDTH as i32 + 2 * GLOW_PAD) as u32,
+				(BAR_HEIGHT as i32 + 2 * GLOW_PAD) as u32,
+			);
+			let layer = Sprite::render_in(rx, ry, rw, rh, |c| {
 				for r in rects {
 					c.draw_rect_with_blur(r, &Paint::fill(active), Blur::normal(SHADOW_BLUR));
 				}
@@ -160,7 +170,7 @@ impl Gauge for MinMaxGauge {
 			self.active_layer = Some((active_segs, active, layer));
 		}
 		if let Some((_, _, p)) = &self.active_layer {
-			canvas.draw_pixmap(p, 0, 0);
+			canvas.draw_sprite(p);
 		}
 
 		let range = self.base.max_value - self.base.min_value;

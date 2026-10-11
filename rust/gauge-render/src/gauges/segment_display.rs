@@ -1,9 +1,7 @@
 //! Port of `SegmentDisplay`: a right-aligned DSEG14 readout over a dim
 //! `~~~~` placeholder, with an outer glow on the lit digits.
 
-use tiny_skia::Pixmap;
-
-use crate::canvas::{Blur, Canvas, Paint};
+use crate::canvas::{Blur, Canvas, Paint, Sprite};
 use crate::color::Rgba;
 use crate::format::format_number;
 use crate::gauges::render_static;
@@ -23,7 +21,9 @@ pub struct SegmentDisplay {
 	font_size: f32,
 	current_value: f32,
 	formatted: String,
-	placeholder: Option<Pixmap>,
+	placeholder: Option<Sprite>,
+	/// Lit digits + glow, re-rendered only when the text or colour changes.
+	digits: Option<(String, Rgba, Sprite)>,
 }
 
 impl SegmentDisplay {
@@ -57,6 +57,7 @@ impl SegmentDisplay {
 			current_value: 0.0,
 			formatted: format_display_value(0.0, decimals),
 			placeholder: None,
+			digits: None,
 		}
 	}
 
@@ -90,18 +91,26 @@ impl SegmentDisplay {
 			}));
 		}
 		if let Some(p) = &self.placeholder {
-			canvas.draw_pixmap(p, 0, 0);
+			canvas.draw_sprite(p);
 		}
-		canvas.draw_text_with_blur(
-			&self.formatted,
-			self.text_x,
-			self.baseline_y,
-			TextAlign::Right,
-			tf,
-			self.font_size,
-			&Paint::fill(self.active),
-			self.blur,
-		);
+		let stale = !matches!(&self.digits, Some((t, c, _)) if *t == self.formatted && *c == self.active);
+		if stale {
+			let (text, color, blur) = (self.formatted.clone(), self.active, self.blur);
+			let (x, y, size) = (self.text_x, self.baseline_y, self.font_size);
+			// Only the text box plus the glow's reach needs rendering.
+			let m = tf.metrics(size);
+			let pad = (blur.sigma * 3.0).ceil() + 2.0;
+			let w = tf.measure(&text, size);
+			let (x0, y0) = ((x - w - pad).floor() as i32, (y + m.ascent - pad).floor() as i32);
+			let (rw, rh) = ((w + 2.0 * pad).ceil() as u32 + 1, (m.descent - m.ascent + 2.0 * pad).ceil() as u32 + 1);
+			let sprite = Sprite::render_in(x0, y0, rw, rh, |c| {
+				c.draw_text_with_blur(&text, x, y, TextAlign::Right, tf, size, &Paint::fill(color), blur);
+			});
+			self.digits = Some((text, color, sprite));
+		}
+		if let Some((_, _, sprite)) = &self.digits {
+			canvas.draw_sprite(sprite);
+		}
 	}
 }
 

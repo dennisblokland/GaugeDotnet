@@ -4,4 +4,4 @@ mod gauge;
 mod renderer;
 
 pub use gauge::CustomGauge;
-pub use renderer::{select_frame, ElementRenderer};
+pub use renderer::{is_static, select_frame, ElementRenderer, StaticCache};

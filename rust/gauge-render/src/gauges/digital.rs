@@ -1,6 +1,6 @@
 //! Port of `DigitalGauge`: a large framed segment readout.
 
-use tiny_skia::Pixmap;
+use crate::canvas::Sprite;
 
 use crate::canvas::{rect, Blur, Canvas, Paint};
 use crate::format::format_number;
@@ -14,7 +14,7 @@ pub struct DigitalGauge {
 	base: GaugeBase,
 	value_display: SegmentDisplay,
 	size: (u32, u32),
-	static_layer: Option<Pixmap>,
+	static_layer: Option<Sprite>,
 }
 
 impl DigitalGauge {
@@ -94,7 +94,7 @@ impl Gauge for DigitalGauge {
 			self.update_static();
 		}
 		if let Some(p) = &self.static_layer {
-			canvas.draw_pixmap(p, 0, 0);
+			canvas.draw_sprite(p);
 		}
 		self.value_display.set_value(self.base.value);
 		self.value_display.set_colors(inactive, active);

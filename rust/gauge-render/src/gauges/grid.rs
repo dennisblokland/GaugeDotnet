@@ -1,6 +1,6 @@
 //! Port of `GridGauge`: a 2×2 grid of plain numeric readouts.
 
-use tiny_skia::Pixmap;
+use crate::canvas::Sprite;
 
 use crate::canvas::{Canvas, Paint};
 use crate::color::Rgba;
@@ -19,7 +19,7 @@ pub struct GridGauge {
 	cells: Vec<GridCellConfig>,
 	cell_values: Vec<f32>,
 	size: (u32, u32),
-	static_layer: Option<Pixmap>,
+	static_layer: Option<Sprite>,
 }
 
 impl GridGauge {
@@ -94,7 +94,7 @@ impl Gauge for GridGauge {
 			self.update_static();
 		}
 		if let Some(p) = &self.static_layer {
-			canvas.draw_pixmap(p, 0, 0);
+			canvas.draw_sprite(p);
 		}
 		let (cell_w, cell_h) = self.cell_size();
 		let value_size = cell_h * 0.35;

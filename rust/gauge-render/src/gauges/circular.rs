@@ -1,6 +1,6 @@
 //! Port of `CircularGauge`: segmented 300° ring with tick labels.
 
-use tiny_skia::Pixmap;
+use crate::canvas::Sprite;
 
 use crate::canvas::{rect, Blur, Canvas, Paint};
 use crate::color::Rgba;
@@ -18,6 +18,8 @@ const END_ANGLE_DEG: f32 = 420.0;
 /// Gap between segments, in radians.
 const SEGMENT_MARGIN: f32 = 0.01;
 
+const GLOW_PAD: i32 = (SHADOW_BLUR * 3.0) as i32 + 2;
+
 pub struct CircularGauge {
 	base: GaugeBase,
 	current_value: f32,
@@ -26,8 +28,8 @@ pub struct CircularGauge {
 	segments: Vec<(f32, f32)>,
 	value_display: SegmentDisplay,
 	size: (u32, u32),
-	static_layer: Option<Pixmap>,
-	active_layer: Option<(usize, Rgba, Pixmap)>,
+	static_layer: Option<Sprite>,
+	active_layer: Option<(usize, Rgba, Sprite)>,
 }
 
 impl CircularGauge {
@@ -164,14 +166,18 @@ impl Gauge for CircularGauge {
 			self.update_static();
 		}
 		if let Some(p) = &self.static_layer {
-			canvas.draw_pixmap(p, 0, 0);
+			canvas.draw_sprite(p);
 		}
 
 		let active_segments = (self.base.fraction(self.current_value) * self.segments.len() as f32).round() as usize;
 		let stale = !matches!(&self.active_layer, Some((n, c, _)) if *n == active_segments && *c == active);
 		if stale {
 			let segs = self.segments[..active_segments.min(self.segments.len())].to_vec();
-			let layer = render_static(self.size.0, self.size.1, |c| {
+			let (rx, ry, rw, rh) = {
+				let r = (RADIUS + LINE_WIDTH / 2.0) as i32 + GLOW_PAD;
+				(CENTER_X as i32 - r, CENTER_Y as i32 - r, 2 * r as u32, 2 * r as u32)
+			};
+			let layer = Sprite::render_in(rx, ry, rw, rh, |c| {
 				let Some(arc_rect) = rect(CENTER_X - RADIUS, CENTER_Y - RADIUS, CENTER_X + RADIUS, CENTER_Y + RADIUS)
 				else {
 					return;
@@ -188,7 +194,7 @@ impl Gauge for CircularGauge {
 			self.active_layer = Some((active_segments, active, layer));
 		}
 		if let Some((_, _, p)) = &self.active_layer {
-			canvas.draw_pixmap(p, 0, 0);
+			canvas.draw_sprite(p);
 		}
 
 		self.value_display.set_value(self.base.value);

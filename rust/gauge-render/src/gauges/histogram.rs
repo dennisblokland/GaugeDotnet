@@ -2,9 +2,10 @@
 
 use std::time::{Duration, Instant};
 
-use tiny_skia::Pixmap;
+use crate::canvas::Sprite;
 
 use crate::canvas::{rect, Blur, Canvas, Paint};
+use crate::color::Rgba;
 use crate::gauges::{draw_background, render_static, Gauge, GaugeBase, GaugeConfig, SegmentDisplay, SHADOW_BLUR};
 use crate::text::{typeface, TextAlign};
 
@@ -24,7 +25,10 @@ pub struct HistogramGauge {
 	blur: Blur,
 	value_display: SegmentDisplay,
 	size: (u32, u32),
-	static_layer: Option<Pixmap>,
+	static_layer: Option<Sprite>,
+	/// Bumped whenever the samples change; the bar layer is rebuilt only then.
+	version: u64,
+	bars_layer: Option<(u64, Rgba, Sprite)>,
 }
 
 impl HistogramGauge {
@@ -52,6 +56,8 @@ impl HistogramGauge {
 			),
 			size: (width, height),
 			static_layer: None,
+			version: 0,
+			bars_layer: None,
 			base,
 		}
 	}
@@ -118,10 +124,12 @@ impl Gauge for HistogramGauge {
 			self.head = (self.head + 1) % n;
 			self.count = (self.count + 1).min(n);
 			self.last_update = now;
+			self.version += 1;
 		}
 	}
 
 	fn reset_saved_state(&mut self) {
+		self.version += 1;
 		self.data.fill(0.0);
 		self.count = self.data.len();
 		self.head = 0;
@@ -134,27 +142,44 @@ impl Gauge for HistogramGauge {
 			self.update_static();
 		}
 		if let Some(p) = &self.static_layer {
-			canvas.draw_pixmap(p, 0, 0);
+			canvas.draw_sprite(p);
 		}
 
-		let bar_w = CHART_WIDTH / self.data.len() as f32;
-		let range = self.base.max_value - self.base.min_value;
-		let bars: Vec<(f32, f32, f32)> = self
-			.samples()
-			.enumerate()
-			.map(|(i, v)| {
-				let pct = if range > 0.0 { ((v - self.base.min_value) / range).clamp(0.0, 1.0) } else { 0.0 };
-				let h = pct * CHART_HEIGHT;
-				(CHART_X + i as f32 * bar_w + 2.0, CHART_Y + CHART_HEIGHT - h, h)
-			})
-			.collect();
-		// Glow pass for all bars, then a crisp pass.
-		for paint in [Paint::fill(active).with_blur(Some(self.blur)), Paint::fill(active)] {
-			for &(x, y, h) in &bars {
-				if h > 0.0 {
-					canvas.draw_rect_xywh(x, y, bar_w - 4.0, h, &paint);
-				}
-			}
+		let stale = !matches!(&self.bars_layer, Some((v, c, _)) if *v == self.version && *c == active);
+		if stale {
+			let bar_w = CHART_WIDTH / self.data.len() as f32;
+			let range = self.base.max_value - self.base.min_value;
+			let bars: Vec<(f32, f32, f32)> = self
+				.samples()
+				.enumerate()
+				.map(|(i, v)| {
+					let pct = if range > 0.0 { ((v - self.base.min_value) / range).clamp(0.0, 1.0) } else { 0.0 };
+					let h = pct * CHART_HEIGHT;
+					(CHART_X + i as f32 * bar_w + 2.0, CHART_Y + CHART_HEIGHT - h, h)
+				})
+				.collect();
+			let blur = self.blur;
+			let pad = (blur.sigma * 3.0) as i32 + 2;
+			let layer = Sprite::render_in(
+				CHART_X as i32 - pad,
+				CHART_Y as i32 - pad,
+				(CHART_WIDTH as i32 + 2 * pad) as u32,
+				(CHART_HEIGHT as i32 + 2 * pad) as u32,
+				|c| {
+					// Glow pass for all bars, then a crisp pass.
+					for paint in [Paint::fill(active).with_blur(Some(blur)), Paint::fill(active)] {
+						for &(x, y, h) in &bars {
+							if h > 0.0 {
+								c.draw_rect_xywh(x, y, bar_w - 4.0, h, &paint);
+							}
+						}
+					}
+				},
+			);
+			self.bars_layer = Some((self.version, active, layer));
+		}
+		if let Some((_, _, layer)) = &self.bars_layer {
+			canvas.draw_sprite(layer);
 		}
 
 		self.value_display.set_value(self.base.value);

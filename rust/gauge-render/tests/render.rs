@@ -150,3 +150,25 @@ fn example_config_builds_all_screens() {
 		}
 	}
 }
+
+#[test]
+fn cached_static_runs_match_uncached_render() {
+	use gauge_render::custom::StaticCache;
+
+	let def = CustomGaugeDefinition::load(examples_dir().join("showcase.json")).unwrap();
+	let time = chrono::NaiveDate::from_ymd_opt(2026, 1, 1).unwrap().and_hms_opt(8, 15, 0);
+	let (mut plain, mut cached) = (ElementRenderer::new(), ElementRenderer::new());
+	plain.fixed_time = time;
+	cached.fixed_time = time;
+	let mut cache = StaticCache::new();
+	let (mut a, mut b) = (Canvas::new(640, 480), Canvas::new(640, 480));
+
+	for rpm in [1000.0, 4500.0, 7200.0] {
+		let v = values(&[("Rpm", rpm), ("AfrCurr1", 14.2), ("OilTemp", 112.0), ("Clt", 80.0), ("BoostCtrlDuty", 60.0)]);
+		plain.render(&mut a, &def, &v, Some(&v));
+		cached.render_cached(&mut b, &def, &v, Some(&v), &mut cache);
+		let max_diff =
+			a.pixmap().data().iter().zip(b.pixmap().data()).map(|(x, y)| (*x as i32 - *y as i32).abs()).max().unwrap();
+		assert!(max_diff <= 3, "rpm {rpm}: cached render differs by {max_diff}");
+	}
+}

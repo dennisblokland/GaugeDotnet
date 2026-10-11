@@ -13,9 +13,9 @@ use tiny_skia::{
 
 pub use tiny_skia::{LineCap, LineJoin};
 
-use crate::blur::gaussian_blur_rgba;
+use crate::blur::gaussian_blur_a8;
 use crate::color::Rgba;
-use crate::composite::{src_over, upscale_bilinear, IRect};
+use crate::composite::{copy_rows, opaque_bounds, src_over, src_over_color, upscale_bilinear_a8, IRect};
 use crate::text::{TextAlign, Typeface};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -203,6 +203,52 @@ pub fn round_rect_path(r: Rect, rx: f32, ry: f32) -> Option<Path> {
 	pb.cubic_to(l, t + ry - ry * K, l + rx - rx * K, t, l + rx, t);
 	pb.close();
 	pb.finish()
+}
+
+/// A pre-rendered layer trimmed to its visible pixels, for static caches.
+/// Blitting a sprite touches only its content, and fully opaque sprites are
+/// copied row by row with no blending.
+pub struct Sprite {
+	pixmap: Option<Pixmap>,
+	x: i32,
+	y: i32,
+	opaque: bool,
+}
+
+impl Sprite {
+	/// Trims `pixmap` (positioned at the origin) to its non-transparent area.
+	pub fn from_pixmap(pixmap: Pixmap) -> Self {
+		let Some(b) = opaque_bounds(&pixmap) else {
+			return Self { pixmap: None, x: 0, y: 0, opaque: false };
+		};
+		let full = b.x0 == 0 && b.y0 == 0 && b.x1 == pixmap.width() as i32 && b.y1 == pixmap.height() as i32;
+		let cropped = if full {
+			pixmap
+		} else {
+			let r = tiny_skia::IntRect::from_xywh(b.x0, b.y0, b.width() as u32, b.height() as u32).expect("non-empty");
+			pixmap.clone_rect(r).expect("bounds inside pixmap")
+		};
+		let opaque = cropped.data().chunks_exact(4).all(|px| px[3] == 255);
+		Self { pixmap: Some(cropped), x: b.x0, y: b.y0, opaque }
+	}
+
+	/// Renders `draw` (in canvas coordinates) into just the device region
+	/// `x, y, width, height`. Cheaper than [`Sprite::render`]
+	/// for caches that are rebuilt often.
+	pub fn render_in(x: i32, y: i32, width: u32, height: u32, draw: impl FnOnce(&mut Canvas)) -> Self {
+		let mut c = Canvas::new(width.max(1), height.max(1));
+		c.translate(-x as f32, -y as f32);
+		draw(&mut c);
+		// The region is already tight, so skip trimming (it is rebuilt often).
+		Self { pixmap: Some(c.into_pixmap()), x, y, opaque: false }
+	}
+
+	/// Renders `draw` onto a transparent `width`×`height` canvas and trims it.
+	pub fn render(width: u32, height: u32, draw: impl FnOnce(&mut Canvas)) -> Self {
+		let mut c = Canvas::new(width, height);
+		draw(&mut c);
+		Self::from_pixmap(c.into_pixmap())
+	}
 }
 
 impl Canvas {
@@ -454,30 +500,29 @@ impl Canvas {
 		} else {
 			1
 		};
+		// A glow is a single colour, so only its coverage is rasterised and blurred.
 		let (lw, lh) = (w.div_ceil(scale) + 1, h.div_ceil(scale) + 1);
-		let Some(mut low) = Pixmap::new(lw, lh) else {
+		let Some(mut low) = Mask::new(lw, lh) else {
 			return;
 		};
 		let inv = 1.0 / scale as f32;
 		let to_low = Transform::from_row(inv, 0.0, 0.0, inv, -x0 * inv, -y0 * inv);
-		low.fill_path(&device_path, &paint.to_skia(), FillRule::Winding, to_low, None);
-		gaussian_blur_rgba(low.data_mut(), lw as usize, lh as usize, blur.sigma * inv);
+		low.fill_path(&device_path, FillRule::Winding, paint.anti_alias, to_low);
+		gaussian_blur_a8(low.data_mut(), lw as usize, lh as usize, blur.sigma * inv);
 
-		let mut glow = if scale == 1 { low.data()[..].to_vec() } else { upscale_bilinear(&low, scale, w, h) };
-		let stride = if scale == 1 { lw as usize * 4 } else { w as usize * 4 };
+		let (mut glow, stride) = if scale == 1 {
+			(low.data().to_vec(), lw as usize)
+		} else {
+			(upscale_bilinear_a8(low.data(), lw as usize, lh as usize, scale, w, h), w as usize)
+		};
 
 		if blur.style == BlurStyle::Outer {
 			// Knock out the shape itself, using a full-resolution coverage mask.
 			if let Some(mut shape) = Mask::new(w, h) {
 				shape.fill_path(&device_path, FillRule::Winding, true, Transform::from_translate(-x0, -y0));
-				let m = shape.data();
-				for y in 0..h as usize {
-					for x in 0..w as usize {
-						let keep = 255 - m[y * w as usize + x] as u32;
-						let o = y * stride + x * 4;
-						for c in &mut glow[o..o + 4] {
-							*c = ((*c as u32 * keep + 127) / 255) as u8;
-						}
+				for (grow, srow) in glow.chunks_exact_mut(stride).zip(shape.data().chunks_exact(w as usize)) {
+					for (g, &m) in grow.iter_mut().zip(srow) {
+						*g = ((*g as u32 * (255 - m as u32) + 127) / 255) as u8;
 					}
 				}
 			}
@@ -485,7 +530,7 @@ impl Canvas {
 
 		self.mark_dirty(IRect::from_bounds(x0, y0, x0 + w as f32, y0 + h as f32));
 		let (target, state) = self.parts();
-		src_over(target, &glow, stride, w, h, x0 as i32, y0 as i32, 255, state.clip.as_deref());
+		src_over_color(target, &glow, stride, w, h, x0 as i32, y0 as i32, paint.color, state.clip.as_deref());
 	}
 
 	/// `DrawLine`: always stroked, whatever the paint style.
@@ -544,6 +589,24 @@ impl Canvas {
 		self.mark_dirty_user(dest.left(), dest.top(), dest.right(), dest.bottom(), 0.0);
 		let (target, state) = self.parts();
 		target.fill_rect(dest, &paint, state.transform, state.clip.as_deref());
+	}
+
+	/// Draws a cached [`Sprite`] where it was rendered.
+	pub fn draw_sprite(&mut self, sprite: &Sprite) {
+		let Some(p) = &sprite.pixmap else {
+			return;
+		};
+		let (x, y) = (sprite.x, sprite.y);
+		let (w, h) = (p.width(), p.height());
+		self.mark_dirty_user(x as f32, y as f32, (x + w as i32) as f32, (y + h as i32) as f32, 0.0);
+		let (target, state) = self.parts();
+		if !state.transform.is_identity() {
+			target.draw_pixmap(x, y, p.as_ref(), &PixmapPaint::default(), state.transform, state.clip.as_deref());
+		} else if sprite.opaque && state.clip.is_none() {
+			copy_rows(target, p.data(), w as usize * 4, w, h, x, y);
+		} else {
+			src_over(target, p.data(), w as usize * 4, w, h, x, y, 255, state.clip.as_deref());
+		}
 	}
 
 	/// Blits a same-scale pixmap at an integer offset (used for static caches).

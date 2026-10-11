@@ -1,6 +1,8 @@
 //! Port of `NeedleGauge`: classic dial with ticks and a glowing needle.
 
-use tiny_skia::{PathBuilder, Pixmap};
+use tiny_skia::PathBuilder;
+
+use crate::canvas::Sprite;
 
 use crate::canvas::{rect, Blur, Canvas, Paint};
 use crate::color::Rgba;
@@ -24,7 +26,7 @@ pub struct NeedleGauge {
 	smoothing: bool,
 	value_display: SegmentDisplay,
 	size: (u32, u32),
-	static_layer: Option<Pixmap>,
+	static_layer: Option<Sprite>,
 }
 
 impl NeedleGauge {
@@ -172,7 +174,7 @@ impl Gauge for NeedleGauge {
 			self.update_static();
 		}
 		if let Some(p) = &self.static_layer {
-			canvas.draw_pixmap(p, 0, 0);
+			canvas.draw_sprite(p);
 		}
 
 		let pct = self.base.fraction(self.current_value);

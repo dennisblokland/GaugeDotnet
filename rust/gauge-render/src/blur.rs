@@ -72,9 +72,86 @@ fn box_blur(src: &[u8], dst: &mut [u8], width: usize, height: usize, r: usize, h
 	}
 }
 
+/// Blurs an 8-bit coverage buffer in place (the glow path: a glow is one
+/// colour, so only its alpha needs blurring). Same box approximation as
+/// [`gaussian_blur_rgba`], with a row-ordered vertical pass for cache locality.
+pub fn gaussian_blur_a8(data: &mut [u8], width: usize, height: usize, sigma: f32) {
+	if sigma <= 0.0 || width == 0 || height == 0 {
+		return;
+	}
+	let mut tmp = vec![0u8; data.len()];
+	let mut sums = vec![0u32; width];
+	for size in boxes_for_gauss(sigma, 3) {
+		let r = (size - 1) / 2;
+		if r == 0 {
+			continue;
+		}
+		let inv = (1u64 << 24) / (2 * r as u64 + 1);
+		let div = |sum: u32| ((sum as u64 * inv + (1 << 23)) >> 24).min(255) as u8;
+
+		// Horizontal: data -> tmp, one running sum per row.
+		for (src, dst) in data.chunks_exact(width).zip(tmp.chunks_exact_mut(width)) {
+			let mut sum: u32 = src[..=r.min(width - 1)].iter().map(|&v| v as u32).sum();
+			for x in 0..width {
+				dst[x] = div(sum);
+				if x + r + 1 < width {
+					sum += src[x + r + 1] as u32;
+				}
+				if x >= r {
+					sum -= src[x - r] as u32;
+				}
+			}
+		}
+
+		// Vertical: tmp -> data, walking rows with a running sum per column.
+		sums.iter_mut().for_each(|s| *s = 0);
+		for row in tmp.chunks_exact(width).take(r + 1) {
+			for (s, &v) in sums.iter_mut().zip(row) {
+				*s += v as u32;
+			}
+		}
+		for y in 0..height {
+			let out = &mut data[y * width..(y + 1) * width];
+			for (o, &s) in out.iter_mut().zip(&sums) {
+				*o = div(s);
+			}
+			if y + r + 1 < height {
+				let add = &tmp[(y + r + 1) * width..][..width];
+				for (s, &v) in sums.iter_mut().zip(add) {
+					*s += v as u32;
+				}
+			}
+			if y >= r {
+				let sub = &tmp[(y - r) * width..][..width];
+				for (s, &v) in sums.iter_mut().zip(sub) {
+					*s -= v as u32;
+				}
+			}
+		}
+	}
+}
+
 #[cfg(test)]
 mod tests {
 	use super::*;
+
+	#[test]
+	fn a8_blur_matches_rgba_alpha() {
+		let (w, h) = (37, 29);
+		let mut rgba = vec![0u8; w * h * 4];
+		let mut a8 = vec![0u8; w * h];
+		for y in 10..19 {
+			for x in 8..25 {
+				rgba[(y * w + x) * 4 + 3] = 200;
+				a8[y * w + x] = 200;
+			}
+		}
+		gaussian_blur_rgba(&mut rgba, w, h, 2.5);
+		gaussian_blur_a8(&mut a8, w, h, 2.5);
+		for i in 0..w * h {
+			assert_eq!(rgba[i * 4 + 3], a8[i], "pixel {i}");
+		}
+	}
 
 	#[test]
 	fn blur_spreads_and_roughly_preserves_energy() {

@@ -1,6 +1,6 @@
 //! Port of `BarGauge`: horizontal segmented bar with a segment readout.
 
-use tiny_skia::Pixmap;
+use crate::canvas::Sprite;
 
 use crate::canvas::{rect, Blur, Canvas, Paint};
 use crate::color::Rgba;
@@ -12,6 +12,8 @@ const Y: f32 = 210.0;
 const WIDTH: f32 = 500.0;
 const HEIGHT: f32 = 60.0;
 
+const GLOW_PAD: i32 = (SHADOW_BLUR * 3.0) as i32 + 2;
+
 pub struct BarGauge {
 	base: GaugeBase,
 	current_value: f32,
@@ -20,9 +22,9 @@ pub struct BarGauge {
 	segment_width: f32,
 	value_display: SegmentDisplay,
 	size: (u32, u32),
-	static_layer: Option<Pixmap>,
+	static_layer: Option<Sprite>,
 	/// Active segments are cached by (count, colour): their glow is the expensive part.
-	active_layer: Option<(usize, Rgba, Pixmap)>,
+	active_layer: Option<(usize, Rgba, Sprite)>,
 }
 
 impl BarGauge {
@@ -104,14 +106,20 @@ impl Gauge for BarGauge {
 			self.update_static();
 		}
 		if let Some(p) = &self.static_layer {
-			canvas.draw_pixmap(p, 0, 0);
+			canvas.draw_sprite(p);
 		}
 
 		let active_segs = (self.base.fraction(self.current_value) * self.segment_count as f32).round() as usize;
 		let stale = !matches!(&self.active_layer, Some((n, c, _)) if *n == active_segs && *c == active);
 		if stale {
 			let rects: Vec<_> = (0..active_segs).filter_map(|i| self.segment_rect(i)).collect();
-			let layer = render_static(self.size.0, self.size.1, |c| {
+			let (rx, ry, rw, rh) = (
+				X as i32 - GLOW_PAD,
+				Y as i32 - GLOW_PAD,
+				(WIDTH as i32 + 2 * GLOW_PAD) as u32,
+				(HEIGHT as i32 + 2 * GLOW_PAD) as u32,
+			);
+			let layer = Sprite::render_in(rx, ry, rw, rh, |c| {
 				let paint = Paint::fill(active);
 				for r in rects {
 					c.draw_rect_with_blur(r, &paint, Blur::normal(SHADOW_BLUR));
@@ -120,7 +128,7 @@ impl Gauge for BarGauge {
 			self.active_layer = Some((active_segs, active, layer));
 		}
 		if let Some((_, _, p)) = &self.active_layer {
-			canvas.draw_pixmap(p, 0, 0);
+			canvas.draw_sprite(p);
 		}
 
 		self.value_display.set_value(self.base.value);
