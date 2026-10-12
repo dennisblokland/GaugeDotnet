@@ -25,6 +25,8 @@ namespace GaugeDotnet.Gauges
         private const float CENTER_Y = 243f;
         private const float BEZEL_RADIUS = 207f;
         private const float BEZEL_WIDTH = 17f;
+        private const float BEZEL_FADE_START = 0.15f;
+        private const float BEZEL_FADE_END = 0.3f;
         private const float START_ANGLE_DEG = 90f;
         private const float SWEEP_DEG = 270f;
         private const int MAJOR_COUNT = 6;
@@ -73,60 +75,77 @@ namespace GaugeDotnet.Gauges
             return (START_ANGLE_DEG + fraction * SWEEP_DEG) * MathF.PI / 180f;
         }
 
-        /// <summary>Bezel thickness along the sweep: tapers to nothing at both ends.</summary>
-        private static float BezelWidthAt(float u)
+        private static float SmoothStep(float t)
         {
-            static float SmoothStep(float t)
-            {
-                t = Math.Clamp(t, 0f, 1f);
-                return t * t * (3f - 2f * t);
-            }
-            return BEZEL_WIDTH * SmoothStep(u / 0.12f) * SmoothStep((1f - u) / 0.3f);
+            t = Math.Clamp(t, 0f, 1f);
+            return t * t * (3f - 2f * t);
         }
 
-        /// <summary>Crescent between the bezel's outer edge and <paramref name="depth"/> × its width.</summary>
-        private static SKPath BezelPath(float depth)
+        /// <summary>Bezel opacity at a point: full along the scale, fading out towards both ends.</summary>
+        private static float BezelFade(float x, float y)
         {
-            const int steps = 270;
-            SKPath path = new();
-            for (int i = 0; i <= steps; i++)
+            float deg = MathF.Atan2(y - CENTER_Y, x - CENTER_X) * 180f / MathF.PI;
+            float u = (((deg - START_ANGLE_DEG) % 360f) + 360f) % 360f / SWEEP_DEG;
+            if (u > 1f)
             {
-                float u = (float)i / steps;
-                float a = AngleFor(u);
-                float x = CENTER_X + MathF.Cos(a) * BEZEL_RADIUS;
-                float y = CENTER_Y + MathF.Sin(a) * BEZEL_RADIUS;
-                if (i == 0)
+                return 0f;
+            }
+            return SmoothStep(u / BEZEL_FADE_START) * SmoothStep((1f - u) / BEZEL_FADE_END);
+        }
+
+        /// <summary>
+        /// Grey ring with a lighter outer rim along the scale. It is drawn into its own
+        /// layer whose alpha is then scaled per pixel by <see cref="BezelFade"/>.
+        /// </summary>
+        private void DrawBezel(SKCanvas target, int width, int height)
+        {
+            using SKBitmap layer = new(width, height, SKColorType.Rgba8888, SKAlphaType.Premul);
+            using (SKCanvas canvas = new(layer))
+            {
+                canvas.Clear(SKColors.Transparent);
+                float bodyR = BEZEL_RADIUS - BEZEL_WIDTH / 2f;
+                _strokePaint.Color = BezelColor;
+                _strokePaint.StrokeWidth = BEZEL_WIDTH;
+                canvas.DrawArc(new SKRect(CENTER_X - bodyR, CENTER_Y - bodyR, CENTER_X + bodyR, CENTER_Y + bodyR),
+                    START_ANGLE_DEG, SWEEP_DEG, false, _strokePaint);
+                float rimR = BEZEL_RADIUS - BEZEL_WIDTH * 0.2f;
+                _strokePaint.Color = BezelHighlight;
+                _strokePaint.StrokeWidth = BEZEL_WIDTH * 0.4f;
+                canvas.DrawArc(new SKRect(CENTER_X - rimR, CENTER_Y - rimR, CENTER_X + rimR, CENTER_Y + rimR),
+                    START_ANGLE_DEG, SWEEP_DEG, false, _strokePaint);
+            }
+
+            Span<byte> pixels = layer.GetPixelSpan();
+            for (int y = 0; y < height; y++)
+            {
+                for (int x = 0; x < width; x++)
                 {
-                    path.MoveTo(x, y);
-                }
-                else
-                {
-                    path.LineTo(x, y);
+                    int i = (y * width + x) * 4;
+                    if (pixels[i + 3] == 0)
+                    {
+                        continue;
+                    }
+                    float fade = BezelFade(x + 0.5f, y + 0.5f);
+                    for (int c = 0; c < 4; c++)
+                    {
+                        pixels[i + c] = (byte)(pixels[i + c] * fade + 0.5f);
+                    }
                 }
             }
-            for (int i = steps; i >= 0; i--)
-            {
-                float u = (float)i / steps;
-                float a = AngleFor(u);
-                float r = BEZEL_RADIUS - BezelWidthAt(u) * depth;
-                path.LineTo(CENTER_X + MathF.Cos(a) * r, CENTER_Y + MathF.Sin(a) * r);
-            }
-            path.Close();
-            return path;
+            target.DrawBitmap(layer, 0, 0);
         }
 
         /// <summary>
         /// Draws text stretched by <paramref name="scaleX"/>, slanted by <paramref name="skew"/>
         /// and with extra <paramref name="spacing"/> between letters; y is the baseline.
-        /// Returns the drawn width.
         /// </summary>
-        private static float DrawStyledText(
+        private static void DrawStyledText(
             SKCanvas canvas, string text, float x, float y, SKTextAlign align,
             SKFont font, SKPaint paint, float scaleX, float skew, float spacing)
         {
             if (string.IsNullOrEmpty(text))
             {
-                return 0f;
+                return;
             }
 
             float width = spacing * (text.Length - 1);
@@ -153,24 +172,13 @@ namespace GaugeDotnet.Gauges
                 pen += font.MeasureText(s) + spacing;
             }
             canvas.Restore();
-            return width * scaleX;
         }
 
         private void UpdateStaticBackground(int screenWidth, int screenHeight)
         {
             DrawBackground(_staticCanvas, screenWidth, screenHeight);
 
-            // Bezel: grey crescent with a lighter outer rim.
-            using (SKPath body = BezelPath(1f))
-            {
-                _fillPaint.Color = BezelColor;
-                _staticCanvas.DrawPath(body, _fillPaint);
-            }
-            using (SKPath rim = BezelPath(0.4f))
-            {
-                _fillPaint.Color = BezelHighlight;
-                _staticCanvas.DrawPath(rim, _fillPaint);
-            }
+            DrawBezel(_staticCanvas, screenWidth, screenHeight);
 
             // Major ticks and labels.
             _strokePaint.Color = TextColor;
@@ -237,44 +245,7 @@ namespace GaugeDotnet.Gauges
             DrawStyledText(_staticCanvas, Unit, RIGHT_EDGE - 4f, 452f,
                 SKTextAlign.Right, unitFont, _boldTextPaint, 1.05f, -0.2f, 7f);
 
-            DrawBadge(_staticCanvas);
-            DrawLogo(_staticCanvas);
-
             StaticCacheValid = true;
-        }
-
-        /// <summary>Slanted, outlined badge in the top-left corner.</summary>
-        private void DrawBadge(SKCanvas canvas)
-        {
-            canvas.Save();
-            canvas.Translate(26f, 68f);
-            canvas.Skew(-0.2f, 0f);
-            _strokePaint.Color = TextColor;
-            _strokePaint.StrokeWidth = 2.5f;
-            canvas.DrawRoundRect(new SKRect(4f, -32f, 58f, 0f), 9f, 9f, _strokePaint);
-            canvas.Restore();
-
-            using SKFont badgeFont = new(_font, 21f);
-            _boldTextPaint.Color = TextColor;
-            _boldTextPaint.StrokeWidth = 1f;
-            DrawStyledText(canvas, "GDN", 58f, 60f, SKTextAlign.Center, badgeFont, _boldTextPaint, 1f, -0.2f, 1f);
-        }
-
-        /// <summary>Small italic maker mark with speed stripes in the bottom-left corner.</summary>
-        private void DrawLogo(SKCanvas canvas)
-        {
-            using SKFont logoFont = new(_font, 24f);
-            _boldTextPaint.Color = TextColor;
-            _boldTextPaint.StrokeWidth = 1.2f;
-            float logoWidth = DrawStyledText(canvas, "Gauge", 30f, 458f, SKTextAlign.Left, logoFont, _boldTextPaint, 1f, -0.25f, 0f);
-
-            _fillPaint.Color = TextColor;
-            for (int i = 0; i < 3; i++)
-            {
-                float y = 442f + i * 6f;
-                float x = 34f + logoWidth - i * 1.2f;
-                canvas.DrawRect(new SKRect(x, y, x + 18f, y + 3f), _fillPaint);
-            }
         }
 
         public override void Draw(SKCanvas canvas)

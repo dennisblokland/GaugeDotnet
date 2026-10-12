@@ -1,7 +1,7 @@
 //! Port of `DialGauge`: handheld-style boost display with a 270° dial on the
 //! left and a stacked title, status text and a large italic readout on the right.
 
-use tiny_skia::PathBuilder;
+use tiny_skia::{PathBuilder, PremultipliedColorU8};
 
 use crate::canvas::{rect, Canvas, Paint, Sprite};
 use crate::color::Rgba;
@@ -12,6 +12,8 @@ const CENTER_X: f32 = 221.0;
 const CENTER_Y: f32 = 243.0;
 const BEZEL_RADIUS: f32 = 207.0;
 const BEZEL_WIDTH: f32 = 17.0;
+const BEZEL_FADE_START: f32 = 0.15;
+const BEZEL_FADE_END: f32 = 0.3;
 const START_ANGLE_DEG: f32 = 90.0;
 const SWEEP_DEG: f32 = 270.0;
 const MAJOR_COUNT: usize = 6;
@@ -44,38 +46,45 @@ fn angle_for(fraction: f32) -> f32 {
 	(START_ANGLE_DEG + fraction * SWEEP_DEG).to_radians()
 }
 
-/// Bezel thickness along the sweep: tapers to nothing at both ends.
-fn bezel_width_at(u: f32) -> f32 {
-	let smooth = |t: f32| {
-		let t = t.clamp(0.0, 1.0);
-		t * t * (3.0 - 2.0 * t)
-	};
-	BEZEL_WIDTH * smooth(u / 0.12) * smooth((1.0 - u) / 0.3)
+fn smooth_step(t: f32) -> f32 {
+	let t = t.clamp(0.0, 1.0);
+	t * t * (3.0 - 2.0 * t)
 }
 
-/// Crescent between the bezel's outer edge and `depth` × its width.
-fn draw_bezel(c: &mut Canvas, depth: f32, color: Rgba) {
-	const STEPS: usize = 270;
-	let mut pb = PathBuilder::new();
-	for i in 0..=STEPS {
-		let a = angle_for(i as f32 / STEPS as f32);
-		let (x, y) = (CENTER_X + a.cos() * BEZEL_RADIUS, CENTER_Y + a.sin() * BEZEL_RADIUS);
-		if i == 0 {
-			pb.move_to(x, y);
-		} else {
-			pb.line_to(x, y);
+/// Bezel opacity at a point: full along the scale, fading out towards both ends.
+fn bezel_fade(x: f32, y: f32) -> f32 {
+	let deg = (y - CENTER_Y).atan2(x - CENTER_X).to_degrees();
+	let u = (deg - START_ANGLE_DEG).rem_euclid(360.0) / SWEEP_DEG;
+	if u > 1.0 {
+		return 0.0;
+	}
+	smooth_step(u / BEZEL_FADE_START) * smooth_step((1.0 - u) / BEZEL_FADE_END)
+}
+
+/// Grey ring with a lighter outer rim along the scale. It is drawn into its
+/// own layer whose alpha is then scaled per pixel by [`bezel_fade`].
+fn draw_bezel(target: &mut Canvas) {
+	let (width, height) = (target.width(), target.height());
+	let mut layer = Canvas::new(width, height);
+	let arc = |c: &mut Canvas, r: f32, stroke: f32, color: Rgba| {
+		if let Some(oval) = rect(CENTER_X - r, CENTER_Y - r, CENTER_X + r, CENTER_Y + r) {
+			c.draw_arc(oval, START_ANGLE_DEG, SWEEP_DEG, &Paint::stroke(color, stroke));
 		}
+	};
+	arc(&mut layer, BEZEL_RADIUS - BEZEL_WIDTH / 2.0, BEZEL_WIDTH, BEZEL_COLOR);
+	arc(&mut layer, BEZEL_RADIUS - BEZEL_WIDTH * 0.2, BEZEL_WIDTH * 0.4, BEZEL_HIGHLIGHT);
+
+	for (i, px) in layer.pixmap_mut().pixels_mut().iter_mut().enumerate() {
+		if px.alpha() == 0 {
+			continue;
+		}
+		let (x, y) = ((i as u32 % width) as f32 + 0.5, (i as u32 / width) as f32 + 0.5);
+		let fade = bezel_fade(x, y);
+		let scale = |v: u8| (v as f32 * fade + 0.5) as u8;
+		*px = PremultipliedColorU8::from_rgba(scale(px.red()), scale(px.green()), scale(px.blue()), scale(px.alpha()))
+			.unwrap_or(PremultipliedColorU8::TRANSPARENT);
 	}
-	for i in (0..=STEPS).rev() {
-		let u = i as f32 / STEPS as f32;
-		let a = angle_for(u);
-		let r = BEZEL_RADIUS - bezel_width_at(u) * depth;
-		pb.line_to(CENTER_X + a.cos() * r, CENTER_Y + a.sin() * r);
-	}
-	pb.close();
-	if let Some(path) = pb.finish() {
-		c.draw_path(&path, &Paint::fill(color));
-	}
+	target.draw_pixmap(layer.pixmap(), 0, 0);
 }
 
 /// Text style: `bold` is the outline width added around each glyph
@@ -89,7 +98,7 @@ struct TextStyle {
 	spacing: f32,
 }
 
-/// `DialGauge.DrawStyledText`; `y` is the baseline. Returns the drawn width.
+/// `DialGauge.DrawStyledText`; `y` is the baseline.
 #[allow(clippy::too_many_arguments)]
 fn draw_styled_text(
 	c: &mut Canvas,
@@ -100,10 +109,10 @@ fn draw_styled_text(
 	font: &Typeface,
 	style: &TextStyle,
 	color: Rgba,
-) -> f32 {
+) {
 	let count = text.chars().count();
 	if count == 0 {
-		return 0.0;
+		return;
 	}
 	let mut buf = [0u8; 4];
 	let advance = |ch: char, buf: &mut [u8; 4]| font.measure(ch.encode_utf8(buf), style.size);
@@ -129,7 +138,6 @@ fn draw_styled_text(
 		pen += font.measure(s, style.size) + style.spacing;
 	}
 	c.restore();
-	width * style.scale_x
 }
 
 impl DialGauge {
@@ -151,9 +159,7 @@ impl DialGauge {
 			draw_background(c);
 			let font = typeface("Aldrich");
 
-			// Bezel: grey crescent with a lighter outer rim.
-			draw_bezel(c, 1.0, BEZEL_COLOR);
-			draw_bezel(c, 0.4, BEZEL_HIGHLIGHT);
+			draw_bezel(c);
 
 			// Major ticks and labels.
 			let tick = Paint::stroke(TEXT_COLOR, 4.0);
@@ -212,34 +218,8 @@ impl DialGauge {
 			// Unit below the readout.
 			let unit_style = TextStyle { size: 44.0, ..title_style };
 			draw_styled_text(c, &base.unit, RIGHT_EDGE - 4.0, 452.0, TextAlign::Right, font, &unit_style, TEXT_COLOR);
-
-			draw_badge(c, font);
-			draw_logo(c, font);
 		}));
 		self.base.static_cache_valid = true;
-	}
-}
-
-/// Slanted, outlined badge in the top-left corner.
-fn draw_badge(c: &mut Canvas, font: &Typeface) {
-	c.save();
-	c.translate(26.0, 68.0);
-	c.skew(-0.2, 0.0);
-	if let Some(r) = rect(4.0, -32.0, 58.0, 0.0) {
-		c.draw_round_rect(r, 9.0, 9.0, &Paint::stroke(TEXT_COLOR, 2.5));
-	}
-	c.restore();
-	let style = TextStyle { size: 21.0, bold: 1.0, scale_x: 1.0, skew: -0.2, spacing: 1.0 };
-	draw_styled_text(c, "GDN", 58.0, 60.0, TextAlign::Center, font, &style, TEXT_COLOR);
-}
-
-/// Small italic maker mark with speed stripes in the bottom-left corner.
-fn draw_logo(c: &mut Canvas, font: &Typeface) {
-	let style = TextStyle { size: 24.0, bold: 1.2, scale_x: 1.0, skew: -0.25, spacing: 0.0 };
-	let width = draw_styled_text(c, "Gauge", 30.0, 458.0, TextAlign::Left, font, &style, TEXT_COLOR);
-	for i in 0..3 {
-		let (x, y) = (34.0 + width - i as f32 * 1.2, 442.0 + i as f32 * 6.0);
-		c.draw_rect_xywh(x, y, 18.0, 3.0, &Paint::fill(TEXT_COLOR));
 	}
 }
 
