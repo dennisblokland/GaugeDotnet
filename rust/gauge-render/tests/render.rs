@@ -236,3 +236,23 @@ fn incremental_and_threaded_renders_match_full_render() {
 	assert!(damages[3] < 640 * 480 / 3, "small rpm move repainted {} px", damages[3]);
 	assert!(damages[2] < damages[6], "an AFR-only change is smaller than an everything change");
 }
+
+#[test]
+fn dial_needle_follows_the_270_degree_scale() {
+	// -10..20 sweeps clockwise from 6 o'clock to 3 o'clock around (221, 243).
+	let config = GaugeConfig {
+		gauge_type: GaugeType::Dial,
+		min_value: -10.0,
+		max_value: 20.0,
+		smoothing: false,
+		..GaugeConfig::default()
+	};
+	let needle = Rgba::rgb(0xF0, 0x28, 0x48);
+	for (value, (x, y)) in [(0.0, (141, 243)), (10.0, (221, 163)), (20.0, (301, 243))] {
+		let mut gauge = gauges::create_gauge(&config, 640, 480);
+		let mut canvas = Canvas::new(640, 480);
+		gauge.set_value(value);
+		gauge.draw(&mut canvas);
+		assert!(close(canvas.pixel(x, y).unwrap(), needle, 4), "value {value}: no needle at ({x}, {y})");
+	}
+}

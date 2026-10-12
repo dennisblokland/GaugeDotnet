@@ -13,6 +13,7 @@ namespace GaugeDotnet.Configuration
         Sweep,
         MinMax,
         Grid,
-        Custom
+        Custom,
+        Dial
     }
 }

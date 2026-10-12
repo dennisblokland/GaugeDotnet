@@ -8,7 +8,7 @@ Real-time automotive gauge display for the [RG35XX](https://anbernic.com) handhe
 
 - Live gauge rendering at 60 fps via SDL2 + OpenGL ES 2.0
 - BLE connection to Motorsports Electronics ECU (CAN bus frames ME1_1–ME1_8)
-- Multiple built-in gauge styles: circular, sweep, needle, bar, digital, histogram, min/max, grid
+- Multiple built-in gauge styles: circular, sweep, needle, dial, bar, digital, histogram, min/max, grid
 - **Custom gauge designer** — drag-and-drop Avalonia desktop app that exports JSON definitions for the device
 - 17 custom element types: arcs, zone arcs, needles (with image support), text, value displays, label+value boxes, tick rings, bars, warning indicators, images, value-driven gifs, clocks, mini graphs, peak markers, and more
 - **Calculated channels** — define virtual data sources as math expressions (`Rpm / 1000`, `OilTemp - Iat`) evaluated each frame
@@ -92,6 +92,16 @@ Publishes a self-contained linux-arm64 binary and SCPs it to the RG35XX.
 - **BaseGauge** subclasses use a static cache pattern: inactive segments drawn once to bitmap, active segments redrawn per-frame
 - **MeDevice** / **SimulatedMeDevice** implement `IMeDevice` — `#if DEBUG` uses the simulated device to bypass BLE
 - **CanDecoder** dispatches CAN frames by PID to typed structs; `MEData` aggregates all decoded values
+
+## Dial Gauge
+
+`"Type": "Dial"` is a handheld-style boost display: a 270° dial on the left (−10 at 6 o'clock, sweeping clockwise to the maximum at 3 o'clock) and a large italic readout on the right. The title is split into one word per line, and `Unit` goes under the readout. `ColorHex` is ignored, because the dial has a fixed white, grey and red palette.
+
+```json
+{ "Gauge": { "Type": "Dial", "DataSource": "Map", "Title": "Boost Press.", "Unit": "Psi", "MinValue": -10, "MaxValue": 20, "Decimals": 1 } }
+```
+
+![Dial gauge](docs/dial-gauge.png)
 
 ## Custom Gauge System
 

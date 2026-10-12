@@ -86,6 +86,18 @@ namespace GaugeDotnet.Gauges
                         Smoothing = config.Smoothing,
                     }, screenWidth, screenHeight),
 
+                GaugeType.Dial => new DialGauge(
+                    new DialGaugeSettings
+                    {
+                        InitialValue = config.InitialValue,
+                        MinValue = config.MinValue,
+                        MaxValue = config.MaxValue,
+                        Unit = config.Unit,
+                        Title = config.Title,
+                        Decimals = config.Decimals,
+                        Smoothing = config.Smoothing,
+                    }, screenWidth, screenHeight),
+
                 GaugeType.Digital => new DigitalGauge(
                     new DigitalGaugeSettings
                     {

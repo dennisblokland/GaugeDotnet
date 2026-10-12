@@ -533,6 +533,11 @@ impl Canvas {
 		self.state.transform = self.state.transform.pre_scale(sx, sy);
 	}
 
+	/// `SKCanvas.Skew`: `x' = x + kx * y`, `y' = y + ky * x`.
+	pub fn skew(&mut self, kx: f32, ky: f32) {
+		self.state.transform = self.state.transform.pre_concat(Transform::from_skew(kx, ky));
+	}
+
 	pub fn transform(&self) -> Transform {
 		self.state.transform
 	}

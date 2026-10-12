@@ -4,6 +4,7 @@
 mod bar;
 mod circular;
 mod config;
+mod dial;
 mod digital;
 mod grid;
 mod histogram;
@@ -15,6 +16,7 @@ mod sweep;
 pub use bar::BarGauge;
 pub use circular::CircularGauge;
 pub use config::{AppConfig, GaugeConfig, GaugeType, GridCellConfig, ScreenConfig};
+pub use dial::DialGauge;
 pub use digital::DigitalGauge;
 pub use grid::GridGauge;
 pub use histogram::HistogramGauge;
@@ -185,6 +187,7 @@ pub fn create_gauge(config: &GaugeConfig, width: u32, height: u32) -> Box<dyn Ga
 		GaugeType::Circular => Box::new(CircularGauge::new(config, width, height)),
 		GaugeType::Histogram => Box::new(HistogramGauge::new(config, width, height)),
 		GaugeType::Needle => Box::new(NeedleGauge::new(config, width, height)),
+		GaugeType::Dial => Box::new(DialGauge::new(config, width, height)),
 		GaugeType::Digital => Box::new(DigitalGauge::new(config, width, height)),
 		GaugeType::Sweep => Box::new(SweepGauge::new(config, width, height)),
 		GaugeType::MinMax => Box::new(MinMaxGauge::new(config, width, height)),

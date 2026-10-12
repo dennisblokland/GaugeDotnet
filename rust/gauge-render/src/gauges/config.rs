@@ -14,10 +14,11 @@ pub enum GaugeType {
 	MinMax,
 	Grid,
 	Custom,
+	Dial,
 }
 
 impl GaugeType {
-	pub const ALL: [GaugeType; 9] = [
+	pub const ALL: [GaugeType; 10] = [
 		Self::Bar,
 		Self::Circular,
 		Self::Histogram,
@@ -27,6 +28,7 @@ impl GaugeType {
 		Self::MinMax,
 		Self::Grid,
 		Self::Custom,
+		Self::Dial,
 	];
 
 	/// The C# enum name (also its JSON spelling).
@@ -41,6 +43,7 @@ impl GaugeType {
 			Self::MinMax => "MinMax",
 			Self::Grid => "Grid",
 			Self::Custom => "Custom",
+			Self::Dial => "Dial",
 		}
 	}
 

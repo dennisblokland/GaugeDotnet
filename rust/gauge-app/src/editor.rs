@@ -78,7 +78,7 @@ fn fields_for(gauge: &GaugeConfig) -> Vec<Field> {
 	let extra: &[Field] = match gauge.gauge_type {
 		GaugeType::Bar | GaugeType::Circular | GaugeType::MinMax => &[SegmentCount, Smoothing],
 		GaugeType::Histogram => &[MaxDataPoints, IntervalMs],
-		GaugeType::Needle | GaugeType::Sweep => &[Smoothing],
+		GaugeType::Needle | GaugeType::Sweep | GaugeType::Dial => &[Smoothing],
 		GaugeType::Grid => return std::iter::once(Type).chain((0..gauge.cells.len()).map(Cell)).collect(),
 		GaugeType::Digital | GaugeType::Custom => &[],
 	};
