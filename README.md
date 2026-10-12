@@ -95,7 +95,7 @@ Publishes a self-contained linux-arm64 binary and SCPs it to the RG35XX.
 
 ## Dial Gauge
 
-`"Type": "Dial"` is a handheld-style boost display: a 270° dial on the left (−10 at 6 o'clock, sweeping clockwise to the maximum at 3 o'clock) and a large italic readout on the right. The title is split into one word per line, and `Unit` goes under the readout. `ColorHex` is ignored, because the dial has a fixed white, grey and red palette.
+`"Type": "Dial"` is a handheld-style boost display: a 270° dial on the left (the minimum at 6 o'clock, sweeping clockwise to the maximum at 3 o'clock) and a large italic readout on the right. The title is split into one word per line, and `Unit` goes under the readout. `ColorHex` is ignored, because the dial has a fixed white, grey and red palette.
 
 ```json
 { "Gauge": { "Type": "Dial", "DataSource": "Map", "Title": "Boost Press.", "Unit": "Psi", "MinValue": -10, "MaxValue": 20, "Decimals": 1 } }
