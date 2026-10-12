@@ -25,8 +25,8 @@ namespace GaugeDotnet.Gauges
         private const float CENTER_Y = 243f;
         private const float BEZEL_RADIUS = 207f;
         private const float BEZEL_WIDTH = 17f;
-        private const float BEZEL_OVERHANG_DEG = 25f;
-        private const float BEZEL_FADE_DEG = 20f;
+        private const float BEZEL_OVERHANG_DEG = 18f;
+        private const float BEZEL_FADE_DEG = 15f;
         private const float BEZEL_START_DEG = START_ANGLE_DEG - BEZEL_OVERHANG_DEG;
         private const float BEZEL_SWEEP_DEG = SWEEP_DEG + 2f * BEZEL_OVERHANG_DEG;
         private const float START_ANGLE_DEG = 90f;
