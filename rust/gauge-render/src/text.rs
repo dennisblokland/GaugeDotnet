@@ -1,7 +1,7 @@
 //! Font loading, measuring and glyph-outline generation (the `FontHelper` +
 //! `SKFont` part of the C# renderer).
 //!
-//! The four bundled fonts from `src/GaugeDotnet/fonts` are embedded into the
+//! The bundled fonts from `src/GaugeDotnet/fonts` are embedded into the
 //! binary, so the renderer does not depend on a `fonts/` folder at runtime.
 
 use std::sync::OnceLock;
@@ -119,6 +119,8 @@ struct FontSet {
 	race_sport: Typeface,
 	dseg7: Typeface,
 	dseg14: Typeface,
+	aldrich: Typeface,
+	saira_xc: Typeface,
 }
 
 fn fonts() -> &'static FontSet {
@@ -136,6 +138,11 @@ fn fonts() -> &'static FontSet {
 		dseg14: Typeface::load(
 			"DSEG14 Classic",
 			include_bytes!("../../../src/GaugeDotnet/fonts/DSEG14Classic-Regular.ttf"),
+		),
+		aldrich: Typeface::load("Aldrich", include_bytes!("../../../src/GaugeDotnet/fonts/Aldrich-Regular.ttf")),
+		saira_xc: Typeface::load(
+			"Saira Extra Condensed",
+			include_bytes!("../../../src/GaugeDotnet/fonts/SairaExtraCondensed-SemiBold.ttf"),
 		),
 	})
 }
@@ -155,12 +162,15 @@ pub fn typeface(key: &str) -> &'static Typeface {
 		"DSEG7 Classic" => &f.dseg7,
 		"Race Sport" => &f.race_sport,
 		"Barlow Condensed" => &f.barlow,
+		"Aldrich" => &f.aldrich,
+		"Saira Extra Condensed" => &f.saira_xc,
 		_ => &f.barlow,
 	}
 }
 
 /// Font keys available to gauge definitions.
-pub const FONT_KEYS: [&str; 4] = ["DSEG14 Classic", "DSEG7 Classic", "Race Sport", "Barlow Condensed"];
+pub const FONT_KEYS: [&str; 6] =
+	["DSEG14 Classic", "DSEG7 Classic", "Race Sport", "Barlow Condensed", "Aldrich", "Saira Extra Condensed"];
 
 #[cfg(test)]
 mod tests {

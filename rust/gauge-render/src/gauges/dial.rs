@@ -89,7 +89,7 @@ struct TextStyle {
 	spacing: f32,
 }
 
-/// `DialGauge.DrawStyledText`; `y` is the baseline.
+/// `DialGauge.DrawStyledText`; `y` is the baseline. Returns the drawn width.
 #[allow(clippy::too_many_arguments)]
 fn draw_styled_text(
 	c: &mut Canvas,
@@ -100,10 +100,10 @@ fn draw_styled_text(
 	font: &Typeface,
 	style: &TextStyle,
 	color: Rgba,
-) {
+) -> f32 {
 	let count = text.chars().count();
 	if count == 0 {
-		return;
+		return 0.0;
 	}
 	let mut buf = [0u8; 4];
 	let advance = |ch: char, buf: &mut [u8; 4]| font.measure(ch.encode_utf8(buf), style.size);
@@ -129,6 +129,7 @@ fn draw_styled_text(
 		pen += font.measure(s, style.size) + style.spacing;
 	}
 	c.restore();
+	width * style.scale_x
 }
 
 impl DialGauge {
@@ -148,7 +149,7 @@ impl DialGauge {
 		let base = self.base.clone();
 		self.static_layer = Some(render_static(self.size.0, self.size.1, |c| {
 			draw_background(c);
-			let font = typeface("Barlow Condensed");
+			let font = typeface("Aldrich");
 
 			// Bezel: grey crescent with a lighter outer rim.
 			draw_bezel(c, 1.0, BEZEL_COLOR);
@@ -156,7 +157,7 @@ impl DialGauge {
 
 			// Major ticks and labels.
 			let tick = Paint::stroke(TEXT_COLOR, 4.0);
-			let label_style = TextStyle { size: 38.0, bold: 1.8, scale_x: 1.25, skew: 0.0, spacing: 1.0 };
+			let label_style = TextStyle { size: 36.0, bold: 1.0, scale_x: 1.0, skew: 0.0, spacing: 0.0 };
 			for i in 0..=MAJOR_COUNT {
 				let fraction = i as f32 / MAJOR_COUNT as f32;
 				let (sin, cos) = angle_for(fraction).sin_cos();
@@ -188,7 +189,7 @@ impl DialGauge {
 			}
 
 			// Title, one word per line, right aligned.
-			let title_style = TextStyle { size: 50.0, bold: 2.2, scale_x: 1.55, skew: -0.2, spacing: 5.0 };
+			let title_style = TextStyle { size: 50.0, bold: 1.4, scale_x: 1.05, skew: -0.2, spacing: 7.0 };
 			for (i, word) in base.title.split_whitespace().take(2).enumerate() {
 				draw_styled_text(
 					c,
@@ -203,13 +204,13 @@ impl DialGauge {
 			}
 
 			// Status block.
-			let status_style = TextStyle { size: 27.0, bold: 0.8, scale_x: 1.45, skew: 0.0, spacing: 3.0 };
+			let status_style = TextStyle { size: 26.0, bold: 0.0, scale_x: 1.0, skew: 0.0, spacing: 6.0 };
 			draw_styled_text(c, "Datalog:", RIGHT_EDGE, 222.0, TextAlign::Right, font, &status_style, STATUS_COLOR);
 			draw_styled_text(c, "Stop", RIGHT_EDGE - 22.0, 246.0, TextAlign::Right, font, &status_style, STATUS_COLOR);
 			c.draw_circle(RIGHT_EDGE - 7.0, 238.0, 6.0, &Paint::fill(STATUS_DOT_COLOR));
 
 			// Unit below the readout.
-			let unit_style = TextStyle { scale_x: 1.5, ..title_style };
+			let unit_style = TextStyle { size: 44.0, ..title_style };
 			draw_styled_text(c, &base.unit, RIGHT_EDGE - 4.0, 452.0, TextAlign::Right, font, &unit_style, TEXT_COLOR);
 
 			draw_badge(c, font);
@@ -228,16 +229,16 @@ fn draw_badge(c: &mut Canvas, font: &Typeface) {
 		c.draw_round_rect(r, 9.0, 9.0, &Paint::stroke(TEXT_COLOR, 2.5));
 	}
 	c.restore();
-	let style = TextStyle { size: 26.0, bold: 1.0, scale_x: 1.2, skew: -0.2, spacing: 1.0 };
-	draw_styled_text(c, "GDN", 58.0, 62.0, TextAlign::Center, font, &style, TEXT_COLOR);
+	let style = TextStyle { size: 21.0, bold: 1.0, scale_x: 1.0, skew: -0.2, spacing: 1.0 };
+	draw_styled_text(c, "GDN", 58.0, 60.0, TextAlign::Center, font, &style, TEXT_COLOR);
 }
 
 /// Small italic maker mark with speed stripes in the bottom-left corner.
 fn draw_logo(c: &mut Canvas, font: &Typeface) {
-	let style = TextStyle { size: 28.0, bold: 1.6, scale_x: 1.1, skew: -0.25, spacing: 0.0 };
-	draw_styled_text(c, "Gauge", 30.0, 458.0, TextAlign::Left, font, &style, TEXT_COLOR);
+	let style = TextStyle { size: 24.0, bold: 1.2, scale_x: 1.0, skew: -0.25, spacing: 0.0 };
+	let width = draw_styled_text(c, "Gauge", 30.0, 458.0, TextAlign::Left, font, &style, TEXT_COLOR);
 	for i in 0..3 {
-		let (x, y) = (96.0 - i as f32 * 1.2, 442.0 + i as f32 * 6.0);
+		let (x, y) = (34.0 + width - i as f32 * 1.2, 442.0 + i as f32 * 6.0);
 		c.draw_rect_xywh(x, y, 18.0, 3.0, &Paint::fill(TEXT_COLOR));
 	}
 }
@@ -280,14 +281,14 @@ impl Gauge for DialGauge {
 
 		// Digital readout.
 		let text = crate::format::format_number(self.base.value, &format!("F{}", self.decimals));
-		let style = TextStyle { size: 196.0, bold: 3.5, scale_x: 0.86, skew: -0.12, spacing: 4.0 };
+		let style = TextStyle { size: 190.0, bold: 1.0, scale_x: 0.85, skew: -0.12, spacing: 2.0 };
 		draw_styled_text(
 			canvas,
 			&text,
 			RIGHT_EDGE,
 			408.0,
 			TextAlign::Right,
-			typeface("Barlow Condensed"),
+			typeface("Saira Extra Condensed"),
 			&style,
 			TEXT_COLOR,
 		);

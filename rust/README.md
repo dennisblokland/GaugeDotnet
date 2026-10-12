@@ -22,7 +22,7 @@ A Rust port of GaugeDotnet's rendering stack. It loads the same `custom-gauge.js
 | `Gauges/Custom/CustomGauge.cs` | `custom/gauge.rs` (frame-rate independent smoothing) |
 | `Gauges/Custom/ExpressionEvaluator.cs` | `expression.rs` |
 | `ImageCache` / `GifCache` | `images.rs` (PNG, JPEG, WebP, plus GIF/APNG/WebP animation frames) |
-| `Rendering/FontHelper.cs` | `text.rs` (the four bundled fonts are embedded in the binary) |
+| `Rendering/FontHelper.cs` | `text.rs` (the bundled fonts are embedded in the binary) |
 | `BaseGauge`, `BarGauge`, `CircularGauge`, `NeedleGauge`, `DialGauge`, `SweepGauge`, `DigitalGauge`, `MinMaxGauge`, `HistogramGauge`, `GridGauge`, `SegmentDisplay` | `gauges/*.rs` |
 | `GaugeFactory`, `AppConfig`, `GaugeConfig`, `TolerantGaugeTypeConverter` | `gauges/mod.rs`, `gauges/config.rs` |
 | `SKCanvas` / `SKPaint` / `SKMaskFilter` | `canvas.rs` (save/restore, transforms, clips, `SaveLayer` opacity, arcs, round rects, text, normal and outer blur) |

@@ -1005,7 +1005,7 @@ public partial class MainWindow : Window
 	private void AddFontProp(string value, Action<string> setter)
 	{
 		PropertiesPanel.Children.Add(new TextBlock { Text = "Font", Margin = new Thickness(0, 2, 0, 0) });
-		string[] fonts = ["Race Sport", "DSEG14 Classic", "DSEG7 Classic"];
+		string[] fonts = ["Race Sport", "DSEG14 Classic", "DSEG7 Classic", "Aldrich", "Saira Extra Condensed"];
 		ComboBox cb = new()
 		{
 			ItemsSource = fonts,

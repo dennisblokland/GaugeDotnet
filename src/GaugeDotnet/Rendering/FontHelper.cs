@@ -20,7 +20,9 @@ namespace GaugeDotnet.Rendering
             { "DSEG14 Classic", "DSEG14Classic-Regular.ttf" },
             { "DSEG7 Classic", "DSEG7Classic-Regular.ttf" },
             { "Race Sport", "Race Sport.ttf" },
-            { "Barlow Condensed", "BarlowCondensed-Regular.ttf" }
+            { "Barlow Condensed", "BarlowCondensed-Regular.ttf" },
+            { "Aldrich", "Aldrich-Regular.ttf" },
+            { "Saira Extra Condensed", "SairaExtraCondensed-SemiBold.ttf" }
         };
 
         private static readonly Dictionary<string, SKTypeface> FontCache = new();

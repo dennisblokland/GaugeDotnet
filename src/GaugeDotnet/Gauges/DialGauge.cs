@@ -17,6 +17,7 @@ namespace GaugeDotnet.Gauges
         private readonly int _decimals;
 
         private readonly SKTypeface _font;
+        private readonly SKTypeface _digitFont;
         private readonly SKBitmap _staticBitmap;
         private readonly SKCanvas _staticCanvas;
 
@@ -59,7 +60,8 @@ namespace GaugeDotnet.Gauges
 
             _staticBitmap = new SKBitmap(screenWidth, screenHeight, SKColorType.Rgba8888, SKAlphaType.Premul);
             _staticCanvas = new SKCanvas(_staticBitmap);
-            _font = FontHelper.GetFont("Barlow Condensed");
+            _font = FontHelper.GetFont("Aldrich");
+            _digitFont = FontHelper.GetFont("Saira Extra Condensed");
 
             _fillPaint = new SKPaint { Style = SKPaintStyle.Fill, IsAntialias = true };
             _boldTextPaint = new SKPaint { Style = SKPaintStyle.StrokeAndFill, IsAntialias = true };
@@ -116,14 +118,15 @@ namespace GaugeDotnet.Gauges
         /// <summary>
         /// Draws text stretched by <paramref name="scaleX"/>, slanted by <paramref name="skew"/>
         /// and with extra <paramref name="spacing"/> between letters; y is the baseline.
+        /// Returns the drawn width.
         /// </summary>
-        private static void DrawStyledText(
+        private static float DrawStyledText(
             SKCanvas canvas, string text, float x, float y, SKTextAlign align,
             SKFont font, SKPaint paint, float scaleX, float skew, float spacing)
         {
             if (string.IsNullOrEmpty(text))
             {
-                return;
+                return 0f;
             }
 
             float width = spacing * (text.Length - 1);
@@ -150,6 +153,7 @@ namespace GaugeDotnet.Gauges
                 pen += font.MeasureText(s) + spacing;
             }
             canvas.Restore();
+            return width * scaleX;
         }
 
         private void UpdateStaticBackground(int screenWidth, int screenHeight)
@@ -172,8 +176,8 @@ namespace GaugeDotnet.Gauges
             _strokePaint.Color = TextColor;
             _strokePaint.StrokeWidth = 4f;
             _boldTextPaint.Color = TextColor;
-            _boldTextPaint.StrokeWidth = 1.8f;
-            using SKFont labelFont = new(_font, 38f);
+            _boldTextPaint.StrokeWidth = 1f;
+            using SKFont labelFont = new(_font, 36f);
             for (int i = 0; i <= MAJOR_COUNT; i++)
             {
                 float a = AngleFor((float)i / MAJOR_COUNT);
@@ -188,7 +192,7 @@ namespace GaugeDotnet.Gauges
                 string label = $"{Math.Round(tickValue)}";
                 DrawStyledText(_staticCanvas, label,
                     CENTER_X + cos * LABEL_RADIUS, CENTER_Y + sin * LABEL_RADIUS + 13f,
-                    SKTextAlign.Center, labelFont, _boldTextPaint, 1.25f, 0f, 1f);
+                    SKTextAlign.Center, labelFont, _boldTextPaint, 1f, 0f, 0f);
             }
 
             // Minor dots.
@@ -207,30 +211,31 @@ namespace GaugeDotnet.Gauges
 
             // Title, one word per line, right aligned.
             using SKFont titleFont = new(_font, 50f);
-            _boldTextPaint.StrokeWidth = 2.2f;
+            _boldTextPaint.StrokeWidth = 1.4f;
             string[] words = Title.Split(' ', StringSplitOptions.RemoveEmptyEntries);
             for (int i = 0; i < Math.Min(words.Length, 2); i++)
             {
                 DrawStyledText(_staticCanvas, words[i], RIGHT_EDGE, 64f + i * 46f,
-                    SKTextAlign.Right, titleFont, _boldTextPaint, 1.55f, -0.2f, 5f);
+                    SKTextAlign.Right, titleFont, _boldTextPaint, 1.05f, -0.2f, 7f);
             }
 
             // Status block.
-            using SKFont statusFont = new(_font, 27f);
+            using SKFont statusFont = new(_font, 26f);
             _boldTextPaint.Color = StatusColor;
-            _boldTextPaint.StrokeWidth = 0.8f;
+            _boldTextPaint.StrokeWidth = 0f;
             DrawStyledText(_staticCanvas, "Datalog:", RIGHT_EDGE, 222f,
-                SKTextAlign.Right, statusFont, _boldTextPaint, 1.45f, 0f, 3f);
+                SKTextAlign.Right, statusFont, _boldTextPaint, 1f, 0f, 6f);
             DrawStyledText(_staticCanvas, "Stop", RIGHT_EDGE - 22f, 246f,
-                SKTextAlign.Right, statusFont, _boldTextPaint, 1.45f, 0f, 3f);
+                SKTextAlign.Right, statusFont, _boldTextPaint, 1f, 0f, 6f);
             _fillPaint.Color = StatusDotColor;
             _staticCanvas.DrawCircle(RIGHT_EDGE - 7f, 238f, 6f, _fillPaint);
 
             // Unit below the readout.
             _boldTextPaint.Color = TextColor;
-            _boldTextPaint.StrokeWidth = 1.6f;
+            _boldTextPaint.StrokeWidth = 1.4f;
+            using SKFont unitFont = new(_font, 44f);
             DrawStyledText(_staticCanvas, Unit, RIGHT_EDGE - 4f, 452f,
-                SKTextAlign.Right, titleFont, _boldTextPaint, 1.5f, -0.2f, 5f);
+                SKTextAlign.Right, unitFont, _boldTextPaint, 1.05f, -0.2f, 7f);
 
             DrawBadge(_staticCanvas);
             DrawLogo(_staticCanvas);
@@ -249,25 +254,26 @@ namespace GaugeDotnet.Gauges
             canvas.DrawRoundRect(new SKRect(4f, -32f, 58f, 0f), 9f, 9f, _strokePaint);
             canvas.Restore();
 
-            using SKFont badgeFont = new(_font, 26f);
+            using SKFont badgeFont = new(_font, 21f);
             _boldTextPaint.Color = TextColor;
             _boldTextPaint.StrokeWidth = 1f;
-            DrawStyledText(canvas, "GDN", 58f, 62f, SKTextAlign.Center, badgeFont, _boldTextPaint, 1.2f, -0.2f, 1f);
+            DrawStyledText(canvas, "GDN", 58f, 60f, SKTextAlign.Center, badgeFont, _boldTextPaint, 1f, -0.2f, 1f);
         }
 
         /// <summary>Small italic maker mark with speed stripes in the bottom-left corner.</summary>
         private void DrawLogo(SKCanvas canvas)
         {
-            using SKFont logoFont = new(_font, 28f);
+            using SKFont logoFont = new(_font, 24f);
             _boldTextPaint.Color = TextColor;
-            _boldTextPaint.StrokeWidth = 1.6f;
-            DrawStyledText(canvas, "Gauge", 30f, 458f, SKTextAlign.Left, logoFont, _boldTextPaint, 1.1f, -0.25f, 0f);
+            _boldTextPaint.StrokeWidth = 1.2f;
+            float logoWidth = DrawStyledText(canvas, "Gauge", 30f, 458f, SKTextAlign.Left, logoFont, _boldTextPaint, 1f, -0.25f, 0f);
 
             _fillPaint.Color = TextColor;
             for (int i = 0; i < 3; i++)
             {
                 float y = 442f + i * 6f;
-                canvas.DrawRect(new SKRect(96f - i * 1.2f, y, 114f - i * 1.2f, y + 3f), _fillPaint);
+                float x = 34f + logoWidth - i * 1.2f;
+                canvas.DrawRect(new SKRect(x, y, x + 18f, y + 3f), _fillPaint);
             }
         }
 
@@ -310,10 +316,10 @@ namespace GaugeDotnet.Gauges
 
             // Digital readout.
             string text = Value.ToString("F" + _decimals, CultureInfo.InvariantCulture);
-            using SKFont valueFont = new(_font, 196f);
+            using SKFont valueFont = new(_digitFont, 190f);
             _boldTextPaint.Color = TextColor;
-            _boldTextPaint.StrokeWidth = 3.5f;
-            DrawStyledText(canvas, text, RIGHT_EDGE, 408f, SKTextAlign.Right, valueFont, _boldTextPaint, 0.86f, -0.12f, 4f);
+            _boldTextPaint.StrokeWidth = 1f;
+            DrawStyledText(canvas, text, RIGHT_EDGE, 408f, SKTextAlign.Right, valueFont, _boldTextPaint, 0.85f, -0.12f, 2f);
         }
     }
 }
