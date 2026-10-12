@@ -9,6 +9,8 @@ namespace GaugeDotnet.Gauges
     /// Handheld-style boost display: a 270° dial on the left (bezel, white ticks,
     /// red needle) and a two-line title, status text and a large italic digital
     /// readout on the right. Title words are stacked ("Boost Press." → two lines).
+    /// With <see cref="DialGaugeSettings.Lcd"/> it imitates an old backlit LCD: rendered at
+    /// a third of the resolution with a visible pixel grid, a blue tint and ghosting.
     /// </summary>
     public class DialGauge : BaseGauge
     {
@@ -29,6 +31,20 @@ namespace GaugeDotnet.Gauges
         private readonly SKBitmap _staticBitmap;
         private readonly SKCanvas _staticCanvas;
 
+        // Drawing coordinates are always 640x480-style; _renderScale shrinks them
+        // to LCD resolution in Lcd mode (1 otherwise).
+        private readonly bool _lcd;
+        private readonly float _renderScale;
+        private readonly float _lcdGhosting;
+        private readonly int _width;
+        private readonly int _height;
+        private SKSurface? _lcdFrame;
+        private SKSurface? _lcdAccum;
+        private SKBitmap? _lcdGrid;
+        private bool _lcdPrimed;
+        private readonly SKPaint _lcdBlendPaint = new();
+        private readonly SKPaint _lcdTintPaint;
+
         private const float CENTER_X = 221f;
         private const float CENTER_Y = 243f;
         private const float BEZEL_RADIUS = 207f;
@@ -47,6 +63,14 @@ namespace GaugeDotnet.Gauges
         private const float NEEDLE_LENGTH = 148f;
         private const float NEEDLE_HALF_WIDTH = 5.5f;
         private const float RIGHT_EDGE = 612f;
+
+        // Old LCD: each LCD pixel covers LCD_CELL x LCD_CELL screen pixels; the gap
+        // between them is darkened to LCD_GRID; each frame keeps _lcdGhosting of the
+        // last one (DialGaugeSettings.LcdGhosting); and black/white map to the backlight's navy and pale blue.
+        private const int LCD_CELL = 3;
+        private const float LCD_GRID = 0.7f;
+        private static readonly SKColor LcdBlack = new(0x14, 0x1A, 0x40);
+        private static readonly SKColor LcdWhite = new(0xD8, 0xE0, 0xFF);
 
         // Widest each text may be before it shrinks, so long values, titles and
         // labels stay clear of the dial whatever the data source and range.
@@ -89,7 +113,15 @@ namespace GaugeDotnet.Gauges
             _peak = float.NaN;
             _min = float.NaN;
 
-            _staticBitmap = new SKBitmap(screenWidth, screenHeight, SKColorType.Rgba8888, SKAlphaType.Premul);
+            _lcd = settings.Lcd;
+            _renderScale = _lcd ? 1f / LCD_CELL : 1f;
+            _lcdGhosting = float.IsFinite(settings.LcdGhosting) ? Math.Clamp(settings.LcdGhosting, 0f, 0.9f) : 0f;
+            _width = screenWidth;
+            _height = screenHeight;
+            (int renderW, int renderH) = _lcd ? LcdSize() : (screenWidth, screenHeight);
+            _lcdTintPaint = new SKPaint { ColorFilter = SKColorFilter.CreateColorMatrix(LcdTintMatrix()) };
+
+            _staticBitmap = new SKBitmap(renderW, renderH, SKColorType.Rgba8888, SKAlphaType.Premul);
             _staticCanvas = new SKCanvas(_staticBitmap);
             _font = FontHelper.GetFont("Aldrich");
             _digitFont = FontHelper.GetFont("Saira Extra Condensed");
@@ -97,6 +129,24 @@ namespace GaugeDotnet.Gauges
             _fillPaint = new SKPaint { Style = SKPaintStyle.Fill, IsAntialias = true };
             _boldTextPaint = new SKPaint { Style = SKPaintStyle.StrokeAndFill, IsAntialias = true };
             _strokePaint = new SKPaint { Style = SKPaintStyle.Stroke, IsAntialias = true };
+        }
+
+        private (int Width, int Height) LcdSize()
+        {
+            return ((_width + LCD_CELL - 1) / LCD_CELL, (_height + LCD_CELL - 1) / LCD_CELL);
+        }
+
+        /// <summary>Maps black to <see cref="LcdBlack"/> and white to <see cref="LcdWhite"/>, per channel.</summary>
+        private static float[] LcdTintMatrix()
+        {
+            static float Scale(byte black, byte white) => (white - black) / 255f;
+            return
+            [
+                Scale(LcdBlack.Red, LcdWhite.Red), 0, 0, 0, LcdBlack.Red / 255f,
+                0, Scale(LcdBlack.Green, LcdWhite.Green), 0, 0, LcdBlack.Green / 255f,
+                0, 0, Scale(LcdBlack.Blue, LcdWhite.Blue), 0, LcdBlack.Blue / 255f,
+                0, 0, 0, 1, 0,
+            ];
         }
 
         private static float AngleFor(float fraction)
@@ -169,6 +219,7 @@ namespace GaugeDotnet.Gauges
             using (SKCanvas canvas = new(layer))
             {
                 canvas.Clear(SKColors.Transparent);
+                canvas.Scale(_renderScale);
                 float bodyR = BEZEL_RADIUS - BEZEL_WIDTH / 2f;
                 _strokePaint.Color = BezelColor;
                 _strokePaint.StrokeWidth = BEZEL_WIDTH;
@@ -191,7 +242,7 @@ namespace GaugeDotnet.Gauges
                     {
                         continue;
                     }
-                    float fade = BezelFade(x + 0.5f, y + 0.5f);
+                    float fade = BezelFade((x + 0.5f) / _renderScale, (y + 0.5f) / _renderScale);
                     for (int c = 0; c < 4; c++)
                     {
                         pixels[i + c] = (byte)(pixels[i + c] * fade + 0.5f);
@@ -245,11 +296,13 @@ namespace GaugeDotnet.Gauges
             canvas.Restore();
         }
 
-        private void UpdateStaticBackground(int screenWidth, int screenHeight)
+        private void UpdateStaticBackground()
         {
-            DrawBackground(_staticCanvas, screenWidth, screenHeight);
+            DrawBackground(_staticCanvas, _staticBitmap.Width, _staticBitmap.Height);
+            DrawBezel(_staticCanvas, _staticBitmap.Width, _staticBitmap.Height);
 
-            DrawBezel(_staticCanvas, screenWidth, screenHeight);
+            _staticCanvas.Save();
+            _staticCanvas.Scale(_renderScale);
 
             // Major ticks and labels.
             _strokePaint.Color = TextColor;
@@ -324,6 +377,7 @@ namespace GaugeDotnet.Gauges
             DrawStyledText(_staticCanvas, Unit, RIGHT_EDGE - 4f, 452f,
                 SKTextAlign.Right, unitFont, _boldTextPaint, 1.05f, -0.2f, 7f, UNIT_MAX_WIDTH);
 
+            _staticCanvas.Restore();
             StaticCacheValid = true;
         }
 
@@ -338,6 +392,7 @@ namespace GaugeDotnet.Gauges
         {
             _peak = Value;
             _min = Value;
+            _lcdPrimed = false;
         }
 
         public override void Draw(SKCanvas canvas)
@@ -353,10 +408,80 @@ namespace GaugeDotnet.Gauges
 
             if (!StaticCacheValid)
             {
-                UpdateStaticBackground(canvas.DeviceClipBounds.Width, canvas.DeviceClipBounds.Height);
+                UpdateStaticBackground();
             }
 
+            if (_lcd)
+            {
+                DrawLcd(canvas);
+            }
+            else
+            {
+                DrawFrame(canvas);
+            }
+        }
+
+        /// <summary>
+        /// Renders the frame at LCD resolution, blends it over the previous one (ghosting),
+        /// then scales it up with hard pixel edges, the backlight tint and the pixel grid.
+        /// Everything stays on the GPU: two small offscreen surfaces and a cached grid overlay.
+        /// </summary>
+        private void DrawLcd(SKCanvas canvas)
+        {
+            (int lw, int lh) = LcdSize();
+            if (_lcdFrame == null || _lcdAccum == null || _lcdGrid == null)
+            {
+                SKImageInfo info = new(lw, lh, SKColorType.Rgba8888, SKAlphaType.Premul);
+                GRRecordingContext? context = canvas.Context;
+                _lcdFrame = context != null ? SKSurface.Create(context, false, info) : SKSurface.Create(info);
+                _lcdAccum = context != null ? SKSurface.Create(context, false, info) : SKSurface.Create(info);
+                _lcdGrid = CreateLcdGrid();
+                _lcdPrimed = false;
+            }
+
+            _lcdFrame.Canvas.Clear(SKColors.Black);
+            DrawFrame(_lcdFrame.Canvas);
+            using (SKImage frame = _lcdFrame.Snapshot())
+            {
+                byte alpha = _lcdPrimed ? (byte)MathF.Round(255f * (1f - _lcdGhosting)) : (byte)255;
+                _lcdBlendPaint.Color = SKColors.White.WithAlpha(alpha);
+                _lcdAccum.Canvas.DrawImage(frame, 0, 0, _lcdBlendPaint);
+                _lcdPrimed = true;
+            }
+
+            using SKImage lcd = _lcdAccum.Snapshot();
+            canvas.DrawImage(lcd, new SKRect(0, 0, lw * LCD_CELL, lh * LCD_CELL),
+                new SKSamplingOptions(SKFilterMode.Nearest), _lcdTintPaint);
+            canvas.DrawBitmap(_lcdGrid, 0, 0);
+        }
+
+        /// <summary>Transparent overlay that darkens the last row and column of every LCD pixel.</summary>
+        private SKBitmap CreateLcdGrid()
+        {
+            SKBitmap grid = new(_width, _height, SKColorType.Rgba8888, SKAlphaType.Premul);
+            Span<byte> pixels = grid.GetPixelSpan();
+            byte alpha = (byte)MathF.Round(255f * (1f - LCD_GRID));
+            for (int y = 0; y < _height; y++)
+            {
+                for (int x = 0; x < _width; x++)
+                {
+                    int i = (y * _width + x) * 4;
+                    bool line = x % LCD_CELL == LCD_CELL - 1 || y % LCD_CELL == LCD_CELL - 1;
+                    pixels[i] = 0;
+                    pixels[i + 1] = 0;
+                    pixels[i + 2] = 0;
+                    pixels[i + 3] = line ? alpha : (byte)0;
+                }
+            }
+            return grid;
+        }
+
+        /// <summary>The static layer plus needle, readout and status, at <see cref="_renderScale"/>.</summary>
+        private void DrawFrame(SKCanvas canvas)
+        {
             canvas.DrawBitmap(_staticBitmap, 0, 0);
+            canvas.Save();
+            canvas.Scale(_renderScale);
 
             // Needle: flat bar from the centre towards the ticks.
             float pct = Math.Clamp((_currentValue - MinValue) / (MaxValue - MinValue), 0f, 1f);
@@ -397,6 +522,7 @@ namespace GaugeDotnet.Gauges
                 DrawStyledText(canvas, held.ToString("F" + _decimals, CultureInfo.InvariantCulture), RIGHT_EDGE, 246f,
                     SKTextAlign.Right, statusFont, _boldTextPaint, 1f, 0f, 6f, STATUS_MAX_WIDTH);
             }
+            canvas.Restore();
         }
     }
 }

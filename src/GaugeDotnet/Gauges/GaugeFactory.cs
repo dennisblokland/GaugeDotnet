@@ -99,6 +99,8 @@ namespace GaugeDotnet.Gauges
                         StatusMode = config.StatusMode,
                         StatusLabel = config.StatusLabel,
                         StatusText = config.StatusText,
+                        Lcd = config.Lcd,
+                        LcdGhosting = config.LcdGhosting,
                     }, screenWidth, screenHeight),
 
                 GaugeType.Digital => new DigitalGauge(

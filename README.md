@@ -109,16 +109,17 @@ Publishes a self-contained linux-arm64 binary and SCPs it to the RG35XX.
   | `StatusText` | Second line in `Text` mode | `Stop` |
 
   Peak and Min start at the first reading. R1 resets them, as on the other gauges. `StatusMode` can also be changed in the on-device config editor.
+- **Old LCD look:** `"Lcd": true` imitates a backlit handheld LCD. The gauge renders at a third of the resolution with a visible pixel grid, black becomes a dark navy and white a pale blue (which also turns the red needle pink), and moving parts leave a short trail. `LcdGhosting` sets how much of the previous frame lingers: 0 turns the trail off, and the maximum is 0.9 (default 0.3). Both can be changed in the on-device config editor. In C# the effect runs on the GPU.
 - **Colours and fonts:** `ColorHex` is ignored, because the dial has a fixed white, grey and red palette. Text uses the bundled Aldrich and Saira Extra Condensed fonts (SIL OFL 1.1, licenses in `src/GaugeDotnet/fonts`), which are also available to custom gauges.
 
 ```json
 { "Gauge": { "Type": "Dial", "DataSource": "Map", "Title": "Boost Press.", "Unit": "Psi", "MinValue": -10, "MaxValue": 20, "Decimals": 1 } }
 { "Gauge": { "Type": "Dial", "DataSource": "Rpm", "Title": "Engine Speed", "Unit": "RPM", "MaxValue": 8000 } }
 { "Gauge": { "Type": "Dial", "DataSource": "Map", "Title": "Boost Press.", "Unit": "Psi", "MinValue": -10, "MaxValue": 20, "Decimals": 1,
-             "StatusMode": "Text", "StatusLabel": "Datalog:", "StatusText": "Stop" } }
+             "StatusMode": "Text", "StatusLabel": "Datalog:", "StatusText": "Stop", "Lcd": true, "LcdGhosting": 0.2 } }
 ```
 
-![Dial gauge](docs/dial-gauge.png)
+![Dial gauge](docs/dial-gauge.png) ![Dial gauge with Lcd](docs/dial-gauge-lcd.png)
 
 ## Custom Gauge System
 

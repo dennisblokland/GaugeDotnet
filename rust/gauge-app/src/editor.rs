@@ -62,6 +62,8 @@ enum Field {
 	MaxDataPoints,
 	IntervalMs,
 	StatusMode,
+	Lcd,
+	LcdGhosting,
 	/// A Grid cell (0-based); A opens its editor.
 	Cell(usize),
 }
@@ -83,7 +85,7 @@ fn fields_for(gauge: &GaugeConfig) -> Vec<Field> {
 		GaugeType::Bar | GaugeType::Circular | GaugeType::MinMax => &[SegmentCount, Smoothing],
 		GaugeType::Histogram => &[MaxDataPoints, IntervalMs],
 		GaugeType::Needle | GaugeType::Sweep => &[Smoothing],
-		GaugeType::Dial => &[Smoothing, StatusMode],
+		GaugeType::Dial => &[Smoothing, StatusMode, Lcd, LcdGhosting],
 		GaugeType::Grid => return std::iter::once(Type).chain((0..gauge.cells.len()).map(Cell)).collect(),
 		GaugeType::Digital | GaugeType::Custom => &[],
 	};
@@ -349,6 +351,10 @@ fn adjust_field(gauge: &mut GaugeConfig, field: Field, dir: i32) {
 		Field::Smoothing => gauge.smoothing = !gauge.smoothing,
 		Field::MaxDataPoints => gauge.max_data_points = (gauge.max_data_points + dir * 5).clamp(10, 100),
 		Field::IntervalMs => gauge.interval_ms = (gauge.interval_ms + dir * 100).clamp(100, 5000),
+		Field::Lcd => gauge.lcd = !gauge.lcd,
+		Field::LcdGhosting => {
+			gauge.lcd_ghosting = (((gauge.lcd_ghosting + dir as f32 * 0.1) * 10.0).round() / 10.0).clamp(0.0, 0.9)
+		}
 		Field::StatusMode => {
 			let current = STATUS_MODES.iter().position(|m| m.eq_ignore_ascii_case(&gauge.status_mode)).unwrap_or(0);
 			gauge.status_mode =
@@ -385,6 +391,8 @@ fn field_value(gauge: &GaugeConfig, field: Field) -> String {
 		Field::MaxDataPoints => gauge.max_data_points.to_string(),
 		Field::IntervalMs => format!("{}ms", gauge.interval_ms),
 		Field::StatusMode => gauge.status_mode.clone(),
+		Field::Lcd => if gauge.lcd { "ON" } else { "OFF" }.into(),
+		Field::LcdGhosting => format!("{:.1}", gauge.lcd_ghosting),
 		Field::Cell(i) => gauge.cells.get(i).map_or("?".into(), |c| format!("{} ({})", c.data_source, c.unit)),
 	}
 }
@@ -506,6 +514,14 @@ mod tests {
 		assert_eq!(field_value(&g, Field::StatusMode), "Min");
 		adjust_field(&mut g, Field::StatusMode, -2);
 		assert_eq!(g.status_mode, "None", "wraps backwards");
+		adjust_field(&mut g, Field::Lcd, 1);
+		assert_eq!(field_value(&g, Field::Lcd), "ON");
+		adjust_field(&mut g, Field::LcdGhosting, -1);
+		assert_eq!(field_value(&g, Field::LcdGhosting), "0.2");
+		for _ in 0..12 {
+			adjust_field(&mut g, Field::LcdGhosting, 1);
+		}
+		assert_eq!(field_value(&g, Field::LcdGhosting), "0.9", "capped");
 	}
 
 	#[test]

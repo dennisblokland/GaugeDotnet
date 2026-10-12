@@ -26,6 +26,10 @@ namespace GaugeDotnet.Configuration
         public string StatusMode { get; set; } = "Peak";
         public string StatusLabel { get; set; } = "";
         public string StatusText { get; set; } = "Stop";
+        // Old-LCD look: low resolution, pixel grid, blue backlight tint and ghosting.
+        public bool Lcd { get; set; } = false;
+        // Share of the previous frame that lingers in Lcd mode (0 = no ghosting, up to 0.9).
+        public float LcdGhosting { get; set; } = 0.3f;
 
         // Grid gauge specific
         public List<GridCellConfig> Cells { get; set; } = new();

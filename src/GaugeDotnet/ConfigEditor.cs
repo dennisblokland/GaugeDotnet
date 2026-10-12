@@ -1,3 +1,4 @@
+using System.Globalization;
 using GaugeDotnet.Configuration;
 using GaugeDotnet.Rendering;
 using RG35XX.Core.GamePads;
@@ -53,7 +54,7 @@ namespace GaugeDotnet
                 GaugeType.Circular => ["Type", "DataSource", "Title", "ColorHex", "MinValue", "MaxValue", "InitialValue", "Decimals", "SegmentCount", "Smoothing"],
                 GaugeType.Histogram => ["Type", "DataSource", "Title", "ColorHex", "MinValue", "MaxValue", "InitialValue", "Decimals", "MaxDataPoints", "IntervalMs"],
                 GaugeType.Needle => ["Type", "DataSource", "Title", "ColorHex", "MinValue", "MaxValue", "InitialValue", "Decimals", "Smoothing"],
-                GaugeType.Dial => ["Type", "DataSource", "Title", "ColorHex", "MinValue", "MaxValue", "InitialValue", "Decimals", "Smoothing", "StatusMode"],
+                GaugeType.Dial => ["Type", "DataSource", "Title", "ColorHex", "MinValue", "MaxValue", "InitialValue", "Decimals", "Smoothing", "StatusMode", "Lcd", "LcdGhosting"],
                 GaugeType.Digital => ["Type", "DataSource", "Title", "ColorHex", "MinValue", "MaxValue", "InitialValue", "Decimals"],
                 GaugeType.Sweep => ["Type", "DataSource", "Title", "ColorHex", "MinValue", "MaxValue", "InitialValue", "Decimals", "Smoothing"],
                 GaugeType.MinMax => ["Type", "DataSource", "Title", "ColorHex", "MinValue", "MaxValue", "InitialValue", "Decimals", "SegmentCount", "Smoothing"],
@@ -374,6 +375,12 @@ namespace GaugeDotnet
                     sIdx = (sIdx + direction + StatusModeOptions.Length) % StatusModeOptions.Length;
                     gauge.StatusMode = StatusModeOptions[sIdx];
                     break;
+                case "Lcd":
+                    gauge.Lcd = !gauge.Lcd;
+                    break;
+                case "LcdGhosting":
+                    gauge.LcdGhosting = Math.Clamp(MathF.Round((gauge.LcdGhosting + direction * 0.1f) * 10f) / 10f, 0f, 0.9f);
+                    break;
             }
         }
 
@@ -487,6 +494,8 @@ namespace GaugeDotnet
                 "MaxDataPoints" => gauge.MaxDataPoints.ToString(),
                 "IntervalMs" => $"{gauge.IntervalMs}ms",
                 "StatusMode" => gauge.StatusMode,
+                "Lcd" => gauge.Lcd ? "ON" : "OFF",
+                "LcdGhosting" => gauge.LcdGhosting.ToString("0.0", CultureInfo.InvariantCulture),
                 _ => "?"
             };
         }

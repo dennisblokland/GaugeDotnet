@@ -44,7 +44,7 @@ USAGE:
       ECU at time T (default 1.2) unless overridden with --set.
   gauge builtin <type> [-o out.png] [--value V] [--min V] [--max V]
                 [--title S] [--unit S] [--color #RRGGBB] [--decimals N] [--segments N]
-                [--peak V] [--status-mode peak|min|text|none] [--status-label S] [--status-text S]
+                [--peak V] [--status-mode peak|min|text|none] [--status-label S] [--status-text S] [--lcd true] [--lcd-ghosting 0..0.9]
       Render a built-in gauge: bar, circular, needle, dial, digital, sweep, minmax, histogram.
       --peak feeds V once before settling on --value (for peak-hold displays).
   gauge bench <file.json> [--frames N] [--warmup N] [--threads N] [--data-hz HZ] [--full]
@@ -236,6 +236,8 @@ fn cmd_builtin(args: &Args) -> Result<(), String> {
 		status_mode: args.opt(&["status-mode"], "Peak".to_string())?,
 		status_label: args.opt(&["status-label"], String::new())?,
 		status_text: args.opt(&["status-text"], "Stop".to_string())?,
+		lcd: args.opt(&["lcd"], false)?,
+		lcd_ghosting: args.opt(&["lcd-ghosting"], 0.3)?,
 		..GaugeConfig::default()
 	};
 	let mut gauge = gauges::create_gauge(&config, 640, 480);

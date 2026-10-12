@@ -105,6 +105,10 @@ pub struct GaugeConfig {
 	pub status_label: String,
 	/// Dial: second status line in `Text` mode.
 	pub status_text: String,
+	/// Dial: old-LCD look (low resolution, pixel grid, backlight tint, ghosting).
+	pub lcd: bool,
+	/// Dial: share of the previous frame that lingers in Lcd mode (0 = none, up to 0.9).
+	pub lcd_ghosting: f32,
 	pub cells: Vec<GridCellConfig>,
 }
 
@@ -127,6 +131,8 @@ impl Default for GaugeConfig {
 			status_mode: "Peak".into(),
 			status_label: String::new(),
 			status_text: "Stop".into(),
+			lcd: false,
+			lcd_ghosting: 0.3,
 			cells: Vec::new(),
 		}
 	}

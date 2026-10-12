@@ -27,6 +27,20 @@ const NEEDLE_LENGTH: f32 = 148.0;
 const NEEDLE_HALF_WIDTH: f32 = 5.5;
 const RIGHT_EDGE: f32 = 612.0;
 
+// Old LCD: each LCD pixel covers LCD_CELL x LCD_CELL screen pixels; the gap
+// between them is darkened to LCD_GRID; each frame keeps `lcd_ghosting` of the
+// last one (`GaugeConfig::lcd_ghosting`); and black/white map to the backlight's navy and pale blue.
+const LCD_CELL: usize = 3;
+const LCD_GRID: f32 = 0.7;
+const LCD_BLACK: Rgba = Rgba::rgb(0x14, 0x1A, 0x40);
+const LCD_WHITE: Rgba = Rgba::rgb(0xD8, 0xE0, 0xFF);
+
+/// LCD resolution for a screen size (cells, rounded up).
+fn lcd_size((width, height): (u32, u32)) -> (u32, u32) {
+	let cell = LCD_CELL as u32;
+	(width.div_ceil(cell), height.div_ceil(cell))
+}
+
 const BEZEL_COLOR: Rgba = Rgba::rgb(0xA8, 0xA8, 0xB4);
 const BEZEL_HIGHLIGHT: Rgba = Rgba::rgb(0xE8, 0xE8, 0xF0);
 const NEEDLE_COLOR: Rgba = Rgba::rgb(0xF0, 0x28, 0x48);
@@ -77,6 +91,14 @@ pub struct DialGauge {
 	min: f32,
 	size: (u32, u32),
 	static_layer: Option<Sprite>,
+	/// Drawing coordinates are always 640x480-style; this shrinks them to
+	/// LCD resolution in Lcd mode (1 otherwise).
+	render_scale: f32,
+	lcd: bool,
+	lcd_ghosting: f32,
+	lcd_frame: Option<Canvas>,
+	/// Ghosted LCD image (RGB per LCD pixel); empty until the first frame.
+	lcd_accum: Vec<[u8; 3]>,
 }
 
 fn angle_for(fraction: f32) -> f32 {
@@ -126,9 +148,10 @@ fn bezel_fade(x: f32, y: f32) -> f32 {
 
 /// Grey ring with a lighter outer rim along the scale and a little past it. It is drawn into its
 /// own layer whose alpha is then scaled per pixel by [`bezel_fade`].
-fn draw_bezel(target: &mut Canvas) {
+fn draw_bezel(target: &mut Canvas, scale: f32) {
 	let (width, height) = (target.width(), target.height());
 	let mut layer = Canvas::new(width, height);
+	layer.scale(scale, scale);
 	let arc = |c: &mut Canvas, r: f32, stroke: f32, color: Rgba| {
 		if let Some(oval) = rect(CENTER_X - r, CENTER_Y - r, CENTER_X + r, CENTER_Y + r) {
 			c.draw_arc(oval, BEZEL_START_DEG, BEZEL_SWEEP_DEG, &Paint::stroke(color, stroke));
@@ -142,7 +165,7 @@ fn draw_bezel(target: &mut Canvas) {
 			continue;
 		}
 		let (x, y) = ((i as u32 % width) as f32 + 0.5, (i as u32 / width) as f32 + 0.5);
-		let fade = bezel_fade(x, y);
+		let fade = bezel_fade(x / scale, y / scale);
 		let scale = |v: u8| (v as f32 * fade + 0.5) as u8;
 		*px = PremultipliedColorU8::from_rgba(scale(px.red()), scale(px.green()), scale(px.blue()), scale(px.alpha()))
 			.unwrap_or(PremultipliedColorU8::TRANSPARENT);
@@ -235,7 +258,102 @@ impl DialGauge {
 			min: f32::NAN,
 			size: (width, height),
 			static_layer: None,
+			render_scale: if config.lcd { 1.0 / LCD_CELL as f32 } else { 1.0 },
+			lcd: config.lcd,
+			lcd_ghosting: if config.lcd_ghosting.is_finite() { config.lcd_ghosting.clamp(0.0, 0.9) } else { 0.0 },
+			lcd_frame: None,
+			lcd_accum: Vec::new(),
 			base,
+		}
+	}
+
+	/// The static layer plus needle, readout and status, at `render_scale`.
+	fn draw_frame(&self, canvas: &mut Canvas) {
+		if let Some(p) = &self.static_layer {
+			canvas.draw_sprite(p);
+		}
+		canvas.save();
+		canvas.scale(self.render_scale, self.render_scale);
+
+		// Needle: flat bar from the centre towards the ticks.
+		let (sin, cos) = angle_for(self.base.fraction(self.current_value)).sin_cos();
+		let (perp_x, perp_y) = (-sin * NEEDLE_HALF_WIDTH, cos * NEEDLE_HALF_WIDTH);
+		let (tip_x, tip_y) = (CENTER_X + cos * NEEDLE_LENGTH, CENTER_Y + sin * NEEDLE_LENGTH);
+		let mut pb = PathBuilder::new();
+		pb.move_to(CENTER_X + perp_x, CENTER_Y + perp_y);
+		pb.line_to(tip_x + perp_x, tip_y + perp_y);
+		pb.line_to(tip_x - perp_x, tip_y - perp_y);
+		pb.line_to(CENTER_X - perp_x, CENTER_Y - perp_y);
+		pb.close();
+		if let Some(path) = pb.finish() {
+			canvas.draw_path(&path, &Paint::fill(NEEDLE_COLOR));
+		}
+
+		// Digital readout.
+		let text = crate::format::format_number(self.base.value, &format!("F{}", self.decimals));
+		let style =
+			TextStyle { size: 190.0, bold: 1.0, scale_x: 0.85, skew: -0.12, spacing: 2.0, max_width: VALUE_MAX_WIDTH };
+		draw_styled_text(
+			canvas,
+			&text,
+			RIGHT_EDGE,
+			408.0,
+			TextAlign::Right,
+			typeface("Saira Extra Condensed"),
+			&style,
+			TEXT_COLOR,
+		);
+
+		if matches!(self.status_mode, StatusMode::Peak | StatusMode::Min) {
+			let held = if self.status_mode == StatusMode::Peak { self.peak } else { self.min };
+			let held = if held.is_nan() { self.base.value } else { held };
+			let text = crate::format::format_number(held, &format!("F{}", self.decimals));
+			let font = typeface("Aldrich");
+			draw_styled_text(canvas, &text, RIGHT_EDGE, 246.0, TextAlign::Right, font, &STATUS_STYLE, STATUS_COLOR);
+		}
+		canvas.restore();
+	}
+
+	/// Renders the frame at LCD resolution, blends it over the previous one
+	/// (ghosting), then scales it up with hard pixel edges, the backlight tint
+	/// and the pixel grid, writing straight into `canvas`.
+	fn draw_lcd(&mut self, canvas: &mut Canvas) {
+		let (lw, lh) = lcd_size(self.size);
+		let mut frame = self.lcd_frame.take().unwrap_or_else(|| Canvas::new(lw, lh));
+		frame.clear(Rgba::BLACK);
+		self.draw_frame(&mut frame);
+
+		// Same 8-bit blend as drawing the frame with alpha over the previous one.
+		let alpha = if self.lcd_accum.is_empty() {
+			self.lcd_accum = vec![[0; 3]; (lw * lh) as usize];
+			1.0
+		} else {
+			(255.0 * (1.0 - self.lcd_ghosting)).round() / 255.0
+		};
+		for (acc, px) in self.lcd_accum.iter_mut().zip(frame.pixmap().pixels()) {
+			for (a, v) in acc.iter_mut().zip([px.red(), px.green(), px.blue()]) {
+				*a = (v as f32 * alpha + *a as f32 * (1.0 - alpha)).round() as u8;
+			}
+		}
+		self.lcd_frame = Some(frame);
+
+		let grid = 1.0 - (255.0 * (1.0 - LCD_GRID)).round() / 255.0;
+		let tint = |v: u8, black: u8, white: u8| black as f32 + (white as f32 - black as f32) * v as f32 / 255.0;
+		let width = canvas.width();
+		let cell = LCD_CELL as u32;
+		for (i, px) in canvas.pixmap_mut().pixels_mut().iter_mut().enumerate() {
+			let (x, y) = (i as u32 % width, i as u32 / width);
+			let [r, g, b] = self.lcd_accum[((y / cell) * lw + x / cell) as usize];
+			let line = x % cell == cell - 1 || y % cell == cell - 1;
+			let shade = if line { grid } else { 1.0 };
+			let out = |v: u8, black: u8, white: u8| (tint(v, black, white) * shade).round().clamp(0.0, 255.0) as u8;
+			*px = PremultipliedColorU8::from_rgba(
+				out(r, LCD_BLACK.r, LCD_WHITE.r),
+				out(g, LCD_BLACK.g, LCD_WHITE.g),
+				out(b, LCD_BLACK.b, LCD_WHITE.b),
+				255,
+			)
+			.unwrap_or(PremultipliedColorU8::TRANSPARENT);
 		}
 	}
 
@@ -243,11 +361,13 @@ impl DialGauge {
 		let base = self.base.clone();
 		let (mode, label, text) = (self.status_mode, self.status_label.clone(), self.status_text.clone());
 		let major_count = self.major_count;
-		self.static_layer = Some(render_static(self.size.0, self.size.1, |c| {
+		let scale = self.render_scale;
+		let (width, height) = if self.lcd { lcd_size(self.size) } else { self.size };
+		self.static_layer = Some(render_static(width, height, |c| {
 			draw_background(c);
+			draw_bezel(c, scale);
+			c.scale(scale, scale);
 			let font = typeface("Aldrich");
-
-			draw_bezel(c);
 
 			// Major ticks and labels.
 			let tick = Paint::stroke(TEXT_COLOR, 4.0);
@@ -338,6 +458,7 @@ impl Gauge for DialGauge {
 	fn reset_saved_state(&mut self) {
 		self.peak = self.base.value;
 		self.min = self.base.value;
+		self.lcd_accum.clear();
 	}
 
 	fn draw(&mut self, canvas: &mut Canvas) {
@@ -349,45 +470,10 @@ impl Gauge for DialGauge {
 		if !self.base.static_cache_valid || self.static_layer.is_none() {
 			self.update_static();
 		}
-		if let Some(p) = &self.static_layer {
-			canvas.draw_sprite(p);
-		}
-
-		// Needle: flat bar from the centre towards the ticks.
-		let (sin, cos) = angle_for(self.base.fraction(self.current_value)).sin_cos();
-		let (perp_x, perp_y) = (-sin * NEEDLE_HALF_WIDTH, cos * NEEDLE_HALF_WIDTH);
-		let (tip_x, tip_y) = (CENTER_X + cos * NEEDLE_LENGTH, CENTER_Y + sin * NEEDLE_LENGTH);
-		let mut pb = PathBuilder::new();
-		pb.move_to(CENTER_X + perp_x, CENTER_Y + perp_y);
-		pb.line_to(tip_x + perp_x, tip_y + perp_y);
-		pb.line_to(tip_x - perp_x, tip_y - perp_y);
-		pb.line_to(CENTER_X - perp_x, CENTER_Y - perp_y);
-		pb.close();
-		if let Some(path) = pb.finish() {
-			canvas.draw_path(&path, &Paint::fill(NEEDLE_COLOR));
-		}
-
-		// Digital readout.
-		let text = crate::format::format_number(self.base.value, &format!("F{}", self.decimals));
-		let style =
-			TextStyle { size: 190.0, bold: 1.0, scale_x: 0.85, skew: -0.12, spacing: 2.0, max_width: VALUE_MAX_WIDTH };
-		draw_styled_text(
-			canvas,
-			&text,
-			RIGHT_EDGE,
-			408.0,
-			TextAlign::Right,
-			typeface("Saira Extra Condensed"),
-			&style,
-			TEXT_COLOR,
-		);
-
-		if matches!(self.status_mode, StatusMode::Peak | StatusMode::Min) {
-			let held = if self.status_mode == StatusMode::Peak { self.peak } else { self.min };
-			let held = if held.is_nan() { self.base.value } else { held };
-			let text = crate::format::format_number(held, &format!("F{}", self.decimals));
-			let font = typeface("Aldrich");
-			draw_styled_text(canvas, &text, RIGHT_EDGE, 246.0, TextAlign::Right, font, &STATUS_STYLE, STATUS_COLOR);
+		if self.lcd {
+			self.draw_lcd(canvas);
+		} else {
+			self.draw_frame(canvas);
 		}
 	}
 }
@@ -439,6 +525,43 @@ mod tests {
 		gauge.set_value(14.7);
 		gauge.set_value(11.2);
 		assert_eq!(gauge.min, 11.2);
+	}
+
+	#[test]
+	fn lcd_tints_black_adds_a_grid_and_ghosts() {
+		let config =
+			GaugeConfig { lcd: true, smoothing: false, min_value: -10.0, max_value: 20.0, ..GaugeConfig::default() };
+		let mut gauge = DialGauge::new(&config, 640, 480);
+		let mut canvas = Canvas::new(640, 480);
+		gauge.set_value(0.0);
+		gauge.draw(&mut canvas);
+		// Background (top-left LCD pixel): black becomes the backlight navy, and
+		// the cell's last column is the darker grid line.
+		assert_eq!(canvas.pixel(0, 0).unwrap(), LCD_BLACK);
+		let line = canvas.pixel(2, 0).unwrap();
+		assert!(line.b < LCD_BLACK.b && line.b > LCD_BLACK.b / 2, "grid line {line:?}");
+
+		// Needle at 0 points left; move it to 20 (right) and the old one ghosts.
+		let left = (141, 243);
+		let lit = |c: &Canvas| c.pixel(left.0, left.1).unwrap().r;
+		let on = lit(&canvas);
+		gauge.set_value(20.0);
+		gauge.draw(&mut canvas);
+		let ghost = lit(&canvas);
+		assert!(ghost > LCD_BLACK.r + 20 && ghost < on, "ghost {ghost} between {} and {on}", LCD_BLACK.r);
+		for _ in 0..20 {
+			gauge.draw(&mut canvas);
+		}
+		assert!(lit(&canvas) <= LCD_BLACK.r + 2, "ghost fades");
+
+		// No ghosting: the old needle is gone on the very next frame.
+		let config = GaugeConfig { lcd_ghosting: 0.0, ..config };
+		let mut gauge = DialGauge::new(&config, 640, 480);
+		gauge.set_value(0.0);
+		gauge.draw(&mut canvas);
+		gauge.set_value(20.0);
+		gauge.draw(&mut canvas);
+		assert!(lit(&canvas) <= LCD_BLACK.r + 2, "no ghost with LcdGhosting 0");
 	}
 
 	#[test]
