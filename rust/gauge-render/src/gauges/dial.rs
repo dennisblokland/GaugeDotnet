@@ -12,8 +12,10 @@ const CENTER_X: f32 = 221.0;
 const CENTER_Y: f32 = 243.0;
 const BEZEL_RADIUS: f32 = 207.0;
 const BEZEL_WIDTH: f32 = 17.0;
-const BEZEL_FADE_START: f32 = 0.15;
-const BEZEL_FADE_END: f32 = 0.3;
+const BEZEL_OVERHANG_DEG: f32 = 25.0;
+const BEZEL_FADE_DEG: f32 = 20.0;
+const BEZEL_START_DEG: f32 = START_ANGLE_DEG - BEZEL_OVERHANG_DEG;
+const BEZEL_SWEEP_DEG: f32 = SWEEP_DEG + 2.0 * BEZEL_OVERHANG_DEG;
 const START_ANGLE_DEG: f32 = 90.0;
 const SWEEP_DEG: f32 = 270.0;
 const MAJOR_COUNT: usize = 6;
@@ -51,24 +53,26 @@ fn smooth_step(t: f32) -> f32 {
 	t * t * (3.0 - 2.0 * t)
 }
 
-/// Bezel opacity at a point: full along the scale, fading out towards both ends.
+/// Bezel opacity at a point: full along the scale, fading out over
+/// `BEZEL_FADE_DEG` at both ends of the bezel, which runs
+/// `BEZEL_OVERHANG_DEG` past the end ticks.
 fn bezel_fade(x: f32, y: f32) -> f32 {
 	let deg = (y - CENTER_Y).atan2(x - CENTER_X).to_degrees();
-	let u = (deg - START_ANGLE_DEG).rem_euclid(360.0) / SWEEP_DEG;
-	if u > 1.0 {
+	let d = (deg - BEZEL_START_DEG).rem_euclid(360.0);
+	if d > BEZEL_SWEEP_DEG {
 		return 0.0;
 	}
-	smooth_step(u / BEZEL_FADE_START) * smooth_step((1.0 - u) / BEZEL_FADE_END)
+	smooth_step(d / BEZEL_FADE_DEG) * smooth_step((BEZEL_SWEEP_DEG - d) / BEZEL_FADE_DEG)
 }
 
-/// Grey ring with a lighter outer rim along the scale. It is drawn into its
+/// Grey ring with a lighter outer rim along the scale and a little past it. It is drawn into its
 /// own layer whose alpha is then scaled per pixel by [`bezel_fade`].
 fn draw_bezel(target: &mut Canvas) {
 	let (width, height) = (target.width(), target.height());
 	let mut layer = Canvas::new(width, height);
 	let arc = |c: &mut Canvas, r: f32, stroke: f32, color: Rgba| {
 		if let Some(oval) = rect(CENTER_X - r, CENTER_Y - r, CENTER_X + r, CENTER_Y + r) {
-			c.draw_arc(oval, START_ANGLE_DEG, SWEEP_DEG, &Paint::stroke(color, stroke));
+			c.draw_arc(oval, BEZEL_START_DEG, BEZEL_SWEEP_DEG, &Paint::stroke(color, stroke));
 		}
 	};
 	arc(&mut layer, BEZEL_RADIUS - BEZEL_WIDTH / 2.0, BEZEL_WIDTH, BEZEL_COLOR);

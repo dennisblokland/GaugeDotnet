@@ -25,8 +25,10 @@ namespace GaugeDotnet.Gauges
         private const float CENTER_Y = 243f;
         private const float BEZEL_RADIUS = 207f;
         private const float BEZEL_WIDTH = 17f;
-        private const float BEZEL_FADE_START = 0.15f;
-        private const float BEZEL_FADE_END = 0.3f;
+        private const float BEZEL_OVERHANG_DEG = 25f;
+        private const float BEZEL_FADE_DEG = 20f;
+        private const float BEZEL_START_DEG = START_ANGLE_DEG - BEZEL_OVERHANG_DEG;
+        private const float BEZEL_SWEEP_DEG = SWEEP_DEG + 2f * BEZEL_OVERHANG_DEG;
         private const float START_ANGLE_DEG = 90f;
         private const float SWEEP_DEG = 270f;
         private const int MAJOR_COUNT = 6;
@@ -81,20 +83,23 @@ namespace GaugeDotnet.Gauges
             return t * t * (3f - 2f * t);
         }
 
-        /// <summary>Bezel opacity at a point: full along the scale, fading out towards both ends.</summary>
+        /// <summary>
+        /// Bezel opacity at a point: full along the scale, fading out over <see cref="BEZEL_FADE_DEG"/>
+        /// at both ends of the bezel, which runs <see cref="BEZEL_OVERHANG_DEG"/> past the end ticks.
+        /// </summary>
         private static float BezelFade(float x, float y)
         {
             float deg = MathF.Atan2(y - CENTER_Y, x - CENTER_X) * 180f / MathF.PI;
-            float u = (((deg - START_ANGLE_DEG) % 360f) + 360f) % 360f / SWEEP_DEG;
-            if (u > 1f)
+            float d = (((deg - BEZEL_START_DEG) % 360f) + 360f) % 360f;
+            if (d > BEZEL_SWEEP_DEG)
             {
                 return 0f;
             }
-            return SmoothStep(u / BEZEL_FADE_START) * SmoothStep((1f - u) / BEZEL_FADE_END);
+            return SmoothStep(d / BEZEL_FADE_DEG) * SmoothStep((BEZEL_SWEEP_DEG - d) / BEZEL_FADE_DEG);
         }
 
         /// <summary>
-        /// Grey ring with a lighter outer rim along the scale. It is drawn into its own
+        /// Grey ring with a lighter outer rim along the scale and a little past it. It is drawn into its own
         /// layer whose alpha is then scaled per pixel by <see cref="BezelFade"/>.
         /// </summary>
         private void DrawBezel(SKCanvas target, int width, int height)
@@ -107,12 +112,12 @@ namespace GaugeDotnet.Gauges
                 _strokePaint.Color = BezelColor;
                 _strokePaint.StrokeWidth = BEZEL_WIDTH;
                 canvas.DrawArc(new SKRect(CENTER_X - bodyR, CENTER_Y - bodyR, CENTER_X + bodyR, CENTER_Y + bodyR),
-                    START_ANGLE_DEG, SWEEP_DEG, false, _strokePaint);
+                    BEZEL_START_DEG, BEZEL_SWEEP_DEG, false, _strokePaint);
                 float rimR = BEZEL_RADIUS - BEZEL_WIDTH * 0.2f;
                 _strokePaint.Color = BezelHighlight;
                 _strokePaint.StrokeWidth = BEZEL_WIDTH * 0.4f;
                 canvas.DrawArc(new SKRect(CENTER_X - rimR, CENTER_Y - rimR, CENTER_X + rimR, CENTER_Y + rimR),
-                    START_ANGLE_DEG, SWEEP_DEG, false, _strokePaint);
+                    BEZEL_START_DEG, BEZEL_SWEEP_DEG, false, _strokePaint);
             }
 
             Span<byte> pixels = layer.GetPixelSpan();
