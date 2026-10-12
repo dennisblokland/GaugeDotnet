@@ -45,7 +45,7 @@ USAGE:
   gauge builtin <type> [-o out.png] [--value V] [--min V] [--max V]
                 [--title S] [--unit S] [--color #RRGGBB] [--decimals N] [--segments N]
                 [--peak V] [--status-mode peak|min|text|none] [--status-label S] [--status-text S] [--lcd true] [--lcd-ghosting 0..0.9]
-      Render a built-in gauge: bar, circular, needle, dial, digital, sweep, minmax, histogram.
+      Render a built-in gauge: bar, circular, needle, turboxs, digital, sweep, minmax, histogram.
       --peak feeds V once before settling on --value (for peak-hold displays).
   gauge bench <file.json> [--frames N] [--warmup N] [--threads N] [--data-hz HZ] [--full]
       Time the draw call of a custom definition, or of every gauges.json screen.

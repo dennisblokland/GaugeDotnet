@@ -238,10 +238,10 @@ fn incremental_and_threaded_renders_match_full_render() {
 }
 
 #[test]
-fn dial_needle_follows_the_270_degree_scale() {
+fn turboxs_needle_follows_the_270_degree_scale() {
 	// -10..20 sweeps clockwise from 6 o'clock to 3 o'clock around (221, 243).
 	let config = GaugeConfig {
-		gauge_type: GaugeType::Dial,
+		gauge_type: GaugeType::TurboXs,
 		min_value: -10.0,
 		max_value: 20.0,
 		smoothing: false,

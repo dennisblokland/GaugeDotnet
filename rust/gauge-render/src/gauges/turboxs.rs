@@ -1,4 +1,4 @@
-//! Port of `DialGauge`: handheld-style boost display with a 270° dial on the
+//! Port of `TurboXsGauge`: handheld-style boost display with a 270° dial on the
 //! left and a stacked title, status text and a large italic readout on the right.
 
 use tiny_skia::{PathBuilder, PremultipliedColorU8};
@@ -78,7 +78,7 @@ impl StatusMode {
 	}
 }
 
-pub struct DialGauge {
+pub struct TurboXsGauge {
 	base: GaugeBase,
 	current_value: f32,
 	smoothing: bool,
@@ -186,7 +186,7 @@ struct TextStyle {
 	max_width: f32,
 }
 
-/// `DialGauge.DrawStyledText`; `y` is the baseline.
+/// `TurboXsGauge.DrawStyledText`; `y` is the baseline.
 #[allow(clippy::too_many_arguments)]
 fn draw_styled_text(
 	c: &mut Canvas,
@@ -231,7 +231,7 @@ fn draw_styled_text(
 	c.restore();
 }
 
-impl DialGauge {
+impl TurboXsGauge {
 	pub fn new(config: &GaugeConfig, width: u32, height: u32) -> Self {
 		let base = GaugeBase::new(config);
 		let status_mode = StatusMode::parse(&config.status_mode);
@@ -439,7 +439,7 @@ impl DialGauge {
 	}
 }
 
-impl Gauge for DialGauge {
+impl Gauge for TurboXsGauge {
 	fn base(&self) -> &GaugeBase {
 		&self.base
 	}
@@ -492,8 +492,8 @@ mod tests {
 
 	#[test]
 	fn peak_and_min_follow_values_until_reset() {
-		let config = GaugeConfig { gauge_type: crate::gauges::GaugeType::Dial, ..GaugeConfig::default() };
-		let mut gauge = DialGauge::new(&config, 640, 480);
+		let config = GaugeConfig { gauge_type: crate::gauges::GaugeType::TurboXs, ..GaugeConfig::default() };
+		let mut gauge = TurboXsGauge::new(&config, 640, 480);
 		assert_eq!(gauge.status_label, "Peak:");
 		for v in [3.0, 12.5, -4.0, 1.0] {
 			gauge.set_value(v);
@@ -520,7 +520,7 @@ mod tests {
 	#[test]
 	fn min_starts_from_first_reading() {
 		let config = GaugeConfig { status_mode: "Min".into(), ..GaugeConfig::default() };
-		let mut gauge = DialGauge::new(&config, 640, 480);
+		let mut gauge = TurboXsGauge::new(&config, 640, 480);
 		assert!(gauge.min.is_nan());
 		gauge.set_value(14.7);
 		gauge.set_value(11.2);
@@ -531,7 +531,7 @@ mod tests {
 	fn lcd_tints_black_adds_a_grid_and_ghosts() {
 		let config =
 			GaugeConfig { lcd: true, smoothing: false, min_value: -10.0, max_value: 20.0, ..GaugeConfig::default() };
-		let mut gauge = DialGauge::new(&config, 640, 480);
+		let mut gauge = TurboXsGauge::new(&config, 640, 480);
 		let mut canvas = Canvas::new(640, 480);
 		gauge.set_value(0.0);
 		gauge.draw(&mut canvas);
@@ -556,7 +556,7 @@ mod tests {
 
 		// No ghosting: the old needle is gone on the very next frame.
 		let config = GaugeConfig { lcd_ghosting: 0.0, ..config };
-		let mut gauge = DialGauge::new(&config, 640, 480);
+		let mut gauge = TurboXsGauge::new(&config, 640, 480);
 		gauge.set_value(0.0);
 		gauge.draw(&mut canvas);
 		gauge.set_value(20.0);
@@ -567,8 +567,8 @@ mod tests {
 	#[test]
 	fn status_label_override_and_defaults() {
 		let text = GaugeConfig { status_mode: "Text".into(), ..GaugeConfig::default() };
-		assert_eq!(DialGauge::new(&text, 640, 480).status_label, "Datalog:");
+		assert_eq!(TurboXsGauge::new(&text, 640, 480).status_label, "Datalog:");
 		let custom = GaugeConfig { status_mode: "Min".into(), status_label: "Lowest".into(), ..GaugeConfig::default() };
-		assert_eq!(DialGauge::new(&custom, 640, 480).status_label, "Lowest");
+		assert_eq!(TurboXsGauge::new(&custom, 640, 480).status_label, "Lowest");
 	}
 }

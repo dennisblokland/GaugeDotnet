@@ -14,7 +14,7 @@ pub enum GaugeType {
 	MinMax,
 	Grid,
 	Custom,
-	Dial,
+	TurboXs,
 }
 
 impl GaugeType {
@@ -28,7 +28,7 @@ impl GaugeType {
 		Self::MinMax,
 		Self::Grid,
 		Self::Custom,
-		Self::Dial,
+		Self::TurboXs,
 	];
 
 	/// The C# enum name (also its JSON spelling).
@@ -43,7 +43,7 @@ impl GaugeType {
 			Self::MinMax => "MinMax",
 			Self::Grid => "Grid",
 			Self::Custom => "Custom",
-			Self::Dial => "Dial",
+			Self::TurboXs => "TurboXs",
 		}
 	}
 
@@ -99,15 +99,15 @@ pub struct GaugeConfig {
 	pub decimals: i32,
 	pub max_data_points: i32,
 	pub interval_ms: i32,
-	/// Dial: `Peak`, `Min`, `Text` or `None` (the status block under the title).
+	/// TurboXs: `Peak`, `Min`, `Text` or `None` (the status block under the title).
 	pub status_mode: String,
-	/// Dial: first status line; empty picks `Peak:`, `Min:` or `Datalog:`.
+	/// TurboXs: first status line; empty picks `Peak:`, `Min:` or `Datalog:`.
 	pub status_label: String,
-	/// Dial: second status line in `Text` mode.
+	/// TurboXs: second status line in `Text` mode.
 	pub status_text: String,
-	/// Dial: old-LCD look (low resolution, pixel grid, backlight tint, ghosting).
+	/// TurboXs: old-LCD look (low resolution, pixel grid, backlight tint, ghosting).
 	pub lcd: bool,
-	/// Dial: share of the previous frame that lingers in Lcd mode (0 = none, up to 0.9).
+	/// TurboXs: share of the previous frame that lingers in Lcd mode (0 = none, up to 0.9).
 	pub lcd_ghosting: f32,
 	pub cells: Vec<GridCellConfig>,
 }

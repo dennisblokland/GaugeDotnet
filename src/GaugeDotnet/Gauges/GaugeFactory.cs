@@ -86,8 +86,8 @@ namespace GaugeDotnet.Gauges
                         Smoothing = config.Smoothing,
                     }, screenWidth, screenHeight),
 
-                GaugeType.Dial => new DialGauge(
-                    new DialGaugeSettings
+                GaugeType.TurboXs => new TurboXsGauge(
+                    new TurboXsGaugeSettings
                     {
                         InitialValue = config.InitialValue,
                         MinValue = config.MinValue,

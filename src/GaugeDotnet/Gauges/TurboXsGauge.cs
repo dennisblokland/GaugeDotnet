@@ -9,10 +9,10 @@ namespace GaugeDotnet.Gauges
     /// Handheld-style boost display: a 270° dial on the left (bezel, white ticks,
     /// red needle) and a two-line title, status text and a large italic digital
     /// readout on the right. Title words are stacked ("Boost Press." → two lines).
-    /// With <see cref="DialGaugeSettings.Lcd"/> it imitates an old backlit LCD: rendered at
+    /// With <see cref="TurboXsGaugeSettings.Lcd"/> it imitates an old backlit LCD: rendered at
     /// a third of the resolution with a visible pixel grid, a blue tint and ghosting.
     /// </summary>
-    public class DialGauge : BaseGauge
+    public class TurboXsGauge : BaseGauge
     {
         private float _currentValue;
         private readonly bool _smoothing;
@@ -66,7 +66,7 @@ namespace GaugeDotnet.Gauges
 
         // Old LCD: each LCD pixel covers LCD_CELL x LCD_CELL screen pixels; the gap
         // between them is darkened to LCD_GRID; each frame keeps _lcdGhosting of the
-        // last one (DialGaugeSettings.LcdGhosting); and black/white map to the backlight's navy and pale blue.
+        // last one (TurboXsGaugeSettings.LcdGhosting); and black/white map to the backlight's navy and pale blue.
         private const int LCD_CELL = 3;
         private const float LCD_GRID = 0.7f;
         private static readonly SKColor LcdBlack = new(0x14, 0x1A, 0x40);
@@ -91,8 +91,8 @@ namespace GaugeDotnet.Gauges
         private readonly SKPaint _boldTextPaint;
         private readonly SKPaint _strokePaint;
 
-        public DialGauge(
-            DialGaugeSettings settings,
+        public TurboXsGauge(
+            TurboXsGaugeSettings settings,
             int screenWidth = 640,
             int screenHeight = 480
         ) : base(settings)

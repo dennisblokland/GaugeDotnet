@@ -14,6 +14,6 @@ namespace GaugeDotnet.Configuration
         MinMax,
         Grid,
         Custom,
-        Dial
+        TurboXs
     }
 }

@@ -23,7 +23,7 @@ A Rust port of GaugeDotnet's rendering stack. It loads the same `custom-gauge.js
 | `Gauges/Custom/ExpressionEvaluator.cs` | `expression.rs` |
 | `ImageCache` / `GifCache` | `images.rs` (PNG, JPEG, WebP, plus GIF/APNG/WebP animation frames) |
 | `Rendering/FontHelper.cs` | `text.rs` (the bundled fonts are embedded in the binary) |
-| `BaseGauge`, `BarGauge`, `CircularGauge`, `NeedleGauge`, `DialGauge`, `SweepGauge`, `DigitalGauge`, `MinMaxGauge`, `HistogramGauge`, `GridGauge`, `SegmentDisplay` | `gauges/*.rs` |
+| `BaseGauge`, `BarGauge`, `CircularGauge`, `NeedleGauge`, `TurboXsGauge`, `SweepGauge`, `DigitalGauge`, `MinMaxGauge`, `HistogramGauge`, `GridGauge`, `SegmentDisplay` | `gauges/*.rs` |
 | `GaugeFactory`, `AppConfig`, `GaugeConfig`, `TolerantGaugeTypeConverter` | `gauges/mod.rs`, `gauges/config.rs` |
 | `SKCanvas` / `SKPaint` / `SKMaskFilter` | `canvas.rs` (save/restore, transforms, clips, `SaveLayer` opacity, arcs, round rects, text, normal and outer blur) |
 | `value.ToString("F1")`, `DateTime.ToString("HH:mm")` | `format.rs` (standard and custom .NET numeric and date format strings, invariant culture) |
@@ -45,7 +45,7 @@ cargo run --release -- render examples/showcase.json -o out.png
 cargo run --release -- render examples/gauges.json -o screen.png     # one PNG per screen
 cargo run --release -- render my-gauge.json --set Rpm=6500 --set OilTemp=104
 cargo run --release -- builtin needle --value 72 --title SPEED --unit KMH --color '#FF8800'
-cargo run --release -- builtin dial --value 0.4 --min -10 --max 20 --title 'Boost Press.' --unit Psi --decimals 1
+cargo run --release -- builtin turboxs --value 0.4 --min -10 --max 20 --title 'Boost Press.' --unit Psi --decimals 1
 cargo run --release -- bench examples/showcase.json                  # values change every frame
 cargo run --release -- bench examples/showcase.json --data-hz 20     # realistic ECU rate
 cargo run --release -- bench examples/showcase.json --full --threads 1  # worst case

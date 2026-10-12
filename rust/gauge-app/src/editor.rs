@@ -44,7 +44,7 @@ fn cycle<'a>(options: &[&'a str], current: &str, dir: i32, missing: i32) -> &'a 
 	options[(idx + dir).rem_euclid(n) as usize]
 }
 
-/// `ConfigEditor.StatusModeOptions`: the Dial gauge's status block modes.
+/// `ConfigEditor.StatusModeOptions`: the TurboXs gauge's status block modes.
 const STATUS_MODES: [&str; 4] = ["Peak", "Min", "Text", "None"];
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -85,7 +85,7 @@ fn fields_for(gauge: &GaugeConfig) -> Vec<Field> {
 		GaugeType::Bar | GaugeType::Circular | GaugeType::MinMax => &[SegmentCount, Smoothing],
 		GaugeType::Histogram => &[MaxDataPoints, IntervalMs],
 		GaugeType::Needle | GaugeType::Sweep => &[Smoothing],
-		GaugeType::Dial => &[Smoothing, StatusMode, Lcd, LcdGhosting],
+		GaugeType::TurboXs => &[Smoothing, StatusMode, Lcd, LcdGhosting],
 		GaugeType::Grid => return std::iter::once(Type).chain((0..gauge.cells.len()).map(Cell)).collect(),
 		GaugeType::Digital | GaugeType::Custom => &[],
 	};
@@ -458,11 +458,11 @@ mod tests {
 		press(&mut editor, &mut config, &[K::A_DOWN]);
 		assert_eq!(editor.page, Page::GaugeEdit);
 
-		// Type: Bar -> Circular -> Bar -> (wraps back) Dial -> Custom.
+		// Type: Bar -> Circular -> Bar -> (wraps back) TurboXs -> Custom.
 		press(&mut editor, &mut config, &[K::RIGHT]);
 		assert_eq!(config.screens[1].gauge.gauge_type, GaugeType::Circular);
 		press(&mut editor, &mut config, &[K::LEFT, K::LEFT]);
-		assert_eq!(config.screens[1].gauge.gauge_type, GaugeType::Dial);
+		assert_eq!(config.screens[1].gauge.gauge_type, GaugeType::TurboXs);
 		press(&mut editor, &mut config, &[K::LEFT]);
 		assert_eq!(config.screens[1].gauge.gauge_type, GaugeType::Custom);
 		// Custom -> Grid creates 4 cells, and the field list becomes Type + cells.
