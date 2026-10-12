@@ -1,0 +1,9 @@
+[package]
+name = "me-data"
+version = "0.1.0"
+description = "Motorsport Electronics ECU CAN frame decoding (port of ME1_4NET)"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]

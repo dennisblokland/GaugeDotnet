@@ -1,0 +1,27 @@
+[package]
+name = "gauge-app"
+version = "0.1.0"
+description = "GaugeDotnet runner: PNG snapshots and an SDL2 window driven by simulated ECU data"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "gauge"
+path = "src/main.rs"
+
+[features]
+default = []
+# Live window via SDL2 (needs libsdl2-dev, or the device's libSDL2).
+sdl = ["dep:sdl2"]
+# Bluetooth link to the ECU (needs libdbus-1-dev, or use `ble-vendored`).
+ble = ["dep:me-ble"]
+# Build libdbus from source (for cross-compiling to the device).
+ble-vendored = ["ble", "me-ble/vendored-dbus"]
+
+[dependencies]
+gauge-render = { path = "../gauge-render" }
+me-data = { path = "../me-data" }
+me-ble = { path = "../me-ble", optional = true }
+sdl2 = { version = "0.37", optional = true }
+serde_json = "1"

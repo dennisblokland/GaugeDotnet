@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Benchmark harness: compiles the app's real renderer sources (linked, unmodified)
+    without the BLE/SDL parts, so it restores from nuget.org alone.
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <ServerGarbageCollection>false</ServerGarbageCollection>
+    <TieredPGO>true</TieredPGO>
+    <NoWarn>$(NoWarn);CS8618;CS8600;CS8602;CS8604;CS0168</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="SkiaSharp" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="../../src/GaugeDotnet/Gauges/**/*.cs" Exclude="../../src/GaugeDotnet/Gauges/GaugeFactory.cs" LinkBase="Linked/Gauges" />
+    <Compile Include="../../src/GaugeDotnet/Extensions/*.cs" LinkBase="Linked/Extensions" />
+    <Compile Include="../../src/GaugeDotnet/Rendering/FontHelper.cs" LinkBase="Linked/Rendering" />
+    <Compile Include="../../src/GaugeDotnet/Configuration/*.cs" Exclude="../../src/GaugeDotnet/Configuration/ConfigService.cs" LinkBase="Linked/Configuration" />
+    <None Include="../../src/GaugeDotnet/fonts/*.ttf" LinkBase="fonts" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/ME1_4NET/ME1_4NET.csproj" />
+  </ItemGroup>
+</Project>
