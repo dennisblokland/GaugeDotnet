@@ -41,7 +41,22 @@ C# redraws everything each frame, so Rust is shown with `--full`.
 
 Damage tracking and threads apply to custom gauges only. The built-in gauges always repaint the full frame, but they get faster as data arrives less often because their caches (lit segments, digits, Histogram bars) hit more. Sweep stays around 1.2–1.5 ms because its glowing arc isn't cached.
 
-## 3. Resources
+## 3. TurboXs (`rust/examples/turboxs.json`)
+
+Measured in a later session on a different VM (Intel Xeon @ 2.80 GHz, 4 vCPU, .NET 10.0.12, Rust 1.97), so compare these rows with each other, not with sections 1–2. New data every frame, full repaint, Rust on 1 thread; each figure is the median of 3 runs.
+
+| Screen | C# (min–max) | Rust (min–max) | Speedup |
+|---|---:|---:|---:|
+| TurboXs | 3.27 (3.24–3.68) | 1.08 (1.04–1.14) | 3.0× |
+| TurboXs, `"Lcd": true` | 5.18 (5.11–5.67) | 1.47 (1.37–1.65) | 3.5× |
+
+- **Smaller Rust lead than on other gauges:** TurboXs has no blurred glows, which is where the Rust renderer's biggest shortcuts are. Its per-frame work is mostly glyph outlines (needle, readout, peak text), which both libraries draw at similar cost.
+- **LCD mode:** the gauge renders at a third of the resolution (about 0.4 ms in Rust and 0.6 ms in C#), then one pass fills the 640×480 frame using lookup tables and row copies.
+  - **CPU canvas:** C# takes this path too, because Skia's CPU path is slow at repeating-tile shaders. Most of C#'s remaining LCD cost is its full-screen `DrawBitmap`, about 2.5 ms.
+  - **Device (GPU):** C# uses a single shader draw instead, which this benchmark can't measure.
+  - **Before the lookup-table path:** LCD mode was 15.9 ms (C#) and 11.1 ms (Rust).
+
+## 4. Resources
 
 | | C# | Rust |
 |---|---:|---:|

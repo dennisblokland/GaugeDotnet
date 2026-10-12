@@ -337,23 +337,48 @@ impl TurboXsGauge {
 		}
 		self.lcd_frame = Some(frame);
 
+		// Per-channel lookup tables: the tinted value, and the tinted value on
+		// a grid line. Each LCD row is built once as a plain row and a grid row,
+		// then copied into the screen rows it covers.
 		let grid = 1.0 - (255.0 * (1.0 - LCD_GRID)).round() / 255.0;
-		let tint = |v: u8, black: u8, white: u8| black as f32 + (white as f32 - black as f32) * v as f32 / 255.0;
-		let width = canvas.width();
-		let cell = LCD_CELL as u32;
-		for (i, px) in canvas.pixmap_mut().pixels_mut().iter_mut().enumerate() {
-			let (x, y) = (i as u32 % width, i as u32 / width);
-			let [r, g, b] = self.lcd_accum[((y / cell) * lw + x / cell) as usize];
-			let line = x % cell == cell - 1 || y % cell == cell - 1;
-			let shade = if line { grid } else { 1.0 };
-			let out = |v: u8, black: u8, white: u8| (tint(v, black, white) * shade).round().clamp(0.0, 255.0) as u8;
-			*px = PremultipliedColorU8::from_rgba(
-				out(r, LCD_BLACK.r, LCD_WHITE.r),
-				out(g, LCD_BLACK.g, LCD_WHITE.g),
-				out(b, LCD_BLACK.b, LCD_WHITE.b),
-				255,
-			)
-			.unwrap_or(PremultipliedColorU8::TRANSPARENT);
+		let tables = |black: u8, white: u8| {
+			let (mut plain, mut line) = ([0u8; 256], [0u8; 256]);
+			for v in 0..256 {
+				let tinted = black as f32 + (white as f32 - black as f32) * v as f32 / 255.0;
+				plain[v] = tinted.round() as u8;
+				line[v] = (tinted * grid).round() as u8;
+			}
+			(plain, line)
+		};
+		let (r_plain, r_line) = tables(LCD_BLACK.r, LCD_WHITE.r);
+		let (g_plain, g_line) = tables(LCD_BLACK.g, LCD_WHITE.g);
+		let (b_plain, b_line) = tables(LCD_BLACK.b, LCD_WHITE.b);
+
+		let (width, height) = (canvas.width() as usize, canvas.height() as usize);
+		let (lw, cell) = (lw as usize, LCD_CELL);
+		let mut plain_row = vec![0u8; width * 4];
+		let mut line_row = vec![0u8; width * 4];
+		let data = canvas.pixmap_mut().data_mut();
+		for (ly, cells) in self.lcd_accum.chunks_exact(lw).enumerate() {
+			let y0 = ly * cell;
+			if y0 >= height {
+				break;
+			}
+			for x in 0..width {
+				let [r, g, b] = cells[x / cell];
+				let line = [r_line[r as usize], g_line[g as usize], b_line[b as usize], 255];
+				let plain = if x % cell == cell - 1 {
+					line
+				} else {
+					[r_plain[r as usize], g_plain[g as usize], b_plain[b as usize], 255]
+				};
+				plain_row[x * 4..x * 4 + 4].copy_from_slice(&plain);
+				line_row[x * 4..x * 4 + 4].copy_from_slice(&line);
+			}
+			for y in y0..(y0 + cell).min(height) {
+				let row = if y - y0 == cell - 1 { &line_row } else { &plain_row };
+				data[y * width * 4..(y + 1) * width * 4].copy_from_slice(row);
+			}
 		}
 	}
 

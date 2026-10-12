@@ -39,11 +39,15 @@ namespace GaugeDotnet.Gauges
         private readonly int _width;
         private readonly int _height;
         private SKSurface? _lcdFrame;
-        private SKSurface? _lcdAccum;
-        private SKBitmap? _lcdGrid;
         private bool _lcdPrimed;
-        private readonly SKPaint _lcdBlendPaint = new();
-        private readonly SKPaint _lcdTintPaint;
+        // GPU canvas: ghosted image as a surface, and the grid as a repeating tile shader.
+        private SKSurface? _lcdAccum;
+        private SKShader? _lcdGrid;
+        // CPU canvas: ghosted RGB per LCD pixel, and the full-size output bitmap.
+        private byte[]? _lcdAccumPixels;
+        private SKBitmap? _lcdOut;
+        private readonly SKPaint _lcdBlendPaint;
+        private readonly SKPaint _lcdPaint = new();
 
         private const float CENTER_X = 221f;
         private const float CENTER_Y = 243f;
@@ -71,6 +75,8 @@ namespace GaugeDotnet.Gauges
         private const float LCD_GRID = 0.7f;
         private static readonly SKColor LcdBlack = new(0x14, 0x1A, 0x40);
         private static readonly SKColor LcdWhite = new(0xD8, 0xE0, 0xFF);
+        // CPU path: per channel (R, G, B), the tinted value and the tinted value on a grid line.
+        private static readonly (byte[] Plain, byte[] Line)[] LcdTables = BuildLcdTables();
 
         // Widest each text may be before it shrinks, so long values, titles and
         // labels stay clear of the dial whatever the data source and range.
@@ -119,7 +125,7 @@ namespace GaugeDotnet.Gauges
             _width = screenWidth;
             _height = screenHeight;
             (int renderW, int renderH) = _lcd ? LcdSize() : (screenWidth, screenHeight);
-            _lcdTintPaint = new SKPaint { ColorFilter = SKColorFilter.CreateColorMatrix(LcdTintMatrix()) };
+            _lcdBlendPaint = new SKPaint { ColorFilter = SKColorFilter.CreateColorMatrix(LcdTintMatrix()) };
 
             _staticBitmap = new SKBitmap(renderW, renderH, SKColorType.Rgba8888, SKAlphaType.Premul);
             _staticCanvas = new SKCanvas(_staticBitmap);
@@ -423,57 +429,155 @@ namespace GaugeDotnet.Gauges
 
         /// <summary>
         /// Renders the frame at LCD resolution, blends it over the previous one (ghosting),
-        /// then scales it up with hard pixel edges, the backlight tint and the pixel grid.
-        /// Everything stays on the GPU: two small offscreen surfaces and a cached grid overlay.
+        /// then shows it scaled up with hard pixel edges, the backlight tint and the pixel grid.
+        /// A GPU canvas does that in one shader draw. On a CPU canvas, Skia's shader blits are
+        /// slow, so it is done like the Rust renderer: lookup tables and row copies into a bitmap.
         /// </summary>
         private void DrawLcd(SKCanvas canvas)
         {
             (int lw, int lh) = LcdSize();
-            if (_lcdFrame == null || _lcdAccum == null || _lcdGrid == null)
+            GRRecordingContext? context = canvas.Context;
+            if (_lcdFrame == null)
             {
                 SKImageInfo info = new(lw, lh, SKColorType.Rgba8888, SKAlphaType.Premul);
-                GRRecordingContext? context = canvas.Context;
                 _lcdFrame = context != null ? SKSurface.Create(context, false, info) : SKSurface.Create(info);
-                _lcdAccum = context != null ? SKSurface.Create(context, false, info) : SKSurface.Create(info);
-                _lcdGrid = CreateLcdGrid();
                 _lcdPrimed = false;
             }
 
             _lcdFrame.Canvas.Clear(SKColors.Black);
             DrawFrame(_lcdFrame.Canvas);
-            using (SKImage frame = _lcdFrame.Snapshot())
+            if (context != null)
+            {
+                ComposeLcdGpu(canvas, context, lw, lh);
+            }
+            else
+            {
+                ComposeLcdRaster(canvas, lw, lh);
+            }
+            _lcdPrimed = true;
+        }
+
+        /// <summary>
+        /// Blends the frame, tinted, into the ghosted image (the tint is linear, so tinting before
+        /// the blend matches tinting after it), then draws it scaled up and multiplied by a
+        /// repeating grid tile in a single full-screen draw.
+        /// </summary>
+        private void ComposeLcdGpu(SKCanvas canvas, GRRecordingContext context, int lw, int lh)
+        {
+            if (_lcdAccum == null || _lcdGrid == null)
+            {
+                _lcdAccum = SKSurface.Create(context, false, new SKImageInfo(lw, lh, SKColorType.Rgba8888, SKAlphaType.Premul));
+                _lcdGrid = CreateLcdGrid();
+            }
+
+            using (SKImage frame = _lcdFrame!.Snapshot())
             {
                 byte alpha = _lcdPrimed ? (byte)MathF.Round(255f * (1f - _lcdGhosting)) : (byte)255;
                 _lcdBlendPaint.Color = SKColors.White.WithAlpha(alpha);
                 _lcdAccum.Canvas.DrawImage(frame, 0, 0, _lcdBlendPaint);
-                _lcdPrimed = true;
             }
 
             using SKImage lcd = _lcdAccum.Snapshot();
-            canvas.DrawImage(lcd, new SKRect(0, 0, lw * LCD_CELL, lh * LCD_CELL),
-                new SKSamplingOptions(SKFilterMode.Nearest), _lcdTintPaint);
-            canvas.DrawBitmap(_lcdGrid, 0, 0);
+            using SKShader pixels = lcd.ToShader(SKShaderTileMode.Clamp, SKShaderTileMode.Clamp,
+                new SKSamplingOptions(SKFilterMode.Nearest), SKMatrix.CreateScale(LCD_CELL, LCD_CELL));
+            using SKShader shader = SKShader.CreateCompose(pixels, _lcdGrid, SKBlendMode.Modulate);
+            _lcdPaint.Shader = shader;
+            canvas.DrawRect(0, 0, lw * LCD_CELL, lh * LCD_CELL, _lcdPaint);
+            _lcdPaint.Shader = null;
         }
 
-        /// <summary>Transparent overlay that darkens the last row and column of every LCD pixel.</summary>
-        private SKBitmap CreateLcdGrid()
+        /// <summary>
+        /// Same result on the CPU, with the Rust renderer's arithmetic: blend the frame into the
+        /// ghosted RGB buffer, then build each LCD row once (a plain row and a grid row) through
+        /// the tint tables and copy it into the screen rows it covers.
+        /// </summary>
+        private void ComposeLcdRaster(SKCanvas canvas, int lw, int lh)
         {
-            SKBitmap grid = new(_width, _height, SKColorType.Rgba8888, SKAlphaType.Premul);
-            Span<byte> pixels = grid.GetPixelSpan();
-            byte alpha = (byte)MathF.Round(255f * (1f - LCD_GRID));
-            for (int y = 0; y < _height; y++)
+            _lcdAccumPixels ??= new byte[lw * lh * 3];
+            _lcdOut ??= new SKBitmap(_width, _height, SKColorType.Rgba8888, SKAlphaType.Premul);
+
+            float alpha = _lcdPrimed ? MathF.Round(255f * (1f - _lcdGhosting)) / 255f : 1f;
+            using (SKPixmap frame = _lcdFrame!.PeekPixels())
+            {
+                ReadOnlySpan<byte> src = frame.GetPixelSpan();
+                for (int ly = 0; ly < lh; ly++)
+                {
+                    ReadOnlySpan<byte> row = src.Slice(ly * frame.RowBytes, lw * 4);
+                    for (int lx = 0; lx < lw; lx++)
+                    {
+                        for (int c = 0; c < 3; c++)
+                        {
+                            ref byte acc = ref _lcdAccumPixels[(ly * lw + lx) * 3 + c];
+                            acc = (byte)MathF.Round(row[lx * 4 + c] * alpha + acc * (1f - alpha), MidpointRounding.AwayFromZero);
+                        }
+                    }
+                }
+            }
+
+            (byte[] rPlain, byte[] rLine) = LcdTables[0];
+            (byte[] gPlain, byte[] gLine) = LcdTables[1];
+            (byte[] bPlain, byte[] bLine) = LcdTables[2];
+            Span<byte> dst = _lcdOut.GetPixelSpan();
+            Span<uint> plainRow = stackalloc uint[_width];
+            Span<uint> lineRow = stackalloc uint[_width];
+            for (int ly = 0; ly < lh && ly * LCD_CELL < _height; ly++)
             {
                 for (int x = 0; x < _width; x++)
                 {
-                    int i = (y * _width + x) * 4;
-                    bool line = x % LCD_CELL == LCD_CELL - 1 || y % LCD_CELL == LCD_CELL - 1;
-                    pixels[i] = 0;
-                    pixels[i + 1] = 0;
-                    pixels[i + 2] = 0;
-                    pixels[i + 3] = line ? alpha : (byte)0;
+                    int i = (ly * lw + x / LCD_CELL) * 3;
+                    byte r = _lcdAccumPixels[i], g = _lcdAccumPixels[i + 1], b = _lcdAccumPixels[i + 2];
+                    uint line = rLine[r] | (uint)gLine[g] << 8 | (uint)bLine[b] << 16 | 0xFF000000u;
+                    lineRow[x] = line;
+                    plainRow[x] = x % LCD_CELL == LCD_CELL - 1
+                        ? line
+                        : rPlain[r] | (uint)gPlain[g] << 8 | (uint)bPlain[b] << 16 | 0xFF000000u;
+                }
+                for (int y = ly * LCD_CELL; y < Math.Min((ly + 1) * LCD_CELL, _height); y++)
+                {
+                    Span<uint> rowPixels = y % LCD_CELL == LCD_CELL - 1 ? lineRow : plainRow;
+                    System.Runtime.InteropServices.MemoryMarshal.AsBytes(rowPixels).CopyTo(dst.Slice(y * _width * 4, _width * 4));
                 }
             }
-            return grid;
+            canvas.DrawBitmap(_lcdOut, 0, 0);
+        }
+
+        private static (byte[] Plain, byte[] Line)[] BuildLcdTables()
+        {
+            float grid = 1f - MathF.Round(255f * (1f - LCD_GRID)) / 255f;
+            (byte Black, byte White)[] channels =
+            [
+                (LcdBlack.Red, LcdWhite.Red), (LcdBlack.Green, LcdWhite.Green), (LcdBlack.Blue, LcdWhite.Blue),
+            ];
+            return channels.Select(ch =>
+            {
+                byte[] plain = new byte[256], line = new byte[256];
+                for (int v = 0; v < 256; v++)
+                {
+                    float tinted = ch.Black + (ch.White - ch.Black) * v / 255f;
+                    plain[v] = (byte)MathF.Round(tinted, MidpointRounding.AwayFromZero);
+                    line[v] = (byte)MathF.Round(tinted * grid, MidpointRounding.AwayFromZero);
+                }
+                return (plain, line);
+            }).ToArray();
+        }
+
+        /// <summary>
+        /// Repeating LCD_CELL x LCD_CELL tile: white, with the last row and column at
+        /// <see cref="LCD_GRID"/> brightness. Multiplying by it draws the gaps between LCD pixels.
+        /// </summary>
+        private static SKShader CreateLcdGrid()
+        {
+            using SKBitmap tile = new(LCD_CELL, LCD_CELL, SKColorType.Rgba8888, SKAlphaType.Premul);
+            byte shade = (byte)MathF.Round(255f * LCD_GRID);
+            for (int y = 0; y < LCD_CELL; y++)
+            {
+                for (int x = 0; x < LCD_CELL; x++)
+                {
+                    byte v = x == LCD_CELL - 1 || y == LCD_CELL - 1 ? shade : (byte)255;
+                    tile.SetPixel(x, y, new SKColor(v, v, v));
+                }
+            }
+            return tile.ToShader(SKShaderTileMode.Repeat, SKShaderTileMode.Repeat);
         }
 
         /// <summary>The static layer plus needle, readout and status, at <see cref="_renderScale"/>.</summary>
