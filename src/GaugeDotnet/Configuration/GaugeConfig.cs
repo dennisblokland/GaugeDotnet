@@ -20,6 +20,13 @@ namespace GaugeDotnet.Configuration
         public int MaxDataPoints { get; set; } = 50;
         public int IntervalMs { get; set; } = 1000;
 
+        // Dial gauge specific: the status block under the title.
+        // StatusMode is Peak, Min, Text or None; StatusLabel overrides the first line
+        // ("Peak:", "Min:" or "Datalog:"), and StatusText is the second line in Text mode.
+        public string StatusMode { get; set; } = "Peak";
+        public string StatusLabel { get; set; } = "";
+        public string StatusText { get; set; } = "Stop";
+
         // Grid gauge specific
         public List<GridCellConfig> Cells { get; set; } = new();
     }

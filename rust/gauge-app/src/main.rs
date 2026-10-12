@@ -44,7 +44,9 @@ USAGE:
       ECU at time T (default 1.2) unless overridden with --set.
   gauge builtin <type> [-o out.png] [--value V] [--min V] [--max V]
                 [--title S] [--unit S] [--color #RRGGBB] [--decimals N] [--segments N]
-      Render a built-in gauge: bar, circular, needle, digital, sweep, minmax, histogram.
+                [--peak V] [--status-mode peak|min|text|none] [--status-label S] [--status-text S]
+      Render a built-in gauge: bar, circular, needle, dial, digital, sweep, minmax, histogram.
+      --peak feeds V once before settling on --value (for peak-hold displays).
   gauge bench <file.json> [--frames N] [--warmup N] [--threads N] [--data-hz HZ] [--full]
       Time the draw call of a custom definition, or of every gauges.json screen.
       --data-hz sets how often new values arrive (default 60 = every frame);
@@ -231,6 +233,9 @@ fn cmd_builtin(args: &Args) -> Result<(), String> {
 		segment_count: args.opt(&["segments"], if gauge_type == GaugeType::Circular { 64 } else { 32 })?,
 		initial_value: value,
 		interval_ms: 0,
+		status_mode: args.opt(&["status-mode"], "Peak".to_string())?,
+		status_label: args.opt(&["status-label"], String::new())?,
+		status_text: args.opt(&["status-text"], "Stop".to_string())?,
 		..GaugeConfig::default()
 	};
 	let mut gauge = gauges::create_gauge(&config, 640, 480);
@@ -240,6 +245,9 @@ fn cmd_builtin(args: &Args) -> Result<(), String> {
 		let wobble = (i as f32 * 0.3).sin() * (config.max_value - config.min_value) * 0.15;
 		gauge.set_value(value + wobble * (1.0 - i as f32 / 60.0));
 		gauge.draw(&mut canvas);
+	}
+	if let Some(peak) = args.options.get("peak") {
+		gauge.set_value(peak.parse().map_err(|_| format!("invalid value for --peak: {peak}"))?);
 	}
 	gauge.set_value(value);
 	for _ in 0..120 {

@@ -96,6 +96,9 @@ namespace GaugeDotnet.Gauges
                         Title = config.Title,
                         Decimals = config.Decimals,
                         Smoothing = config.Smoothing,
+                        StatusMode = config.StatusMode,
+                        StatusLabel = config.StatusLabel,
+                        StatusText = config.StatusText,
                     }, screenWidth, screenHeight),
 
                 GaugeType.Digital => new DigitalGauge(

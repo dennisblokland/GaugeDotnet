@@ -5,7 +5,7 @@ use tiny_skia::{PathBuilder, PremultipliedColorU8};
 
 use crate::canvas::{rect, Canvas, Paint, Sprite};
 use crate::color::Rgba;
-use crate::gauges::{draw_background, render_static, rounded_label, Gauge, GaugeBase, GaugeConfig};
+use crate::gauges::{draw_background, render_static, Gauge, GaugeBase, GaugeConfig};
 use crate::text::{typeface, TextAlign, Typeface};
 
 const CENTER_X: f32 = 221.0;
@@ -18,7 +18,6 @@ const BEZEL_START_DEG: f32 = START_ANGLE_DEG - BEZEL_OVERHANG_DEG;
 const BEZEL_SWEEP_DEG: f32 = SWEEP_DEG + 2.0 * BEZEL_OVERHANG_DEG;
 const START_ANGLE_DEG: f32 = 90.0;
 const SWEEP_DEG: f32 = 270.0;
-const MAJOR_COUNT: usize = 6;
 const MINOR_PER_MAJOR: usize = 5;
 const TICK_OUTER: f32 = 178.0;
 const TICK_INNER: f32 = 157.0;
@@ -35,17 +34,77 @@ const TEXT_COLOR: Rgba = Rgba::WHITE;
 const STATUS_COLOR: Rgba = Rgba::rgb(0xD8, 0xDA, 0xEC);
 const STATUS_DOT_COLOR: Rgba = Rgba::rgb(0x30, 0x60, 0xFF);
 
+// Widest each text may be before it shrinks, so long values, titles and
+// labels stay clear of the dial whatever the data source and range.
+const VALUE_MAX_WIDTH: f32 = 180.0;
+const STATUS_MAX_WIDTH: f32 = 175.0;
+const UNIT_MAX_WIDTH: f32 = 220.0;
+const LABEL_MAX_WIDTH: f32 = 56.0;
+const TITLE_MAX_WIDTH: [f32; 2] = [270.0, 225.0];
+
+const STATUS_STYLE: TextStyle =
+	TextStyle { size: 26.0, bold: 0.0, scale_x: 1.0, skew: 0.0, spacing: 6.0, max_width: STATUS_MAX_WIDTH };
+
+/// What the status block under the title shows.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum StatusMode {
+	Peak,
+	Min,
+	Text,
+	None,
+}
+
+impl StatusMode {
+	/// Case-insensitive; unknown values fall back to `Peak`, like `Enum.TryParse`.
+	fn parse(s: &str) -> Self {
+		[Self::Peak, Self::Min, Self::Text, Self::None]
+			.into_iter()
+			.find(|m| format!("{m:?}").eq_ignore_ascii_case(s))
+			.unwrap_or(Self::Peak)
+	}
+}
+
 pub struct DialGauge {
 	base: GaugeBase,
 	current_value: f32,
 	smoothing: bool,
 	decimals: usize,
+	major_count: usize,
+	status_mode: StatusMode,
+	status_label: String,
+	status_text: String,
+	peak: f32,
+	min: f32,
 	size: (u32, u32),
 	static_layer: Option<Sprite>,
 }
 
 fn angle_for(fraction: f32) -> f32 {
 	(START_ANGLE_DEG + fraction * SWEEP_DEG).to_radians()
+}
+
+/// Number of major intervals (4 to 8, preferring 6) that puts every major
+/// tick on a round value: a step of 1, 2, 2.5 or 5 times a power of ten.
+fn major_intervals(min: f32, max: f32) -> usize {
+	let range = max - min;
+	if range.is_nan() || range <= 0.0 {
+		return 6;
+	}
+	for n in [6, 5, 7, 4, 8] {
+		let step = range / n as f32;
+		let magnitude = 10f32.powf(step.log10().floor());
+		let mantissa = step / magnitude;
+		if [1.0, 2.0, 2.5, 5.0, 10.0].iter().any(|nice: &f32| (mantissa - nice).abs() < 1e-3) {
+			return n;
+		}
+	}
+	6
+}
+
+/// Tick label: up to two decimals, without trailing zeros or "-0".
+fn format_label(v: f32) -> String {
+	let rounded = (v * 100.0).round() / 100.0;
+	crate::format::format_number(if rounded == 0.0 { 0.0 } else { rounded }, "0.##")
 }
 
 fn smooth_step(t: f32) -> f32 {
@@ -93,13 +152,15 @@ fn draw_bezel(target: &mut Canvas) {
 
 /// Text style: `bold` is the outline width added around each glyph
 /// (`SKPaintStyle.StrokeAndFill`), `scale_x` stretches, `skew` slants and
-/// `spacing` adds room between letters.
+/// `spacing` adds room between letters. Text wider than `max_width` is
+/// shrunk to fit around its anchor.
 struct TextStyle {
 	size: f32,
 	bold: f32,
 	scale_x: f32,
 	skew: f32,
 	spacing: f32,
+	max_width: f32,
 }
 
 /// `DialGauge.DrawStyledText`; `y` is the baseline.
@@ -127,8 +188,11 @@ fn draw_styled_text(
 		TextAlign::Right => -width,
 	};
 
+	let fit = (style.max_width / (width * style.scale_x)).min(1.0);
+
 	c.save();
 	c.translate(x, y);
+	c.scale(fit, fit);
 	c.skew(style.skew, 0.0);
 	c.scale(style.scale_x, 1.0);
 	for ch in text.chars() {
@@ -147,10 +211,28 @@ fn draw_styled_text(
 impl DialGauge {
 	pub fn new(config: &GaugeConfig, width: u32, height: u32) -> Self {
 		let base = GaugeBase::new(config);
+		let status_mode = StatusMode::parse(&config.status_mode);
+		let status_label = if config.status_label.is_empty() {
+			match status_mode {
+				StatusMode::Min => "Min:",
+				StatusMode::Text => "Datalog:",
+				_ => "Peak:",
+			}
+			.to_string()
+		} else {
+			config.status_label.clone()
+		};
 		Self {
 			current_value: base.value,
 			smoothing: config.smoothing,
 			decimals: config.decimals.max(0) as usize,
+			status_mode,
+			status_label,
+			status_text: config.status_text.clone(),
+			major_count: major_intervals(base.min_value, base.max_value),
+			// Peak and Min start from the first reading, not the initial value.
+			peak: f32::NAN,
+			min: f32::NAN,
 			size: (width, height),
 			static_layer: None,
 			base,
@@ -159,6 +241,8 @@ impl DialGauge {
 
 	fn update_static(&mut self) {
 		let base = self.base.clone();
+		let (mode, label, text) = (self.status_mode, self.status_label.clone(), self.status_text.clone());
+		let major_count = self.major_count;
 		self.static_layer = Some(render_static(self.size.0, self.size.1, |c| {
 			draw_background(c);
 			let font = typeface("Aldrich");
@@ -167,9 +251,10 @@ impl DialGauge {
 
 			// Major ticks and labels.
 			let tick = Paint::stroke(TEXT_COLOR, 4.0);
-			let label_style = TextStyle { size: 36.0, bold: 1.0, scale_x: 1.0, skew: 0.0, spacing: 0.0 };
-			for i in 0..=MAJOR_COUNT {
-				let fraction = i as f32 / MAJOR_COUNT as f32;
+			let label_style =
+				TextStyle { size: 36.0, bold: 1.0, scale_x: 1.0, skew: 0.0, spacing: 0.0, max_width: LABEL_MAX_WIDTH };
+			for i in 0..=major_count {
+				let fraction = i as f32 / major_count as f32;
 				let (sin, cos) = angle_for(fraction).sin_cos();
 				c.draw_line(
 					CENTER_X + cos * TICK_INNER,
@@ -178,7 +263,7 @@ impl DialGauge {
 					CENTER_Y + sin * TICK_OUTER,
 					&tick,
 				);
-				let label = rounded_label(base.min_value + fraction * (base.max_value - base.min_value));
+				let label = format_label(base.min_value + fraction * (base.max_value - base.min_value));
 				draw_styled_text(
 					c,
 					&label,
@@ -192,15 +277,17 @@ impl DialGauge {
 			}
 
 			// Minor dots.
-			let minor_count = MAJOR_COUNT * MINOR_PER_MAJOR;
+			let minor_count = major_count * MINOR_PER_MAJOR;
 			for i in (0..=minor_count).filter(|i| i % MINOR_PER_MAJOR != 0) {
 				let (sin, cos) = angle_for(i as f32 / minor_count as f32).sin_cos();
 				c.draw_circle(CENTER_X + cos * DOT_RADIUS, CENTER_Y + sin * DOT_RADIUS, 2.2, &Paint::fill(TEXT_COLOR));
 			}
 
 			// Title, one word per line, right aligned.
-			let title_style = TextStyle { size: 50.0, bold: 1.4, scale_x: 1.05, skew: -0.2, spacing: 7.0 };
+			let title_style =
+				TextStyle { size: 50.0, bold: 1.4, scale_x: 1.05, skew: -0.2, spacing: 7.0, max_width: f32::INFINITY };
 			for (i, word) in base.title.split_whitespace().take(2).enumerate() {
+				let style = TextStyle { max_width: TITLE_MAX_WIDTH[i], ..title_style };
 				draw_styled_text(
 					c,
 					word,
@@ -208,19 +295,24 @@ impl DialGauge {
 					64.0 + i as f32 * 46.0,
 					TextAlign::Right,
 					font,
-					&title_style,
+					&style,
 					TEXT_COLOR,
 				);
 			}
 
-			// Status block.
-			let status_style = TextStyle { size: 26.0, bold: 0.0, scale_x: 1.0, skew: 0.0, spacing: 6.0 };
-			draw_styled_text(c, "Datalog:", RIGHT_EDGE, 222.0, TextAlign::Right, font, &status_style, STATUS_COLOR);
-			draw_styled_text(c, "Stop", RIGHT_EDGE - 22.0, 246.0, TextAlign::Right, font, &status_style, STATUS_COLOR);
-			c.draw_circle(RIGHT_EDGE - 7.0, 238.0, 6.0, &Paint::fill(STATUS_DOT_COLOR));
+			// Status block: the label, plus the fixed text and its dot in Text mode.
+			// Peak and Min values change, so `draw` adds them each frame.
+			if mode != StatusMode::None {
+				draw_styled_text(c, &label, RIGHT_EDGE, 222.0, TextAlign::Right, font, &STATUS_STYLE, STATUS_COLOR);
+			}
+			if mode == StatusMode::Text {
+				let style = TextStyle { max_width: STATUS_MAX_WIDTH - 22.0, ..STATUS_STYLE };
+				draw_styled_text(c, &text, RIGHT_EDGE - 22.0, 246.0, TextAlign::Right, font, &style, STATUS_COLOR);
+				c.draw_circle(RIGHT_EDGE - 7.0, 238.0, 6.0, &Paint::fill(STATUS_DOT_COLOR));
+			}
 
 			// Unit below the readout.
-			let unit_style = TextStyle { size: 44.0, ..title_style };
+			let unit_style = TextStyle { size: 44.0, max_width: UNIT_MAX_WIDTH, ..title_style };
 			draw_styled_text(c, &base.unit, RIGHT_EDGE - 4.0, 452.0, TextAlign::Right, font, &unit_style, TEXT_COLOR);
 		}));
 		self.base.static_cache_valid = true;
@@ -234,6 +326,18 @@ impl Gauge for DialGauge {
 
 	fn base_mut(&mut self) -> &mut GaugeBase {
 		&mut self.base
+	}
+
+	fn set_value(&mut self, v: f32) {
+		self.base.value = v;
+		// `f32::max`/`min` ignore the NaN that marks "no reading yet".
+		self.peak = self.peak.max(v);
+		self.min = self.min.min(v);
+	}
+
+	fn reset_saved_state(&mut self) {
+		self.peak = self.base.value;
+		self.min = self.base.value;
 	}
 
 	fn draw(&mut self, canvas: &mut Canvas) {
@@ -265,7 +369,8 @@ impl Gauge for DialGauge {
 
 		// Digital readout.
 		let text = crate::format::format_number(self.base.value, &format!("F{}", self.decimals));
-		let style = TextStyle { size: 190.0, bold: 1.0, scale_x: 0.85, skew: -0.12, spacing: 2.0 };
+		let style =
+			TextStyle { size: 190.0, bold: 1.0, scale_x: 0.85, skew: -0.12, spacing: 2.0, max_width: VALUE_MAX_WIDTH };
 		draw_styled_text(
 			canvas,
 			&text,
@@ -276,5 +381,71 @@ impl Gauge for DialGauge {
 			&style,
 			TEXT_COLOR,
 		);
+
+		if matches!(self.status_mode, StatusMode::Peak | StatusMode::Min) {
+			let held = if self.status_mode == StatusMode::Peak { self.peak } else { self.min };
+			let held = if held.is_nan() { self.base.value } else { held };
+			let text = crate::format::format_number(held, &format!("F{}", self.decimals));
+			let font = typeface("Aldrich");
+			draw_styled_text(canvas, &text, RIGHT_EDGE, 246.0, TextAlign::Right, font, &STATUS_STYLE, STATUS_COLOR);
+		}
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	#[test]
+	fn status_mode_parses_case_insensitively_and_defaults_to_peak() {
+		assert_eq!(StatusMode::parse("text"), StatusMode::Text);
+		assert_eq!(StatusMode::parse("MIN"), StatusMode::Min);
+		assert_eq!(StatusMode::parse("None"), StatusMode::None);
+		assert_eq!(StatusMode::parse("bogus"), StatusMode::Peak);
+	}
+
+	#[test]
+	fn peak_and_min_follow_values_until_reset() {
+		let config = GaugeConfig { gauge_type: crate::gauges::GaugeType::Dial, ..GaugeConfig::default() };
+		let mut gauge = DialGauge::new(&config, 640, 480);
+		assert_eq!(gauge.status_label, "Peak:");
+		for v in [3.0, 12.5, -4.0, 1.0] {
+			gauge.set_value(v);
+		}
+		assert_eq!((gauge.peak, gauge.min), (12.5, -4.0));
+		gauge.reset_saved_state();
+		assert_eq!((gauge.peak, gauge.min), (1.0, 1.0));
+	}
+
+	#[test]
+	fn major_ticks_land_on_round_values() {
+		assert_eq!(major_intervals(-10.0, 20.0), 6); // step 5
+		assert_eq!(major_intervals(0.0, 8000.0), 4); // step 2000
+		assert_eq!(major_intervals(40.0, 140.0), 5); // step 20
+		assert_eq!(major_intervals(10.0, 20.0), 5); // step 2
+		assert_eq!(major_intervals(0.0, 7.0), 7); // step 1
+		assert_eq!(major_intervals(0.0, 13.0), 6, "no round step: keep 6");
+		assert_eq!(major_intervals(5.0, 5.0), 6, "empty range");
+		assert_eq!(format_label(-0.001), "0");
+		assert_eq!(format_label(2.5), "2.5");
+		assert_eq!(format_label(8000.0), "8000");
+	}
+
+	#[test]
+	fn min_starts_from_first_reading() {
+		let config = GaugeConfig { status_mode: "Min".into(), ..GaugeConfig::default() };
+		let mut gauge = DialGauge::new(&config, 640, 480);
+		assert!(gauge.min.is_nan());
+		gauge.set_value(14.7);
+		gauge.set_value(11.2);
+		assert_eq!(gauge.min, 11.2);
+	}
+
+	#[test]
+	fn status_label_override_and_defaults() {
+		let text = GaugeConfig { status_mode: "Text".into(), ..GaugeConfig::default() };
+		assert_eq!(DialGauge::new(&text, 640, 480).status_label, "Datalog:");
+		let custom = GaugeConfig { status_mode: "Min".into(), status_label: "Lowest".into(), ..GaugeConfig::default() };
+		assert_eq!(DialGauge::new(&custom, 640, 480).status_label, "Lowest");
 	}
 }

@@ -15,6 +15,14 @@ namespace GaugeDotnet.Gauges
         private float _currentValue;
         private readonly bool _smoothing;
         private readonly int _decimals;
+        private readonly int _majorCount;
+
+        private enum StatusMode { Peak, Min, Text, None }
+        private readonly StatusMode _statusMode;
+        private readonly string _statusLabel;
+        private readonly string _statusText;
+        private float _peak;
+        private float _min;
 
         private readonly SKTypeface _font;
         private readonly SKTypeface _digitFont;
@@ -31,7 +39,6 @@ namespace GaugeDotnet.Gauges
         private const float BEZEL_SWEEP_DEG = SWEEP_DEG + 2f * BEZEL_OVERHANG_DEG;
         private const float START_ANGLE_DEG = 90f;
         private const float SWEEP_DEG = 270f;
-        private const int MAJOR_COUNT = 6;
         private const int MINOR_PER_MAJOR = 5;
         private const float TICK_OUTER = 178f;
         private const float TICK_INNER = 157f;
@@ -40,6 +47,14 @@ namespace GaugeDotnet.Gauges
         private const float NEEDLE_LENGTH = 148f;
         private const float NEEDLE_HALF_WIDTH = 5.5f;
         private const float RIGHT_EDGE = 612f;
+
+        // Widest each text may be before it shrinks, so long values, titles and
+        // labels stay clear of the dial whatever the data source and range.
+        private const float VALUE_MAX_WIDTH = 180f;
+        private const float STATUS_MAX_WIDTH = 175f;
+        private const float UNIT_MAX_WIDTH = 220f;
+        private const float LABEL_MAX_WIDTH = 56f;
+        private static readonly float[] TitleMaxWidth = [270f, 225f];
 
         private static readonly SKColor BezelColor = new(0xA8, 0xA8, 0xB4);
         private static readonly SKColor BezelHighlight = new(0xE8, 0xE8, 0xF0);
@@ -61,6 +76,18 @@ namespace GaugeDotnet.Gauges
             _currentValue = Value;
             _smoothing = settings.Smoothing;
             _decimals = Math.Max(0, settings.Decimals);
+            _statusMode = Enum.TryParse(settings.StatusMode, true, out StatusMode mode) ? mode : StatusMode.Peak;
+            _statusLabel = !string.IsNullOrEmpty(settings.StatusLabel) ? settings.StatusLabel : _statusMode switch
+            {
+                StatusMode.Min => "Min:",
+                StatusMode.Text => "Datalog:",
+                _ => "Peak:",
+            };
+            _statusText = settings.StatusText ?? "";
+            _majorCount = MajorIntervals(MinValue, MaxValue);
+            // Peak and Min start from the first reading, not the initial value.
+            _peak = float.NaN;
+            _min = float.NaN;
 
             _staticBitmap = new SKBitmap(screenWidth, screenHeight, SKColorType.Rgba8888, SKAlphaType.Premul);
             _staticCanvas = new SKCanvas(_staticBitmap);
@@ -75,6 +102,40 @@ namespace GaugeDotnet.Gauges
         private static float AngleFor(float fraction)
         {
             return (START_ANGLE_DEG + fraction * SWEEP_DEG) * MathF.PI / 180f;
+        }
+
+        /// <summary>
+        /// Number of major intervals (4 to 8, preferring 6) that puts every major tick
+        /// on a round value: a step of 1, 2, 2.5 or 5 times a power of ten.
+        /// </summary>
+        private static int MajorIntervals(float min, float max)
+        {
+            float range = max - min;
+            if (!(range > 0f))
+            {
+                return 6;
+            }
+            foreach (int n in new[] { 6, 5, 7, 4, 8 })
+            {
+                float step = range / n;
+                float magnitude = MathF.Pow(10f, MathF.Floor(MathF.Log10(step)));
+                float mantissa = step / magnitude;
+                foreach (float nice in new[] { 1f, 2f, 2.5f, 5f, 10f })
+                {
+                    if (MathF.Abs(mantissa - nice) < 1e-3f)
+                    {
+                        return n;
+                    }
+                }
+            }
+            return 6;
+        }
+
+        /// <summary>Tick label: up to two decimals, without trailing zeros or "-0".</summary>
+        private static string FormatLabel(float v)
+        {
+            float rounded = MathF.Round(v * 100f) / 100f;
+            return (rounded == 0f ? 0f : rounded).ToString("0.##", CultureInfo.InvariantCulture);
         }
 
         private static float SmoothStep(float t)
@@ -143,10 +204,12 @@ namespace GaugeDotnet.Gauges
         /// <summary>
         /// Draws text stretched by <paramref name="scaleX"/>, slanted by <paramref name="skew"/>
         /// and with extra <paramref name="spacing"/> between letters; y is the baseline.
+        /// Text wider than <paramref name="maxWidth"/> is shrunk to fit around (x, y).
         /// </summary>
         private static void DrawStyledText(
             SKCanvas canvas, string text, float x, float y, SKTextAlign align,
-            SKFont font, SKPaint paint, float scaleX, float skew, float spacing)
+            SKFont font, SKPaint paint, float scaleX, float skew, float spacing,
+            float maxWidth = float.PositiveInfinity)
         {
             if (string.IsNullOrEmpty(text))
             {
@@ -166,8 +229,11 @@ namespace GaugeDotnet.Gauges
                 _ => 0f,
             };
 
+            float fit = Math.Min(1f, maxWidth / (width * scaleX));
+
             canvas.Save();
             canvas.Translate(x, y);
+            canvas.Scale(fit, fit);
             canvas.Skew(skew, 0f);
             canvas.Scale(scaleX, 1f);
             foreach (char c in text)
@@ -191,9 +257,9 @@ namespace GaugeDotnet.Gauges
             _boldTextPaint.Color = TextColor;
             _boldTextPaint.StrokeWidth = 1f;
             using SKFont labelFont = new(_font, 36f);
-            for (int i = 0; i <= MAJOR_COUNT; i++)
+            for (int i = 0; i <= _majorCount; i++)
             {
-                float a = AngleFor((float)i / MAJOR_COUNT);
+                float a = AngleFor((float)i / _majorCount);
                 float cos = MathF.Cos(a);
                 float sin = MathF.Sin(a);
                 _staticCanvas.DrawLine(
@@ -201,16 +267,16 @@ namespace GaugeDotnet.Gauges
                     CENTER_X + cos * TICK_OUTER, CENTER_Y + sin * TICK_OUTER,
                     _strokePaint);
 
-                float tickValue = MinValue + ((float)i / MAJOR_COUNT) * (MaxValue - MinValue);
-                string label = $"{Math.Round(tickValue)}";
+                float tickValue = MinValue + ((float)i / _majorCount) * (MaxValue - MinValue);
+                string label = FormatLabel(tickValue);
                 DrawStyledText(_staticCanvas, label,
                     CENTER_X + cos * LABEL_RADIUS, CENTER_Y + sin * LABEL_RADIUS + 13f,
-                    SKTextAlign.Center, labelFont, _boldTextPaint, 1f, 0f, 0f);
+                    SKTextAlign.Center, labelFont, _boldTextPaint, 1f, 0f, 0f, LABEL_MAX_WIDTH);
             }
 
             // Minor dots.
             _fillPaint.Color = TextColor;
-            int minorCount = MAJOR_COUNT * MINOR_PER_MAJOR;
+            int minorCount = _majorCount * MINOR_PER_MAJOR;
             for (int i = 0; i <= minorCount; i++)
             {
                 if (i % MINOR_PER_MAJOR == 0)
@@ -229,28 +295,49 @@ namespace GaugeDotnet.Gauges
             for (int i = 0; i < Math.Min(words.Length, 2); i++)
             {
                 DrawStyledText(_staticCanvas, words[i], RIGHT_EDGE, 64f + i * 46f,
-                    SKTextAlign.Right, titleFont, _boldTextPaint, 1.05f, -0.2f, 7f);
+                    SKTextAlign.Right, titleFont, _boldTextPaint, 1.05f, -0.2f, 7f, TitleMaxWidth[i]);
             }
 
-            // Status block.
-            using SKFont statusFont = new(_font, 26f);
-            _boldTextPaint.Color = StatusColor;
-            _boldTextPaint.StrokeWidth = 0f;
-            DrawStyledText(_staticCanvas, "Datalog:", RIGHT_EDGE, 222f,
-                SKTextAlign.Right, statusFont, _boldTextPaint, 1f, 0f, 6f);
-            DrawStyledText(_staticCanvas, "Stop", RIGHT_EDGE - 22f, 246f,
-                SKTextAlign.Right, statusFont, _boldTextPaint, 1f, 0f, 6f);
-            _fillPaint.Color = StatusDotColor;
-            _staticCanvas.DrawCircle(RIGHT_EDGE - 7f, 238f, 6f, _fillPaint);
+            // Status block: the label, plus the fixed text and its dot in Text mode.
+            // Peak and Min values change, so Draw adds them each frame.
+            if (_statusMode != StatusMode.None)
+            {
+                using SKFont statusFont = new(_font, 26f);
+                _boldTextPaint.Color = StatusColor;
+                _boldTextPaint.StrokeWidth = 0f;
+                DrawStyledText(_staticCanvas, _statusLabel, RIGHT_EDGE, 222f,
+                    SKTextAlign.Right, statusFont, _boldTextPaint, 1f, 0f, 6f, STATUS_MAX_WIDTH);
+            }
+            if (_statusMode == StatusMode.Text)
+            {
+                using SKFont statusFont = new(_font, 26f);
+                DrawStyledText(_staticCanvas, _statusText, RIGHT_EDGE - 22f, 246f,
+                    SKTextAlign.Right, statusFont, _boldTextPaint, 1f, 0f, 6f, STATUS_MAX_WIDTH - 22f);
+                _fillPaint.Color = StatusDotColor;
+                _staticCanvas.DrawCircle(RIGHT_EDGE - 7f, 238f, 6f, _fillPaint);
+            }
 
             // Unit below the readout.
             _boldTextPaint.Color = TextColor;
             _boldTextPaint.StrokeWidth = 1.4f;
             using SKFont unitFont = new(_font, 44f);
             DrawStyledText(_staticCanvas, Unit, RIGHT_EDGE - 4f, 452f,
-                SKTextAlign.Right, unitFont, _boldTextPaint, 1.05f, -0.2f, 7f);
+                SKTextAlign.Right, unitFont, _boldTextPaint, 1.05f, -0.2f, 7f, UNIT_MAX_WIDTH);
 
             StaticCacheValid = true;
+        }
+
+        public override void SetValue(float v)
+        {
+            base.SetValue(v);
+            _peak = float.IsNaN(_peak) ? v : Math.Max(_peak, v);
+            _min = float.IsNaN(_min) ? v : Math.Min(_min, v);
+        }
+
+        public override void ResetSavedState()
+        {
+            _peak = Value;
+            _min = Value;
         }
 
         public override void Draw(SKCanvas canvas)
@@ -295,7 +382,21 @@ namespace GaugeDotnet.Gauges
             using SKFont valueFont = new(_digitFont, 190f);
             _boldTextPaint.Color = TextColor;
             _boldTextPaint.StrokeWidth = 1f;
-            DrawStyledText(canvas, text, RIGHT_EDGE, 408f, SKTextAlign.Right, valueFont, _boldTextPaint, 0.85f, -0.12f, 2f);
+            DrawStyledText(canvas, text, RIGHT_EDGE, 408f, SKTextAlign.Right, valueFont, _boldTextPaint, 0.85f, -0.12f, 2f, VALUE_MAX_WIDTH);
+
+            if (_statusMode is StatusMode.Peak or StatusMode.Min)
+            {
+                float held = _statusMode == StatusMode.Peak ? _peak : _min;
+                if (float.IsNaN(held))
+                {
+                    held = Value;
+                }
+                using SKFont statusFont = new(_font, 26f);
+                _boldTextPaint.Color = StatusColor;
+                _boldTextPaint.StrokeWidth = 0f;
+                DrawStyledText(canvas, held.ToString("F" + _decimals, CultureInfo.InvariantCulture), RIGHT_EDGE, 246f,
+                    SKTextAlign.Right, statusFont, _boldTextPaint, 1f, 0f, 6f, STATUS_MAX_WIDTH);
+            }
         }
     }
 }

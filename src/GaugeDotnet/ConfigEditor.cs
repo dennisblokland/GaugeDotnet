@@ -26,6 +26,8 @@ namespace GaugeDotnet
         private bool _saved;
         private double _savedMessageTimer;
 
+        private static readonly string[] StatusModeOptions = ["Peak", "Min", "Text", "None"];
+
         private static readonly string[] ColorOptions =
         [
             "#00FFFF", "#FF0000", "#00FF00", "#FFFF00",
@@ -51,7 +53,7 @@ namespace GaugeDotnet
                 GaugeType.Circular => ["Type", "DataSource", "Title", "ColorHex", "MinValue", "MaxValue", "InitialValue", "Decimals", "SegmentCount", "Smoothing"],
                 GaugeType.Histogram => ["Type", "DataSource", "Title", "ColorHex", "MinValue", "MaxValue", "InitialValue", "Decimals", "MaxDataPoints", "IntervalMs"],
                 GaugeType.Needle => ["Type", "DataSource", "Title", "ColorHex", "MinValue", "MaxValue", "InitialValue", "Decimals", "Smoothing"],
-                GaugeType.Dial => ["Type", "DataSource", "Title", "ColorHex", "MinValue", "MaxValue", "InitialValue", "Decimals", "Smoothing"],
+                GaugeType.Dial => ["Type", "DataSource", "Title", "ColorHex", "MinValue", "MaxValue", "InitialValue", "Decimals", "Smoothing", "StatusMode"],
                 GaugeType.Digital => ["Type", "DataSource", "Title", "ColorHex", "MinValue", "MaxValue", "InitialValue", "Decimals"],
                 GaugeType.Sweep => ["Type", "DataSource", "Title", "ColorHex", "MinValue", "MaxValue", "InitialValue", "Decimals", "Smoothing"],
                 GaugeType.MinMax => ["Type", "DataSource", "Title", "ColorHex", "MinValue", "MaxValue", "InitialValue", "Decimals", "SegmentCount", "Smoothing"],
@@ -366,6 +368,12 @@ namespace GaugeDotnet
                 case "IntervalMs":
                     gauge.IntervalMs = Math.Clamp(gauge.IntervalMs + direction * 100, 100, 5000);
                     break;
+                case "StatusMode":
+                    int sIdx = Array.FindIndex(StatusModeOptions, o => o.Equals(gauge.StatusMode, StringComparison.OrdinalIgnoreCase));
+                    if (sIdx < 0) sIdx = 0;
+                    sIdx = (sIdx + direction + StatusModeOptions.Length) % StatusModeOptions.Length;
+                    gauge.StatusMode = StatusModeOptions[sIdx];
+                    break;
             }
         }
 
@@ -478,6 +486,7 @@ namespace GaugeDotnet
                 "Smoothing" => gauge.Smoothing ? "ON" : "OFF",
                 "MaxDataPoints" => gauge.MaxDataPoints.ToString(),
                 "IntervalMs" => $"{gauge.IntervalMs}ms",
+                "StatusMode" => gauge.StatusMode,
                 _ => "?"
             };
         }

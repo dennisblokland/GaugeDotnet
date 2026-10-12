@@ -95,10 +95,27 @@ Publishes a self-contained linux-arm64 binary and SCPs it to the RG35XX.
 
 ## Dial Gauge
 
-`"Type": "Dial"` is a handheld-style boost display: a 270° dial on the left (the minimum at 6 o'clock, sweeping clockwise to the maximum at 3 o'clock) and a large italic readout on the right. The title is split into one word per line, and `Unit` goes under the readout. `ColorHex` is ignored, because the dial has a fixed white, grey and red palette. Text uses the bundled Aldrich and Saira Extra Condensed fonts (SIL OFL 1.1, licenses in `src/GaugeDotnet/fonts`), which are also available to custom gauges.
+`"Type": "Dial"` is a handheld-style analog + digital display that works for any data source: a 270° dial on the left (`MinValue` at 6 o'clock, sweeping clockwise to `MaxValue` at 3 o'clock) and a large italic readout on the right.
+
+- **Scale:** 4 to 8 major ticks, chosen so every label is a round number (−10…20 → steps of 5, 0…8000 → 2000, 40…140 → 20).
+- **Title:** one word per line, so `"Boost Press."` becomes two lines. `Unit` goes under the readout.
+- **Fitting:** long titles, values and labels shrink to fit, so 4-digit RPM readings stay clear of the dial.
+- **Status block** (under the title):
+
+  | Setting | Values | Default |
+  |---|---|---|
+  | `StatusMode` | `Peak` (highest value seen), `Min` (lowest), `Text` (fixed text with a blue dot), `None` | `Peak` |
+  | `StatusLabel` | First line | `Peak:`, `Min:` or `Datalog:` (by mode) |
+  | `StatusText` | Second line in `Text` mode | `Stop` |
+
+  Peak and Min start at the first reading. R1 resets them, as on the other gauges. `StatusMode` can also be changed in the on-device config editor.
+- **Colours and fonts:** `ColorHex` is ignored, because the dial has a fixed white, grey and red palette. Text uses the bundled Aldrich and Saira Extra Condensed fonts (SIL OFL 1.1, licenses in `src/GaugeDotnet/fonts`), which are also available to custom gauges.
 
 ```json
 { "Gauge": { "Type": "Dial", "DataSource": "Map", "Title": "Boost Press.", "Unit": "Psi", "MinValue": -10, "MaxValue": 20, "Decimals": 1 } }
+{ "Gauge": { "Type": "Dial", "DataSource": "Rpm", "Title": "Engine Speed", "Unit": "RPM", "MaxValue": 8000 } }
+{ "Gauge": { "Type": "Dial", "DataSource": "Map", "Title": "Boost Press.", "Unit": "Psi", "MinValue": -10, "MaxValue": 20, "Decimals": 1,
+             "StatusMode": "Text", "StatusLabel": "Datalog:", "StatusText": "Stop" } }
 ```
 
 ![Dial gauge](docs/dial-gauge.png)

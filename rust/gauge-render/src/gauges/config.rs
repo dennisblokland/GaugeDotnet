@@ -99,6 +99,12 @@ pub struct GaugeConfig {
 	pub decimals: i32,
 	pub max_data_points: i32,
 	pub interval_ms: i32,
+	/// Dial: `Peak`, `Min`, `Text` or `None` (the status block under the title).
+	pub status_mode: String,
+	/// Dial: first status line; empty picks `Peak:`, `Min:` or `Datalog:`.
+	pub status_label: String,
+	/// Dial: second status line in `Text` mode.
+	pub status_text: String,
 	pub cells: Vec<GridCellConfig>,
 }
 
@@ -118,6 +124,9 @@ impl Default for GaugeConfig {
 			decimals: 0,
 			max_data_points: 50,
 			interval_ms: 1000,
+			status_mode: "Peak".into(),
+			status_label: String::new(),
+			status_text: "Stop".into(),
 			cells: Vec::new(),
 		}
 	}

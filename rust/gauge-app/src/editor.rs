@@ -44,6 +44,9 @@ fn cycle<'a>(options: &[&'a str], current: &str, dir: i32, missing: i32) -> &'a 
 	options[(idx + dir).rem_euclid(n) as usize]
 }
 
+/// `ConfigEditor.StatusModeOptions`: the Dial gauge's status block modes.
+const STATUS_MODES: [&str; 4] = ["Peak", "Min", "Text", "None"];
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Field {
 	Type,
@@ -58,6 +61,7 @@ enum Field {
 	Smoothing,
 	MaxDataPoints,
 	IntervalMs,
+	StatusMode,
 	/// A Grid cell (0-based); A opens its editor.
 	Cell(usize),
 }
@@ -78,7 +82,8 @@ fn fields_for(gauge: &GaugeConfig) -> Vec<Field> {
 	let extra: &[Field] = match gauge.gauge_type {
 		GaugeType::Bar | GaugeType::Circular | GaugeType::MinMax => &[SegmentCount, Smoothing],
 		GaugeType::Histogram => &[MaxDataPoints, IntervalMs],
-		GaugeType::Needle | GaugeType::Sweep | GaugeType::Dial => &[Smoothing],
+		GaugeType::Needle | GaugeType::Sweep => &[Smoothing],
+		GaugeType::Dial => &[Smoothing, StatusMode],
 		GaugeType::Grid => return std::iter::once(Type).chain((0..gauge.cells.len()).map(Cell)).collect(),
 		GaugeType::Digital | GaugeType::Custom => &[],
 	};
@@ -344,6 +349,11 @@ fn adjust_field(gauge: &mut GaugeConfig, field: Field, dir: i32) {
 		Field::Smoothing => gauge.smoothing = !gauge.smoothing,
 		Field::MaxDataPoints => gauge.max_data_points = (gauge.max_data_points + dir * 5).clamp(10, 100),
 		Field::IntervalMs => gauge.interval_ms = (gauge.interval_ms + dir * 100).clamp(100, 5000),
+		Field::StatusMode => {
+			let current = STATUS_MODES.iter().position(|m| m.eq_ignore_ascii_case(&gauge.status_mode)).unwrap_or(0);
+			gauge.status_mode =
+				STATUS_MODES[(current as i32 + dir).rem_euclid(STATUS_MODES.len() as i32) as usize].into();
+		}
 		Field::Cell(_) => {}
 	}
 }
@@ -374,6 +384,7 @@ fn field_value(gauge: &GaugeConfig, field: Field) -> String {
 		Field::Smoothing => if gauge.smoothing { "ON" } else { "OFF" }.into(),
 		Field::MaxDataPoints => gauge.max_data_points.to_string(),
 		Field::IntervalMs => format!("{}ms", gauge.interval_ms),
+		Field::StatusMode => gauge.status_mode.clone(),
 		Field::Cell(i) => gauge.cells.get(i).map_or("?".into(), |c| format!("{} ({})", c.data_source, c.unit)),
 	}
 }
@@ -439,10 +450,12 @@ mod tests {
 		press(&mut editor, &mut config, &[K::A_DOWN]);
 		assert_eq!(editor.page, Page::GaugeEdit);
 
-		// Type: Bar -> Circular -> Bar -> (wraps back) Custom.
+		// Type: Bar -> Circular -> Bar -> (wraps back) Dial -> Custom.
 		press(&mut editor, &mut config, &[K::RIGHT]);
 		assert_eq!(config.screens[1].gauge.gauge_type, GaugeType::Circular);
 		press(&mut editor, &mut config, &[K::LEFT, K::LEFT]);
+		assert_eq!(config.screens[1].gauge.gauge_type, GaugeType::Dial);
+		press(&mut editor, &mut config, &[K::LEFT]);
 		assert_eq!(config.screens[1].gauge.gauge_type, GaugeType::Custom);
 		// Custom -> Grid creates 4 cells, and the field list becomes Type + cells.
 		press(&mut editor, &mut config, &[K::LEFT]);
@@ -489,6 +502,10 @@ mod tests {
 		adjust_field(&mut g, Field::Smoothing, 1);
 		assert_eq!(field_value(&g, Field::Smoothing), "OFF");
 		assert_eq!(field_value(&g, Field::MaxValue), "100.0");
+		adjust_field(&mut g, Field::StatusMode, 1);
+		assert_eq!(field_value(&g, Field::StatusMode), "Min");
+		adjust_field(&mut g, Field::StatusMode, -2);
+		assert_eq!(g.status_mode, "None", "wraps backwards");
 	}
 
 	#[test]
