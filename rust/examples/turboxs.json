@@ -1,0 +1,6 @@
+{
+  "Screens": [
+    { "Gauge": { "Type": "TurboXs", "DataSource": "Map", "Title": "Boost Press.", "Unit": "kPa", "MaxValue": 100, "Decimals": 1 } },
+    { "Gauge": { "Type": "TurboXs", "DataSource": "Map", "Title": "Boost Press.", "Unit": "kPa", "MaxValue": 100, "Decimals": 1, "Lcd": true } }
+  ]
+}

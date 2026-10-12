@@ -14,10 +14,11 @@ pub enum GaugeType {
 	MinMax,
 	Grid,
 	Custom,
+	TurboXs,
 }
 
 impl GaugeType {
-	pub const ALL: [GaugeType; 9] = [
+	pub const ALL: [GaugeType; 10] = [
 		Self::Bar,
 		Self::Circular,
 		Self::Histogram,
@@ -27,6 +28,7 @@ impl GaugeType {
 		Self::MinMax,
 		Self::Grid,
 		Self::Custom,
+		Self::TurboXs,
 	];
 
 	/// The C# enum name (also its JSON spelling).
@@ -41,6 +43,7 @@ impl GaugeType {
 			Self::MinMax => "MinMax",
 			Self::Grid => "Grid",
 			Self::Custom => "Custom",
+			Self::TurboXs => "TurboXs",
 		}
 	}
 
@@ -96,6 +99,16 @@ pub struct GaugeConfig {
 	pub decimals: i32,
 	pub max_data_points: i32,
 	pub interval_ms: i32,
+	/// TurboXs: `Peak`, `Min`, `Text` or `None` (the status block under the title).
+	pub status_mode: String,
+	/// TurboXs: first status line; empty picks `Peak:`, `Min:` or `Datalog:`.
+	pub status_label: String,
+	/// TurboXs: second status line in `Text` mode.
+	pub status_text: String,
+	/// TurboXs: old-LCD look (low resolution, pixel grid, backlight tint, ghosting).
+	pub lcd: bool,
+	/// TurboXs: share of the previous frame that lingers in Lcd mode (0 = none, up to 0.9).
+	pub lcd_ghosting: f32,
 	pub cells: Vec<GridCellConfig>,
 }
 
@@ -115,6 +128,11 @@ impl Default for GaugeConfig {
 			decimals: 0,
 			max_data_points: 50,
 			interval_ms: 1000,
+			status_mode: "Peak".into(),
+			status_label: String::new(),
+			status_text: "Stop".into(),
+			lcd: false,
+			lcd_ghosting: 0.3,
 			cells: Vec::new(),
 		}
 	}

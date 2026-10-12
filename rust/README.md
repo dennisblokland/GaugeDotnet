@@ -8,7 +8,7 @@ A Rust port of GaugeDotnet's rendering stack. It loads the same `custom-gauge.js
 
 | Crate | Purpose |
 |-------|---------|
-| `gauge-render` | Library: canvas, fonts, the 17 custom element renderers, calculated channels, the 8 built-in gauges and the `gauges.json` factory |
+| `gauge-render` | Library: canvas, fonts, the 17 custom element renderers, calculated channels, the 9 built-in gauges and the `gauges.json` factory |
 | `me-data` | ECU data: CAN frame decoding ME1_1–ME1_8 (port of `ME1_4NET`, with all its tests), `MeData`, data-source names (`DataSourceMapper`) and the RaceChrono BLE packet format |
 | `me-ble` | Bluetooth link to the ECU on btleplug (port of `BleManager`, `MeDevice` and `BluetoothHardwareInit`), with a synchronous `BleLink` handle for render loops |
 | `gauge-app` | `gauge` binary: PNG snapshots, a benchmark, an optional SDL2 window, and Bluetooth tools. Fed by a port of `SimulatedMeDevice` or by the ECU |
@@ -22,8 +22,8 @@ A Rust port of GaugeDotnet's rendering stack. It loads the same `custom-gauge.js
 | `Gauges/Custom/CustomGauge.cs` | `custom/gauge.rs` (frame-rate independent smoothing) |
 | `Gauges/Custom/ExpressionEvaluator.cs` | `expression.rs` |
 | `ImageCache` / `GifCache` | `images.rs` (PNG, JPEG, WebP, plus GIF/APNG/WebP animation frames) |
-| `Rendering/FontHelper.cs` | `text.rs` (the four bundled fonts are embedded in the binary) |
-| `BaseGauge`, `BarGauge`, `CircularGauge`, `NeedleGauge`, `SweepGauge`, `DigitalGauge`, `MinMaxGauge`, `HistogramGauge`, `GridGauge`, `SegmentDisplay` | `gauges/*.rs` |
+| `Rendering/FontHelper.cs` | `text.rs` (the bundled fonts are embedded in the binary) |
+| `BaseGauge`, `BarGauge`, `CircularGauge`, `NeedleGauge`, `TurboXsGauge`, `SweepGauge`, `DigitalGauge`, `MinMaxGauge`, `HistogramGauge`, `GridGauge`, `SegmentDisplay` | `gauges/*.rs` |
 | `GaugeFactory`, `AppConfig`, `GaugeConfig`, `TolerantGaugeTypeConverter` | `gauges/mod.rs`, `gauges/config.rs` |
 | `SKCanvas` / `SKPaint` / `SKMaskFilter` | `canvas.rs` (save/restore, transforms, clips, `SaveLayer` opacity, arcs, round rects, text, normal and outer blur) |
 | `value.ToString("F1")`, `DateTime.ToString("HH:mm")` | `format.rs` (standard and custom .NET numeric and date format strings, invariant culture) |
@@ -45,6 +45,7 @@ cargo run --release -- render examples/showcase.json -o out.png
 cargo run --release -- render examples/gauges.json -o screen.png     # one PNG per screen
 cargo run --release -- render my-gauge.json --set Rpm=6500 --set OilTemp=104
 cargo run --release -- builtin needle --value 72 --title SPEED --unit KMH --color '#FF8800'
+cargo run --release -- builtin turboxs --value 0.4 --min -10 --max 20 --title 'Boost Press.' --unit Psi --decimals 1
 cargo run --release -- bench examples/showcase.json                  # values change every frame
 cargo run --release -- bench examples/showcase.json --data-hz 20     # realistic ECU rate
 cargo run --release -- bench examples/showcase.json --full --threads 1  # worst case

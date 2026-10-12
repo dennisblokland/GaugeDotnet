@@ -8,7 +8,7 @@ Real-time automotive gauge display for the [RG35XX](https://anbernic.com) handhe
 
 - Live gauge rendering at 60 fps via SDL2 + OpenGL ES 2.0
 - BLE connection to Motorsports Electronics ECU (CAN bus frames ME1_1–ME1_8)
-- Multiple built-in gauge styles: circular, sweep, needle, bar, digital, histogram, min/max, grid
+- Multiple built-in gauge styles: circular, sweep, needle, TurboXs, bar, digital, histogram, min/max, grid
 - **Custom gauge designer** — drag-and-drop Avalonia desktop app that exports JSON definitions for the device
 - 17 custom element types: arcs, zone arcs, needles (with image support), text, value displays, label+value boxes, tick rings, bars, warning indicators, images, value-driven gifs, clocks, mini graphs, peak markers, and more
 - **Calculated channels** — define virtual data sources as math expressions (`Rpm / 1000`, `OilTemp - Iat`) evaluated each frame
@@ -92,6 +92,34 @@ Publishes a self-contained linux-arm64 binary and SCPs it to the RG35XX.
 - **BaseGauge** subclasses use a static cache pattern: inactive segments drawn once to bitmap, active segments redrawn per-frame
 - **MeDevice** / **SimulatedMeDevice** implement `IMeDevice` — `#if DEBUG` uses the simulated device to bypass BLE
 - **CanDecoder** dispatches CAN frames by PID to typed structs; `MEData` aggregates all decoded values
+
+## TurboXs Gauge
+
+`"Type": "TurboXs"` is a handheld-style analog + digital display that works for any data source: a 270° dial on the left (`MinValue` at 6 o'clock, sweeping clockwise to `MaxValue` at 3 o'clock) and a large italic readout on the right.
+
+- **Scale:** 4 to 8 major ticks, chosen so every label is a round number (−10…20 → steps of 5, 0…8000 → 2000, 40…140 → 20).
+- **Title:** one word per line, so `"Boost Press."` becomes two lines. `Unit` goes under the readout.
+- **Fitting:** long titles, values and labels shrink to fit, so 4-digit RPM readings stay clear of the dial.
+- **Status block** (under the title):
+
+  | Setting | Values | Default |
+  |---|---|---|
+  | `StatusMode` | `Peak` (highest value seen), `Min` (lowest), `Text` (fixed text with a blue dot), `None` | `Peak` |
+  | `StatusLabel` | First line | `Peak:`, `Min:` or `Datalog:` (by mode) |
+  | `StatusText` | Second line in `Text` mode | `Stop` |
+
+  Peak and Min start at the first reading. R1 resets them, as on the other gauges. `StatusMode` can also be changed in the on-device config editor.
+- **Old LCD look:** `"Lcd": true` imitates a backlit handheld LCD. The gauge renders at a third of the resolution with a visible pixel grid, black becomes a dark navy and white a pale blue (which also turns the red needle pink), and moving parts leave a short trail. `LcdGhosting` sets how much of the previous frame lingers: 0 turns the trail off, and the maximum is 0.9 (default 0.3). Both can be changed in the on-device config editor. C# draws it in one GPU shader pass on the device and uses lookup tables on a CPU canvas, as Rust does. It costs about 0.4 ms per frame over the normal look in Rust and 2 ms in C# on a CPU canvas (see `bench/RESULTS.md`).
+- **Colours and fonts:** `ColorHex` is ignored, because the dial has a fixed white, grey and red palette. Text uses the bundled Aldrich and Saira Extra Condensed fonts (SIL OFL 1.1, licenses in `src/GaugeDotnet/fonts`), which are also available to custom gauges.
+
+```json
+{ "Gauge": { "Type": "TurboXs", "DataSource": "Map", "Title": "Boost Press.", "Unit": "Psi", "MinValue": -10, "MaxValue": 20, "Decimals": 1 } }
+{ "Gauge": { "Type": "TurboXs", "DataSource": "Rpm", "Title": "Engine Speed", "Unit": "RPM", "MaxValue": 8000 } }
+{ "Gauge": { "Type": "TurboXs", "DataSource": "Map", "Title": "Boost Press.", "Unit": "Psi", "MinValue": -10, "MaxValue": 20, "Decimals": 1,
+             "StatusMode": "Text", "StatusLabel": "Datalog:", "StatusText": "Stop", "Lcd": true, "LcdGhosting": 0.2 } }
+```
+
+![TurboXs gauge](docs/turboxs-gauge.png) ![TurboXs gauge with Lcd](docs/turboxs-gauge-lcd.png)
 
 ## Custom Gauge System
 

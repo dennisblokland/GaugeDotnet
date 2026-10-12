@@ -86,6 +86,23 @@ namespace GaugeDotnet.Gauges
                         Smoothing = config.Smoothing,
                     }, screenWidth, screenHeight),
 
+                GaugeType.TurboXs => new TurboXsGauge(
+                    new TurboXsGaugeSettings
+                    {
+                        InitialValue = config.InitialValue,
+                        MinValue = config.MinValue,
+                        MaxValue = config.MaxValue,
+                        Unit = config.Unit,
+                        Title = config.Title,
+                        Decimals = config.Decimals,
+                        Smoothing = config.Smoothing,
+                        StatusMode = config.StatusMode,
+                        StatusLabel = config.StatusLabel,
+                        StatusText = config.StatusText,
+                        Lcd = config.Lcd,
+                        LcdGhosting = config.LcdGhosting,
+                    }, screenWidth, screenHeight),
+
                 GaugeType.Digital => new DigitalGauge(
                     new DigitalGaugeSettings
                     {

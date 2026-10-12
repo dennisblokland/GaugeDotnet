@@ -11,6 +11,7 @@ mod minmax;
 mod needle;
 mod segment_display;
 mod sweep;
+mod turboxs;
 
 pub use bar::BarGauge;
 pub use circular::CircularGauge;
@@ -22,6 +23,7 @@ pub use minmax::MinMaxGauge;
 pub use needle::NeedleGauge;
 pub use segment_display::SegmentDisplay;
 pub use sweep::SweepGauge;
+pub use turboxs::TurboXsGauge;
 
 use crate::canvas::{rect, Canvas, Paint, Sprite};
 use crate::color::Rgba;
@@ -185,6 +187,7 @@ pub fn create_gauge(config: &GaugeConfig, width: u32, height: u32) -> Box<dyn Ga
 		GaugeType::Circular => Box::new(CircularGauge::new(config, width, height)),
 		GaugeType::Histogram => Box::new(HistogramGauge::new(config, width, height)),
 		GaugeType::Needle => Box::new(NeedleGauge::new(config, width, height)),
+		GaugeType::TurboXs => Box::new(TurboXsGauge::new(config, width, height)),
 		GaugeType::Digital => Box::new(DigitalGauge::new(config, width, height)),
 		GaugeType::Sweep => Box::new(SweepGauge::new(config, width, height)),
 		GaugeType::MinMax => Box::new(MinMaxGauge::new(config, width, height)),
