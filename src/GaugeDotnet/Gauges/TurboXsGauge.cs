@@ -10,7 +10,7 @@ namespace GaugeDotnet.Gauges
     /// red needle) and a two-line title, status text and a large italic digital
     /// readout on the right. Title words are stacked ("Boost Press." → two lines).
     /// With <see cref="TurboXsGaugeSettings.Lcd"/> it imitates an old backlit LCD: rendered at
-    /// a third of the resolution with a visible pixel grid, a blue tint and ghosting.
+    /// a third of the resolution with a faint pixel grid, a blue tint and ghosting.
     /// </summary>
     public class TurboXsGauge : BaseGauge
     {
@@ -72,9 +72,9 @@ namespace GaugeDotnet.Gauges
         // between them is darkened to LCD_GRID; each frame keeps _lcdGhosting of the
         // last one (TurboXsGaugeSettings.LcdGhosting); and black/white map to the backlight's navy and pale blue.
         private const int LCD_CELL = 3;
-        private const float LCD_GRID = 0.7f;
-        private static readonly SKColor LcdBlack = new(0x14, 0x1A, 0x40);
-        private static readonly SKColor LcdWhite = new(0xD8, 0xE0, 0xFF);
+        private const float LCD_GRID = 0.85f;
+        private static readonly SKColor LcdBlack = new(0x0A, 0x0E, 0x24);
+        private static readonly SKColor LcdWhite = new(0xEC, 0xF0, 0xFF);
         // CPU path: per channel (R, G, B), the tinted value and the tinted value on a grid line.
         private static readonly (byte[] Plain, byte[] Line)[] LcdTables = BuildLcdTables();
 

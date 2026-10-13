@@ -31,9 +31,9 @@ const RIGHT_EDGE: f32 = 612.0;
 // between them is darkened to LCD_GRID; each frame keeps `lcd_ghosting` of the
 // last one (`GaugeConfig::lcd_ghosting`); and black/white map to the backlight's navy and pale blue.
 const LCD_CELL: usize = 3;
-const LCD_GRID: f32 = 0.7;
-const LCD_BLACK: Rgba = Rgba::rgb(0x14, 0x1A, 0x40);
-const LCD_WHITE: Rgba = Rgba::rgb(0xD8, 0xE0, 0xFF);
+const LCD_GRID: f32 = 0.85;
+const LCD_BLACK: Rgba = Rgba::rgb(0x0A, 0x0E, 0x24);
+const LCD_WHITE: Rgba = Rgba::rgb(0xEC, 0xF0, 0xFF);
 
 /// LCD resolution for a screen size (cells, rounded up).
 fn lcd_size((width, height): (u32, u32)) -> (u32, u32) {

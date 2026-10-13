@@ -132,7 +132,7 @@ impl Default for GaugeConfig {
 			status_label: String::new(),
 			status_text: "Stop".into(),
 			lcd: false,
-			lcd_ghosting: 0.3,
+			lcd_ghosting: 0.2,
 			cells: Vec::new(),
 		}
 	}
