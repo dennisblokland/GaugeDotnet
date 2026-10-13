@@ -134,7 +134,7 @@
             System.IO.File.WriteAllText(nextFile, command);
 
             //Make the file executable
-            Process p = System.Diagnostics.Process.Start("chmod", $"+x {nextFile}");
+            System.Diagnostics.Process p = System.Diagnostics.Process.Start("chmod", $"+x {nextFile}");
 
             p.WaitForExit();
 
