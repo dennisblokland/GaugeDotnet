@@ -94,11 +94,16 @@ On the RG35XX the Bluetooth bring-up (`rtk_hciattach`, `bluetoothd`) runs automa
 ```shell
 ./build-arm64.sh          # -> target/aarch64-unknown-linux-gnu/release/gauge
 ./deploy-arm64.sh         # build, then scp to the device (REMOTE_HOST, REMOTE_PASS, ... as in ../deploy-arm64.sh)
+SKIP_BUILD=1 ./deploy-arm64.sh   # upload the existing build only
 ```
+
+**Without a cross toolchain:** when `aarch64-linux-gnu-gcc` isn't installed, or with `USE_DOCKER=1`, `build-arm64.sh` runs itself in a `rust:1-bookworm` container, so Docker is the only requirement. That build targets glibc 2.36. The cargo registry is cached in the `gauge-cargo-registry` Docker volume.
+
+**Login:** `deploy-arm64.sh` uses `sshpass` with `REMOTE_PASS` when `sshpass` is installed. Otherwise it uses plain `ssh` and `scp`, which need your key on the device: run `ssh-copy-id root@<host>` once.
 
 `build-arm64.sh` cross-compiles with `--features sdl,ble-vendored`. It needs the `aarch64-unknown-linux-gnu` rustup target, `gcc-aarch64-linux-gnu`, `curl` and `dpkg-deb`. On first use it fetches the arm64 `libSDL2` from Ubuntu's archive to link against. At run time the binary uses the device's own `libSDL2-2.0.so.0`, as the C# app does, and libdbus is compiled in. So the only thing installed is a single 5 MB `gauge` binary.
 
-`deploy-arm64.sh` copies the binary to `/mnt/mmc/ports/GaugeRust`, separate from the C# app, and copies the launcher `GaugeRust.sh` to `/mnt/mmc/roms/ports`, so it shows up under Ports. `gauges.json` lives next to the binary. Copy over the C# one, or use `UPLOAD_CONFIG=1` to upload `./gauges.json`. The log is `GaugeRust.log` in the same folder.
+`deploy-arm64.sh` copies the binary to `/mnt/mmc/ports/GaugeRust`, separate from the C# app, and copies the launcher `GaugeRust.sh` to `/mnt/mmc/roms/ports`, so it shows up under Ports. `gauges.json` lives next to the binary. Copy over the C# one, or use `UPLOAD_CONFIG=1` to upload `./gauges.json`. The log is `GaugeRust.log` in the same folder. It also uploads the Ports-list artwork (`../muos/GaugeRust.png` and `.txt`) to muOS's `External - Ports` catalogue.
 
 **glibc:** built with Ubuntu 24.04's cross toolchain, the binary needs **glibc 2.38 or newer** on the device. That requirement comes from the vendored libdbus, which compiles against C23 `strtol`. Check with `ldd --version` on the device. If the device's glibc is older, run `build-arm64.sh` inside an older distribution, for example a `debian:bookworm` container (glibc 2.36) with the same packages.
 
@@ -152,6 +157,8 @@ Everything is rasterised on the CPU. Glows are the expensive part, so:
 - **Glows are alpha-only:** each glow is one colour, so only its coverage (A8) is rasterised and blurred, then composited with that colour.
 - **Static content is cached as trimmed `Sprite`s.** The built-in gauges cache their backgrounds, lit segments (keyed by count and colour), segment-display digits (keyed by text and colour) and Histogram bars (keyed by sample version). Custom gauges pre-render each run of static elements, together with the background.
 - **Opacity layers composite only the area that was drawn into.**
+- **Glow coverage is memoised:** the blurred low-res coverage of each glow is cached per rendering thread (up to 4 MB), keyed on the exact low-res path, size and blur. A hit gives exactly the bytes a fresh render would, and scrolling histogram bars, ring segments and digits hit almost every time. Only the part of a glow whose coverage is non-zero is upscaled and blended.
+- **Hot loops vectorise on aarch64:** the blends and the upscale in `composite.rs` are branch-free 16-bit loops, so they run 8–16 pixels per instruction with NEON. The upscale is separable and polyphase for the 2× and 4× scales, and streams each row straight into the blend. Axis-aligned rectangles skip tiny-skia's per-row supersampling for their whole-pixel interior. All of this is exact; tests compare it with the straightforward code and with tiny-skia.
 
 Custom gauges also redraw incrementally, using several cores (`ElementRenderer::render_incremental`, which `CustomGauge::draw` uses):
 - **Damage tracking:** each dynamic element is fingerprinted every frame (its value, or its clock text, peak or graph history). Only regions touched by changed elements are repainted, and their rects are returned so the window uploads just those to the texture. A moving arc or bar fill only damages the wedge or strip between its old and new value.
@@ -171,7 +178,24 @@ Custom gauges also redraw incrementally, using several cores (`ElementRenderer::
 | Values gliding (20 Hz data) | 1.36 ms | 1.03 ms | 25 % |
 | Values settled (only the graph scrolls) | 0.09 ms | 0.08 ms | 3 % |
 
-The C# renderer takes 8.7 ms for a full frame on the same CPU; see [`bench/`](../bench/README.md). Measure on the RG35XX's Cortex-A53 with `gauge bench`.
+The C# renderer takes 8.7 ms for a full frame on the same CPU; see [`bench/`](../bench/README.md).
+
+On the RG35XX (Cortex-A53 at 1.5 GHz, `gauge bench examples/gauges.json`, new data every frame), ms/frame before and after the aarch64 work described in [`bench/RESULTS.md`](../bench/RESULTS.md#5-on-the-device-rg35xx):
+
+| Screen | Before | After |
+|---|---:|---:|
+| Custom (showcase.json) | 6.5 | 4.5 |
+| Circular | 16.1 | 7.6 |
+| Needle | 5.1 | 2.6 |
+| Sweep | 11.7 | 5.3 |
+| Bar | 4.8 | 2.9 |
+| Digital | 5.5 | 3.2 |
+| MinMax | 8.7 | 4.5 |
+| Histogram (`IntervalMs` 0) | 37.0 | 9.4 |
+| Grid | 3.0 | 3.0 |
+| TurboXs / with `"Lcd": true` | 4.4 / 4.7 | 4.4 / 4.6 |
+
+Every screen now holds 60 fps with room to spare. The frames are byte-identical before and after, on x86 and on the device.
 
 ## Differences from the C# renderer
 

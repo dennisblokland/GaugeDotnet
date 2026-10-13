@@ -21,7 +21,7 @@ dotnet test               # Run xUnit tests
 dotnet run --project src/GaugeDotnet  # Run app (uses SimulatedMeDevice in DEBUG)
 ```
 
-Deploy to device: `./deploy-arm64.sh` (publishes linux-arm64, SCPs to device)
+Deploy to device: `./deploy-arm64.sh` (publishes linux-arm64, SCPs to device). The launcher `GaugeDotnet.sh` pins the GPU clock (`/sys/class/devfreq/gpu/min_freq`) during the run and restores it after. Both deploy scripts also upload the muOS Ports artwork from `muos/` (box art, preview, description) to `/run/muos/storage/info/catalogue/External - Ports/`.
 
 ## Setup
 

@@ -1,0 +1,1 @@
+GaugeRust: ECU gauges (Rust, CPU renderer). Reads the engine ECU over Bluetooth and shows configurable gauge screens.

@@ -62,7 +62,9 @@ dotnet run --project src/GaugeDotnet.Designer   # Open the gauge designer
 ./deploy-arm64.sh
 ```
 
-Publishes a self-contained linux-arm64 binary and SCPs it to the RG35XX.
+Publishes a self-contained linux-arm64 binary and SCPs it to the RG35XX. It also uploads the artwork muOS shows in the Ports list (box art, preview and description from [`muos/`](muos/README.md)).
+
+The launcher, `GaugeDotnet.sh`, holds the Mali GPU at its top clock while the app runs and restores the previous floor on exit. The default `simple_ondemand` governor never raises the clock for the app, and frames take 20–40% longer at the bottom step (see `bench/RESULTS.md`).
 
 ## Architecture
 
@@ -99,7 +101,7 @@ Publishes a self-contained linux-arm64 binary and SCPs it to the RG35XX.
 
 - **Scale:** 4 to 8 major ticks, chosen so every label is a round number (−10…20 → steps of 5, 0…8000 → 2000, 40…140 → 20).
 - **Title:** one word per line, so `"Boost Press."` becomes two lines. `Unit` goes under the readout.
-- **Fitting:** long titles, values and labels shrink to fit, so 4-digit RPM readings stay clear of the dial.
+- **Fitting:** long titles, values and labels shrink to fit, so 4-digit RPM readings stay clear of the dial. The readout (and Peak/Min) is sized for the widest value in `MinValue`–`MaxValue`, with fixed-width digits, so it keeps one size and position as the value changes.
 - **Status block** (under the title):
 
   | Setting | Values | Default |

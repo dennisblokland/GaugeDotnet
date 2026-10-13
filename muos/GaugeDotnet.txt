@@ -1,0 +1,1 @@
+GaugeDotnet: ECU gauges (C#, SkiaSharp on the GPU). Reads the engine ECU over Bluetooth and shows configurable gauge screens.
