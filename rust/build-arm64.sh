@@ -10,10 +10,21 @@
 # Without the cross gcc (or with USE_DOCKER=1), it runs itself in a
 # rust:1-bookworm container instead, which only needs Docker. That build also
 # targets glibc 2.36, below the 2.38 a newer host toolchain would require.
+#
+# With zig and cargo-zigbuild installed (or USE_ZIG=1), it builds on the host
+# against glibc $GLIBC (default 2.36) instead, whatever the host's glibc is.
+# The device (muOS) has glibc 2.38.
 set -euo pipefail
 cd "$(dirname "$0")"
 
-if [ "${IN_DOCKER:-0}" != 1 ] && { [ "${USE_DOCKER:-0}" = 1 ] || ! command -v aarch64-linux-gnu-gcc >/dev/null; }; then
+GLIBC="${GLIBC:-2.36}"
+if [ -z "${USE_ZIG:-}" ] && [ "${IN_DOCKER:-0}" != 1 ] && [ "${USE_DOCKER:-0}" != 1 ] \
+  && command -v zig >/dev/null && command -v cargo-zigbuild >/dev/null; then
+  USE_ZIG=1
+fi
+USE_ZIG="${USE_ZIG:-0}"
+
+if [ "$USE_ZIG" != 1 ] && [ "${IN_DOCKER:-0}" != 1 ] && { [ "${USE_DOCKER:-0}" = 1 ] || ! command -v aarch64-linux-gnu-gcc >/dev/null; }; then
   command -v docker >/dev/null || { echo "Needs gcc-aarch64-linux-gnu or Docker"; exit 1; }
   echo "Building in Docker (rust:1-bookworm)..."
   mkdir -p target
@@ -47,14 +58,19 @@ if [ ! -f "$SDL_LIB/libSDL2.so" ]; then
   ln -sf libSDL2-2.0.so.0 "$SDL_LIB/libSDL2.so"
 fi
 
-export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER="${CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER:-aarch64-linux-gnu-gcc}"
-export CC_aarch64_unknown_linux_gnu="${CC_aarch64_unknown_linux_gnu:-aarch64-linux-gnu-gcc}"
 # libSDL2's own dependencies (X11, Wayland, ...) exist only on the device, so
 # allow them to stay unresolved here. The rpath lets a libSDL2 placed next to
 # the binary take precedence if the device ever lacks one.
 export RUSTFLAGS="${RUSTFLAGS:-} -L $SDL_LIB -C link-arg=-Wl,--allow-shlib-undefined -C link-arg=-Wl,-rpath,\$ORIGIN"
 
-cargo build --release --target "$TARGET" -p gauge-app --features sdl,ble-vendored
+if [ "$USE_ZIG" = 1 ]; then
+  # zig links (and compiles libdbus) against an older glibc than the host's.
+  cargo zigbuild --release --target "$TARGET.$GLIBC" -p gauge-app --features sdl,ble-vendored
+else
+  export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER="${CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER:-aarch64-linux-gnu-gcc}"
+  export CC_aarch64_unknown_linux_gnu="${CC_aarch64_unknown_linux_gnu:-aarch64-linux-gnu-gcc}"
+  cargo build --release --target "$TARGET" -p gauge-app --features sdl,ble-vendored
+fi
 
 OUT="$PWD/target/$TARGET/release/gauge"
 echo "Built $OUT"

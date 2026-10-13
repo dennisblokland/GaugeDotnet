@@ -105,7 +105,12 @@ SKIP_BUILD=1 ./deploy-arm64.sh   # upload the existing build only
 
 `deploy-arm64.sh` copies the binary to `/mnt/mmc/ports/GaugeRust`, separate from the C# app, and copies the launcher `GaugeRust.sh` to `/mnt/mmc/roms/ports`, so it shows up under Ports. `gauges.json` lives next to the binary. Copy over the C# one, or use `UPLOAD_CONFIG=1` to upload `./gauges.json`. The log is `GaugeRust.log` in the same folder. It also uploads the Ports-list artwork (`../muos/GaugeRust.png` and `.txt`) to muOS's `External - Ports` catalogue.
 
-**glibc:** built with Ubuntu 24.04's cross toolchain, the binary needs **glibc 2.38 or newer** on the device. That requirement comes from the vendored libdbus, which compiles against C23 `strtol`. Check with `ldd --version` on the device. If the device's glibc is older, run `build-arm64.sh` inside an older distribution, for example a `debian:bookworm` container (glibc 2.36) with the same packages.
+**glibc:** the device (muOS) has **glibc 2.38**, and the binary needs no newer glibc than the one it was linked against. A host cross toolchain links against the host's glibc (Arch's is 2.4x), so the binary won't start on the device (`GLIBC_2.39' not found`). Ways to build for an older glibc:
+
+- **zig (no Docker):** install `zig` and `cargo-zigbuild` (Arch: `pacman -S zig cargo-zigbuild`, or `cargo install cargo-zigbuild`). `build-arm64.sh` then uses `cargo zigbuild` automatically and targets glibc 2.36 (`GLIBC=2.38` to change it, `USE_ZIG=0` to skip it). The output path is the same.
+- **Docker:** `USE_DOCKER=1 ./build-arm64.sh` (glibc 2.36, see above).
+
+Check the device with `ldd --version`.
 
 ### Bluetooth (ECU)
 
