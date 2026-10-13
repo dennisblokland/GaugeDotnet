@@ -62,9 +62,24 @@ export LC_ALL=C
 export DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
 export DBUS_SYSTEM_BUS_ADDRESS=unix:path=/run/dbus/system_bus_socket
 
+# The Mali's simple_ondemand governor never raises the GPU clock for Skia's GL
+# work, which costs 20-40% per frame (bench/RESULTS.md). Hold it at its top
+# step while the app runs, then restore the previous floor.
+GPU_DEVFREQ=/sys/class/devfreq/gpu
+gpu_min_prev=""
+if [ -w "$GPU_DEVFREQ/min_freq" ] && [ -r "$GPU_DEVFREQ/available_frequencies" ]; then
+  gpu_min_prev="$(cat "$GPU_DEVFREQ/min_freq")"
+  gpu_max="$(tr ' ' '\n' < "$GPU_DEVFREQ/available_frequencies" | sort -n | tail -n 1)"
+  echo "$gpu_max" > "$GPU_DEVFREQ/min_freq" && echo "[APP] GPU clock held at $gpu_max"
+fi
+
 echo "[APP] starting $APP_PATH"
 "$APP_PATH"
 app_status=$?
 echo "[APP] exited with status $app_status"
+
+if [ -n "$gpu_min_prev" ]; then
+  echo "$gpu_min_prev" > "$GPU_DEVFREQ/min_freq"
+fi
 pm_finish
 exit "$app_status"
