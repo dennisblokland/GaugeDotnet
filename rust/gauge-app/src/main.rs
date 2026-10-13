@@ -237,7 +237,7 @@ fn cmd_builtin(args: &Args) -> Result<(), String> {
 		status_label: args.opt(&["status-label"], String::new())?,
 		status_text: args.opt(&["status-text"], "Stop".to_string())?,
 		lcd: args.opt(&["lcd"], false)?,
-		lcd_ghosting: args.opt(&["lcd-ghosting"], 0.3)?,
+		lcd_ghosting: args.opt(&["lcd-ghosting"], 0.2)?,
 		..GaugeConfig::default()
 	};
 	let mut gauge = gauges::create_gauge(&config, 640, 480);

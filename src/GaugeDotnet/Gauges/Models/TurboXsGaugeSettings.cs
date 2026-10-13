@@ -8,6 +8,6 @@ namespace GaugeDotnet.Gauges.Models
         public string StatusLabel { get; set; } = "";
         public string StatusText { get; set; } = "Stop";
         public bool Lcd { get; set; } = false;
-        public float LcdGhosting { get; set; } = 0.3f;
+        public float LcdGhosting { get; set; } = 0.2f;
     }
 }

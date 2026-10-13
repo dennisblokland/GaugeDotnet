@@ -29,7 +29,7 @@ namespace GaugeDotnet.Configuration
         // Old-LCD look: low resolution, pixel grid, blue backlight tint and ghosting.
         public bool Lcd { get; set; } = false;
         // Share of the previous frame that lingers in Lcd mode (0 = no ghosting, up to 0.9).
-        public float LcdGhosting { get; set; } = 0.3f;
+        public float LcdGhosting { get; set; } = 0.2f;
 
         // Grid gauge specific
         public List<GridCellConfig> Cells { get; set; } = new();

@@ -517,7 +517,7 @@ mod tests {
 		adjust_field(&mut g, Field::Lcd, 1);
 		assert_eq!(field_value(&g, Field::Lcd), "ON");
 		adjust_field(&mut g, Field::LcdGhosting, -1);
-		assert_eq!(field_value(&g, Field::LcdGhosting), "0.2");
+		assert_eq!(field_value(&g, Field::LcdGhosting), "0.1");
 		for _ in 0..12 {
 			adjust_field(&mut g, Field::LcdGhosting, 1);
 		}
