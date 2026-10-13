@@ -10,6 +10,7 @@ BIN_DIR="${BIN_DIR:-$BIN_ROOT/GaugeDotnet}"
 SCRIPT_DIR="${SCRIPT_DIR:-/mnt/mmc/roms/ports}"
 CONFIG="${CONFIG:-Release}"
 RUN_SCRIPT="${RUN_SCRIPT:-./GaugeDotnet.sh}"
+ART_DIR="${ART_DIR:-./muos}"
 
 PUBLISH_DIR="./publish-arm64"
 
@@ -44,6 +45,21 @@ $SCP "$RUN_SCRIPT" "$REMOTE_USER@$REMOTE_HOST:$SCRIPT_DIR/$RUN_SCRIPT_NAME"
 echo "Setting executable permissions..."
 APP_NAME="$(basename "$PROJECT" .csproj)"
 $SSH "$REMOTE_USER@$REMOTE_HOST" "chmod +x '$BIN_DIR/$APP_NAME' '$SCRIPT_DIR/$RUN_SCRIPT_NAME' || true"
+
+# muOS artwork for the Ports list: box art, preview and description, matched
+# to the launcher by name.
+CATALOGUE_DIR="${CATALOGUE_DIR:-/run/muos/storage/info/catalogue/External - Ports}"
+ART_NAME="${RUN_SCRIPT_NAME%.sh}"
+if [ -f "$ART_DIR/$ART_NAME.png" ]; then
+  echo "Uploading muOS artwork to $CATALOGUE_DIR..."
+  $SSH "$REMOTE_USER@$REMOTE_HOST" "mkdir -p '$CATALOGUE_DIR/box' '$CATALOGUE_DIR/preview' '$CATALOGUE_DIR/text'"
+  for kind in box preview; do
+    $SSH "$REMOTE_USER@$REMOTE_HOST" "cat > '$CATALOGUE_DIR/$kind/$ART_NAME.png'" < "$ART_DIR/$ART_NAME.png"
+  done
+  if [ -f "$ART_DIR/$ART_NAME.txt" ]; then
+    $SSH "$REMOTE_USER@$REMOTE_HOST" "cat > '$CATALOGUE_DIR/text/$ART_NAME.txt'" < "$ART_DIR/$ART_NAME.txt"
+  fi
+fi
 
 echo "Done."
 echo "Run on device:"

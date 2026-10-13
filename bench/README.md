@@ -6,7 +6,7 @@ Complete, current numbers are in [RESULTS.md](RESULTS.md).
 - **C#:** the app's real, unmodified renderer sources (linked into [`csharp/`](csharp)) drawing through SkiaSharp 3.119.
 - **Rust:** `gauge bench` from [`rust/`](../rust) drawing through tiny-skia.
 
-Both use a 640×480 CPU raster surface and the same simulated ECU data stepped at 60 Hz. Each screen gets 300 warm-up frames, then 600 frames where **only the draw call** is timed.
+Both use a 640×480 CPU raster surface by default and the same simulated ECU data stepped at 60 Hz. Each screen gets 300 warm-up frames, then 600 frames where **only the draw call** is timed.
 
 ## Results
 
@@ -39,7 +39,7 @@ Intel Xeon @ 2.10 GHz (cloud VM), Linux x64, .NET 10.0.12, Rust 1.97. Each figur
   - **Trimmed sprites:** cached layers are cropped to their content, and opaque ones are copied row by row. Previously a full 640×480 mostly-transparent layer was blended per cache per frame.
   - **More caching:** lit segments (Bar, MinMax, Circular), segment-display digits (until the text changes), Histogram bars (until a sample arrives), and runs of static custom elements together with the background.
 - **Some of these caches are worst-cased by the benchmark.** It changes every value on every frame. With real ECU data (about 20 Hz against 60 fps) and the default 1 s Histogram interval, most frames hit the caches, so the device will do better than these numbers suggest.
-- **On the device, the C# app renders through Skia's GPU backend (GLES2), which this benchmark does not cover.** The cloud VM has no GPU. What matters there is how the RG35XX's GPU compares with the Rust renderer on its Cortex-A53 cores. Run `gauge bench` on the device for that.
+- **On the device, the C# app renders through Skia's GPU backend (GLES2).** `GaugeBench <config> [frames] [warmup] --gpu` measures that path. It opens an SDL window with a GLES2 context, as the app's `GaugeSDL` does, and flushes and waits for the GPU after every timed frame. `--png <dir>` saves each screen's last frame, read back from the surface, to check the GPU output against a CPU run. Device results are in [RESULTS.md](RESULTS.md#5-on-the-device-rg35xx). To run it there, publish with `dotnet publish bench/csharp/GaugeBench.csproj -c Release -r linux-arm64 --self-contained true` and copy it over along with an aarch64 `gauge` build.
 - Same machine, alternating runs; expect ±10 % noise between runs.
 
 ## Partial redraw and threads (custom gauges)

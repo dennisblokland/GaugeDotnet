@@ -84,6 +84,8 @@ pub struct TurboXsGauge {
 	smoothing: bool,
 	decimals: usize,
 	major_count: usize,
+	/// Widest readout in range; fixes the readout's fit-to-width scale.
+	readout_template: String,
 	status_mode: StatusMode,
 	status_label: String,
 	status_text: String,
@@ -176,7 +178,9 @@ fn draw_bezel(target: &mut Canvas, scale: f32) {
 /// Text style: `bold` is the outline width added around each glyph
 /// (`SKPaintStyle.StrokeAndFill`), `scale_x` stretches, `skew` slants and
 /// `spacing` adds room between letters. Text wider than `max_width` is
-/// shrunk to fit around its anchor.
+/// shrunk to fit around its anchor; with `fit_text` digits are drawn
+/// tabular (widest-digit cells) and the shrink is sized for `fit_text` too,
+/// so a changing number keeps one size and position.
 struct TextStyle {
 	size: f32,
 	bold: f32,
@@ -197,6 +201,7 @@ fn draw_styled_text(
 	font: &Typeface,
 	style: &TextStyle,
 	color: Rgba,
+	fit_text: Option<&str>,
 ) {
 	let count = text.chars().count();
 	if count == 0 {
@@ -204,14 +209,30 @@ fn draw_styled_text(
 	}
 	let mut buf = [0u8; 4];
 	let advance = |ch: char, buf: &mut [u8; 4]| font.measure(ch.encode_utf8(buf), style.size);
-	let width = style.spacing * (count - 1) as f32 + text.chars().map(|ch| advance(ch, &mut buf)).sum::<f32>();
+	// With `fit_text`, digits sit in fixed cells of the widest digit (tabular
+	// figures) so the text's edges stay put as the number changes.
+	let digit_cell = match fit_text {
+		Some(_) => ('0'..='9').map(|d| advance(d, &mut buf)).fold(0.0, f32::max),
+		None => 0.0,
+	};
+	let cell = |ch: char, buf: &mut [u8; 4]| {
+		if digit_cell > 0.0 && ch.is_ascii_digit() { digit_cell } else { advance(ch, buf) }
+	};
+	let measure = |t: &str, buf: &mut [u8; 4]| {
+		style.spacing * (t.chars().count().max(1) - 1) as f32 + t.chars().map(|ch| cell(ch, buf)).sum::<f32>()
+	};
+	let width = measure(text, &mut buf);
 	let mut pen = match align {
 		TextAlign::Left => 0.0,
 		TextAlign::Center => -width / 2.0,
 		TextAlign::Right => -width,
 	};
 
-	let fit = (style.max_width / (width * style.scale_x)).min(1.0);
+	let fit_width = match fit_text {
+		Some(t) => width.max(measure(t, &mut buf)),
+		None => width,
+	};
+	let fit = (style.max_width / (fit_width * style.scale_x)).min(1.0);
 
 	c.save();
 	c.translate(x, y);
@@ -219,14 +240,16 @@ fn draw_styled_text(
 	c.skew(style.skew, 0.0);
 	c.scale(style.scale_x, 1.0);
 	for ch in text.chars() {
+		let own = advance(ch, &mut buf);
+		let slot = cell(ch, &mut buf);
 		let s: &str = ch.encode_utf8(&mut buf);
-		if let Some(path) = font.text_path(s, pen, 0.0, style.size, TextAlign::Left) {
+		if let Some(path) = font.text_path(s, pen + (slot - own) / 2.0, 0.0, style.size, TextAlign::Left) {
 			c.draw_path(&path, &Paint::fill(color));
 			if style.bold > 0.0 {
 				c.draw_path(&path, &Paint::stroke(color, style.bold));
 			}
 		}
-		pen += font.measure(s, style.size) + style.spacing;
+		pen += slot + style.spacing;
 	}
 	c.restore();
 }
@@ -245,14 +268,19 @@ impl TurboXsGauge {
 		} else {
 			config.status_label.clone()
 		};
+		let decimals = config.decimals.max(0) as usize;
+		let lo = crate::format::format_number(base.min_value, &format!("F{decimals}"));
+		let hi = crate::format::format_number(base.max_value, &format!("F{decimals}"));
+		let readout_template = if lo.chars().count() > hi.chars().count() { lo } else { hi };
 		Self {
 			current_value: base.value,
 			smoothing: config.smoothing,
-			decimals: config.decimals.max(0) as usize,
+			decimals,
 			status_mode,
 			status_label,
 			status_text: config.status_text.clone(),
 			major_count: major_intervals(base.min_value, base.max_value),
+			readout_template,
 			// Peak and Min start from the first reading, not the initial value.
 			peak: f32::NAN,
 			min: f32::NAN,
@@ -302,6 +330,7 @@ impl TurboXsGauge {
 			typeface("Saira Extra Condensed"),
 			&style,
 			TEXT_COLOR,
+			Some(&self.readout_template),
 		);
 
 		if matches!(self.status_mode, StatusMode::Peak | StatusMode::Min) {
@@ -309,7 +338,7 @@ impl TurboXsGauge {
 			let held = if held.is_nan() { self.base.value } else { held };
 			let text = crate::format::format_number(held, &format!("F{}", self.decimals));
 			let font = typeface("Aldrich");
-			draw_styled_text(canvas, &text, RIGHT_EDGE, 246.0, TextAlign::Right, font, &STATUS_STYLE, STATUS_COLOR);
+			draw_styled_text(canvas, &text, RIGHT_EDGE, 246.0, TextAlign::Right, font, &STATUS_STYLE, STATUS_COLOR, Some(&self.readout_template));
 		}
 		canvas.restore();
 	}
@@ -418,6 +447,7 @@ impl TurboXsGauge {
 					font,
 					&label_style,
 					TEXT_COLOR,
+					None,
 				);
 			}
 
@@ -442,23 +472,24 @@ impl TurboXsGauge {
 					font,
 					&style,
 					TEXT_COLOR,
+					None,
 				);
 			}
 
 			// Status block: the label, plus the fixed text and its dot in Text mode.
 			// Peak and Min values change, so `draw` adds them each frame.
 			if mode != StatusMode::None {
-				draw_styled_text(c, &label, RIGHT_EDGE, 222.0, TextAlign::Right, font, &STATUS_STYLE, STATUS_COLOR);
+				draw_styled_text(c, &label, RIGHT_EDGE, 222.0, TextAlign::Right, font, &STATUS_STYLE, STATUS_COLOR, None);
 			}
 			if mode == StatusMode::Text {
 				let style = TextStyle { max_width: STATUS_MAX_WIDTH - 22.0, ..STATUS_STYLE };
-				draw_styled_text(c, &text, RIGHT_EDGE - 22.0, 246.0, TextAlign::Right, font, &style, STATUS_COLOR);
+				draw_styled_text(c, &text, RIGHT_EDGE - 22.0, 246.0, TextAlign::Right, font, &style, STATUS_COLOR, None);
 				c.draw_circle(RIGHT_EDGE - 7.0, 238.0, 6.0, &Paint::fill(STATUS_DOT_COLOR));
 			}
 
 			// Unit below the readout.
 			let unit_style = TextStyle { size: 44.0, max_width: UNIT_MAX_WIDTH, ..title_style };
-			draw_styled_text(c, &base.unit, RIGHT_EDGE - 4.0, 452.0, TextAlign::Right, font, &unit_style, TEXT_COLOR);
+			draw_styled_text(c, &base.unit, RIGHT_EDGE - 4.0, 452.0, TextAlign::Right, font, &unit_style, TEXT_COLOR, None);
 		}));
 		self.base.static_cache_valid = true;
 	}

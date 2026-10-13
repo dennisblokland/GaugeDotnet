@@ -15,7 +15,7 @@ pub use tiny_skia::{LineCap, LineJoin};
 
 use crate::blur::gaussian_blur_a8;
 use crate::color::Rgba;
-use crate::composite::{copy_rows, opaque_bounds, src_over, src_over_color, upscale_bilinear_a8, IRect};
+use crate::composite::{copy_rows, opaque_bounds, src_over, src_over_color_rows, IRect, Upscaler};
 use crate::text::{TextAlign, Typeface};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -212,6 +212,172 @@ fn flatten_device(path: &Path, ts: Transform) -> Option<Path> {
 		}
 	}
 	pb.finish()
+}
+
+/// `left, top, right, bottom` of a path that is a single axis-aligned
+/// rectangle (as built by `PathBuilder::from_rect`), in device space.
+fn axis_aligned_rect(path: &Path) -> Option<(f32, f32, f32, f32)> {
+	use tiny_skia::PathSegment::{Close, LineTo, MoveTo};
+	let mut segs = path.segments();
+	let (a, b, c, d) = match (segs.next(), segs.next(), segs.next(), segs.next(), segs.next(), segs.next()) {
+		(Some(MoveTo(a)), Some(LineTo(b)), Some(LineTo(c)), Some(LineTo(d)), Some(Close), None) => (a, b, c, d),
+		_ => return None,
+	};
+	let aligned = (a.y == b.y && b.x == c.x && c.y == d.y && d.x == a.x)
+		|| (a.x == b.x && b.y == c.y && c.x == d.x && d.y == a.y);
+	let r = path.bounds();
+	// Far-off coordinates take tiny-skia's own clipping and overflow paths.
+	let sane = [r.left(), r.top(), r.right(), r.bottom()].iter().all(|v| v.abs() < 1.0e6);
+	(aligned && sane).then(|| (r.left(), r.top(), r.right(), r.bottom()))
+}
+
+/// Anti-aliased fill of a device-space path.
+///
+/// tiny-skia rasterises anti-aliased paths by supersampling every pixel row,
+/// which costs about the same per row however simple the shape. For an
+/// axis-aligned rectangle, only the rows and columns its edges cross get
+/// partial coverage; every whole pixel inside is fully covered, and tiny-skia
+/// blits fully covered runs exactly like a pixel-aligned rect fill. So the
+/// fractional border strips are rasterised as paths (with the same edges,
+/// so the same coverage) and the interior is filled as one aligned rect,
+/// which gives the same pixels with a fraction of the per-row work.
+fn fill_device_path(target: &mut Pixmap, device: &Path, paint: &tiny_skia::Paint, clip: Option<&Mask>) {
+	let fill = |t: &mut Pixmap, p: &Path| t.fill_path(p, paint, FillRule::Winding, Transform::identity(), clip);
+	let Some((l, t, r, b)) = axis_aligned_rect(device).filter(|_| paint.anti_alias) else {
+		fill(target, device);
+		return;
+	};
+	let (il, it, ir, ib) = (l.ceil(), t.ceil(), r.floor(), b.floor());
+	if il >= ir || it >= ib {
+		fill(target, device);
+		return;
+	}
+	let strip = |t: &mut Pixmap, l: f32, top: f32, r: f32, bottom: f32| {
+		if let Some(rect) = Rect::from_ltrb(l, top, r, bottom) {
+			fill(t, &PathBuilder::from_rect(rect));
+		}
+	};
+	if t < it {
+		strip(target, l, t, r, it);
+	}
+	if b > ib {
+		strip(target, l, ib, r, b);
+	}
+	if l < il {
+		strip(target, l, it, il, ib);
+	}
+	if r > ir {
+		strip(target, ir, it, r, ib);
+	}
+	// Clamped here: tiny-skia's aligned fill covers one pixel too many when
+	// the rect starts left of or above the pixmap.
+	// It also never fills less than one pixel, so empty interiors are skipped.
+	let (w, h) = (target.width() as f32, target.height() as f32);
+	let (il, it, ir, ib) = (il.max(0.0), it.max(0.0), ir.min(w), ib.min(h));
+	if let Some(inner) = Rect::from_ltrb(il, it, ir, ib).filter(|_| il < ir && it < ib) {
+		let aligned = tiny_skia::Paint { anti_alias: false, ..paint.clone() };
+		target.fill_rect(inner, &aligned, Transform::identity(), clip);
+	}
+}
+
+/// Exact inputs of a glow's low-resolution coverage: the rasterised path
+/// (already in low-res coordinates), the buffer size and the blur.
+#[derive(PartialEq, Eq, Hash)]
+struct GlowKey {
+	size: (u32, u32),
+	sigma: u32,
+	anti_alias: bool,
+	verbs: Vec<u8>,
+	points: Vec<u32>,
+}
+
+/// A glow's blurred low-res coverage.
+struct Coverage {
+	data: Vec<u8>,
+	/// Bounds of the non-zero values (`None` if all zero).
+	nonzero: Option<IRect>,
+}
+
+impl Coverage {
+	fn new(data: Vec<u8>, w: usize) -> Self {
+		let (mut x0, mut y0, mut x1, mut y1) = (usize::MAX, usize::MAX, 0, 0);
+		for (y, row) in data.chunks_exact(w).enumerate() {
+			if let (Some(f), Some(l)) = (row.iter().position(|&v| v != 0), row.iter().rposition(|&v| v != 0)) {
+				(x0, x1) = (x0.min(f), x1.max(l + 1));
+				(y0, y1) = (y0.min(y), y + 1);
+			}
+		}
+		let nonzero =
+			(x0 != usize::MAX).then_some(IRect { x0: x0 as i32, y0: y0 as i32, x1: x1 as i32, y1: y1 as i32 });
+		Self { data, nonzero }
+	}
+}
+
+/// Recently computed glow coverages, least recently used evicted first.
+#[derive(Default)]
+struct GlowCache {
+	entries: std::collections::HashMap<GlowKey, (u64, Rc<Coverage>)>,
+	clock: u64,
+	bytes: usize,
+}
+
+impl GlowCache {
+	const MAX_ENTRIES: usize = 512;
+	const MAX_BYTES: usize = 4 << 20;
+
+	fn get_or_insert(&mut self, key: GlowKey, make: impl FnOnce() -> Coverage) -> Rc<Coverage> {
+		self.clock += 1;
+		if let Some((used, data)) = self.entries.get_mut(&key) {
+			*used = self.clock;
+			return data.clone();
+		}
+		let data = Rc::new(make());
+		self.bytes += data.data.len();
+		self.entries.insert(key, (self.clock, data.clone()));
+		if self.entries.len() > Self::MAX_ENTRIES || self.bytes > Self::MAX_BYTES {
+			// Drop the older half.
+			let mut ages: Vec<u64> = self.entries.values().map(|(used, _)| *used).collect();
+			ages.sort_unstable();
+			let cutoff = ages[ages.len() / 2];
+			self.entries.retain(|_, (used, _)| *used >= cutoff);
+			self.bytes = self.entries.values().map(|(_, d)| d.data.len()).sum();
+		}
+		data
+	}
+}
+
+thread_local! {
+	static GLOW_CACHE: std::cell::RefCell<GlowCache> = std::cell::RefCell::new(GlowCache::default());
+}
+
+/// The blurred `lw`×`lh` coverage of `path` drawn with `to_low`.
+///
+/// Gauges redraw the same glow shapes over and over (a histogram's bars as
+/// they scroll, a ring's segments, digits), and the result depends only on
+/// the exact low-res geometry, so it is memoised on that. A hit returns the
+/// bytes a fresh render would produce.
+fn blurred_coverage(path: &Path, to_low: Transform, lw: u32, lh: u32, anti_alias: bool, sigma: f32) -> Rc<Coverage> {
+	let render = |low_path: Option<&Path>| {
+		let mut low = Mask::new(lw, lh).expect("non-zero size");
+		if let Some(p) = low_path {
+			low.fill_path(p, FillRule::Winding, anti_alias, Transform::identity());
+		}
+		gaussian_blur_a8(low.data_mut(), lw as usize, lh as usize, sigma);
+		Coverage::new(low.data().to_vec(), lw as usize)
+	};
+	// tiny-skia fills a transformed path by transforming it first, exactly so.
+	let Some(low_path) = path.clone().transform(to_low) else {
+		// Nothing gets rasterised, as with `Mask::fill_path`.
+		return Rc::new(render(None));
+	};
+	let key = GlowKey {
+		size: (lw, lh),
+		sigma: sigma.to_bits(),
+		anti_alias,
+		verbs: low_path.verbs().iter().map(|&v| v as u8).collect(),
+		points: low_path.points().iter().flat_map(|p| [p.x.to_bits(), p.y.to_bits()]).collect(),
+	};
+	GLOW_CACHE.with(|c| c.borrow_mut().get_or_insert(key, || render(Some(&low_path))))
 }
 
 /// Sorted rect from left/top/right/bottom (Skia sorts rects before drawing).
@@ -621,7 +787,7 @@ impl Canvas {
 			(PaintStyle::Stroke, _) if paint.stroke_width <= 0.0 => {
 				target.stroke_path(path, &sp, &paint.to_stroke(), ts, clip)
 			}
-			(_, Some(device)) => target.fill_path(&device, &sp, FillRule::Winding, Transform::identity(), clip),
+			(_, Some(device)) => fill_device_path(target, &device, &sp, clip),
 			_ => {}
 		}
 	}
@@ -674,45 +840,62 @@ impl Canvas {
 		}
 		// A glow is a single colour, so only its coverage is rasterised and blurred.
 		let (lw, lh) = (w.div_ceil(scale) + 1, h.div_ceil(scale) + 1);
-		let Some(mut low) = Mask::new(lw, lh) else {
-			return;
-		};
 		let inv = 1.0 / scale as f32;
 		let to_low = Transform::from_row(inv, 0.0, 0.0, inv, -x0 * inv, -y0 * inv);
-		low.fill_path(&device_path, FillRule::Winding, paint.anti_alias, to_low);
-		gaussian_blur_a8(low.data_mut(), lw as usize, lh as usize, blur.sigma * inv);
+		let low = blurred_coverage(&device_path, to_low, lw, lh, paint.anti_alias, blur.sigma * inv);
 
 		// Only the part of the region that lands on the canvas is upscaled
 		// and composited (the region extends `pad` beyond the canvas edges).
 		let Some(vis) = IRect::from_bounds(x0, y0, x1, y1).clamp_to(self.width(), self.height()) else {
 			return;
 		};
-		let (ox, oy) = ((vis.x0 as f32 - x0) as u32, (vis.y0 as f32 - y0) as u32);
-		let (vw, vh) = (vis.width() as u32, vis.height() as u32);
-		let mut glow = if scale == 1 {
-			let mut g = Vec::with_capacity((vw * vh) as usize);
-			for row in low.data().chunks_exact(lw as usize).skip(oy as usize).take(vh as usize) {
-				g.extend_from_slice(&row[ox as usize..(ox + vw) as usize]);
-			}
-			g
-		} else {
-			upscale_bilinear_a8(low.data(), lw as usize, lh as usize, scale, ox, oy, vw, vh)
+		self.mark_dirty(vis);
+		// Within that, only where the coverage can be non-zero: the box blur
+		// has compact support, so the padding around a glow is mostly exact
+		// zeros, and blending zero coverage leaves a pixel as it is. An
+		// upscaled pixel reads the low-res pixels either side of it, hence the
+		// one-pixel reach.
+		let Some(nz) = low.nonzero else {
+			return;
 		};
+		let (s, reach) = (scale as i32, (scale > 1) as i32);
+		let (rx, ry) = (x0 as i32, y0 as i32);
+		let live = IRect {
+			x0: rx + s * (nz.x0 - reach),
+			y0: ry + s * (nz.y0 - reach),
+			x1: rx + s * (nz.x1 + reach),
+			y1: ry + s * (nz.y1 + reach),
+		};
+		let Some(win) = live.intersect(vis) else {
+			return;
+		};
+		let (ox, oy) = ((win.x0 - rx) as u32, (win.y0 - ry) as u32);
+		let (vw, vh) = (win.width() as u32, win.height() as u32);
+		// Outer blur knocks out the shape itself, using a full-resolution coverage mask.
+		let shape = (blur.style == BlurStyle::Outer)
+			.then(|| {
+				let mut shape = Mask::new(vw, vh)?;
+				let to_win = Transform::from_translate(-(win.x0 as f32), -(win.y0 as f32));
+				shape.fill_path(&device_path, FillRule::Winding, true, to_win);
+				Some(shape)
+			})
+			.flatten();
+		let mut up = (scale > 1).then(|| Upscaler::new(lw as usize, lh as usize, scale, ox, vw));
 
-		if blur.style == BlurStyle::Outer {
-			// Knock out the shape itself, using a full-resolution coverage mask.
-			if let Some(mut shape) = Mask::new(vw, vh) {
-				let to_vis = Transform::from_translate(-(vis.x0 as f32), -(vis.y0 as f32));
-				shape.fill_path(&device_path, FillRule::Winding, true, to_vis);
-				for (g, &m) in glow.iter_mut().zip(shape.data()) {
+		let (target, state) = self.parts();
+		// Each glow row is produced (upscaled) and blended while still in cache.
+		src_over_color_rows(target, vw, vh, win.x0, win.y0, paint.color, state.clip.as_deref(), |row, out| {
+			let sy = oy as usize + row;
+			match &mut up {
+				Some(up) => up.row(&low.data, sy as u32, out),
+				None => out.copy_from_slice(&low.data[sy * lw as usize + ox as usize..][..vw as usize]),
+			}
+			if let Some(shape) = &shape {
+				for (g, &m) in out.iter_mut().zip(&shape.data()[row * vw as usize..]) {
 					*g = ((*g as u32 * (255 - m as u32) + 127) / 255) as u8;
 				}
 			}
-		}
-
-		self.mark_dirty(vis);
-		let (target, state) = self.parts();
-		src_over_color(target, &glow, vw as usize, vw, vh, vis.x0, vis.y0, paint.color, state.clip.as_deref());
+		});
 	}
 
 	/// `DrawLine`: always stroked, whatever the paint style.
@@ -893,6 +1076,57 @@ impl Canvas {
 #[cfg(test)]
 mod tests {
 	use super::*;
+
+	/// The split rect fill must match tiny-skia's own anti-aliased fill.
+	#[test]
+	fn split_rect_fill_matches_tiny_skia() {
+		let mut seed = 0x2545_f491_4f6c_dd1du64;
+		let mut next = move || {
+			seed ^= seed << 13;
+			seed ^= seed >> 7;
+			seed ^= seed << 17;
+			seed
+		};
+		let mut frac = |range: f32| {
+			// Mix of whole, half and arbitrary fractional coordinates.
+			let v = (next() % 10_000) as f32 / 10_000.0 * range - range * 0.2;
+			match next() % 4 {
+				0 => v.round(),
+				1 => (v * 2.0).round() / 2.0,
+				_ => v,
+			}
+		};
+		for case in 0..24000 {
+			// Small and large canvases: tiny-skia picks its rasteriser by path size.
+			let (w, h) = if case % 8 == 7 { (331, 207) } else { (37, 29) };
+			let mut base = Pixmap::new(w, h).unwrap();
+			for (i, px) in base.data_mut().chunks_exact_mut(4).enumerate() {
+				let a = ((i * 37 + case) % 256) as u8;
+				px.copy_from_slice(&[a / 3, a / 2, a, a]);
+			}
+			let (x0, y0, x1, y1) =
+				(frac(w as f32 * 1.4), frac(h as f32 * 1.4), frac(w as f32 * 1.4), frac(h as f32 * 1.4));
+			let Some(r) = rect(x0, y0, x1, y1) else { continue };
+			let mut paint = tiny_skia::Paint::default();
+			let alpha = [255, 255, 128, 3][case % 4];
+			paint.set_color_rgba8((case * 7) as u8, (case * 13) as u8, 200, alpha);
+			let clip = (case % 5 == 0).then(|| {
+				let mut m = Mask::new(w, h).unwrap();
+				m.fill_path(
+					&PathBuilder::from_circle(w as f32 / 2.0, h as f32 / 2.0, h as f32 * 0.39).unwrap(),
+					FillRule::Winding,
+					true,
+					Transform::identity(),
+				);
+				m
+			});
+			let path = PathBuilder::from_rect(r);
+			let (mut a, mut b) = (base.clone(), base.clone());
+			fill_device_path(&mut a, &path, &paint, clip.as_ref());
+			b.fill_path(&path, &paint, FillRule::Winding, Transform::identity(), clip.as_ref());
+			assert!(a.data() == b.data(), "case {case}: {r:?} alpha {alpha}");
+		}
+	}
 
 	#[test]
 	fn arc_endpoints_follow_skia_convention() {

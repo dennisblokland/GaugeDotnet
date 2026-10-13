@@ -22,6 +22,8 @@ namespace GaugeDotnet.Gauges
         private enum StatusMode { Peak, Min, Text, None }
         private readonly StatusMode _statusMode;
         private readonly string _statusLabel;
+        /// <summary>Widest readout in range; fixes the readout's fit-to-width scale.</summary>
+        private readonly string _readoutTemplate;
         private readonly string _statusText;
         private float _peak;
         private float _min;
@@ -115,6 +117,9 @@ namespace GaugeDotnet.Gauges
             };
             _statusText = settings.StatusText ?? "";
             _majorCount = MajorIntervals(MinValue, MaxValue);
+            string lo = MinValue.ToString("F" + _decimals, CultureInfo.InvariantCulture);
+            string hi = MaxValue.ToString("F" + _decimals, CultureInfo.InvariantCulture);
+            _readoutTemplate = lo.Length > hi.Length ? lo : hi;
             // Peak and Min start from the first reading, not the initial value.
             _peak = float.NaN;
             _min = float.NaN;
@@ -262,23 +267,41 @@ namespace GaugeDotnet.Gauges
         /// Draws text stretched by <paramref name="scaleX"/>, slanted by <paramref name="skew"/>
         /// and with extra <paramref name="spacing"/> between letters; y is the baseline.
         /// Text wider than <paramref name="maxWidth"/> is shrunk to fit around (x, y).
+        /// With <paramref name="fitText"/> digits are drawn tabular (widest-digit cells) and the
+        /// shrink is sized for fitText too, so a changing number keeps one size and position.
         /// </summary>
         private static void DrawStyledText(
             SKCanvas canvas, string text, float x, float y, SKTextAlign align,
             SKFont font, SKPaint paint, float scaleX, float skew, float spacing,
-            float maxWidth = float.PositiveInfinity)
+            float maxWidth = float.PositiveInfinity, string? fitText = null)
         {
             if (string.IsNullOrEmpty(text))
             {
                 return;
             }
 
-            float width = spacing * (text.Length - 1);
-            foreach (char c in text)
+            // With fitText, digits sit in fixed cells of the widest digit (tabular
+            // figures) so the text's edges stay put as the number changes.
+            float digitCell = 0f;
+            if (fitText != null)
             {
-                width += font.MeasureText(c.ToString());
+                for (char d = '0'; d <= '9'; d++)
+                {
+                    digitCell = Math.Max(digitCell, font.MeasureText(d.ToString()));
+                }
+            }
+            float Cell(char c) => digitCell > 0f && char.IsAsciiDigit(c) ? digitCell : font.MeasureText(c.ToString());
+            float Measure(string t)
+            {
+                float w = spacing * Math.Max(0, t.Length - 1);
+                foreach (char c in t)
+                {
+                    w += Cell(c);
+                }
+                return w;
             }
 
+            float width = Measure(text);
             float pen = align switch
             {
                 SKTextAlign.Center => -width / 2f,
@@ -286,7 +309,8 @@ namespace GaugeDotnet.Gauges
                 _ => 0f,
             };
 
-            float fit = Math.Min(1f, maxWidth / (width * scaleX));
+            float fitWidth = fitText != null ? Math.Max(width, Measure(fitText)) : width;
+            float fit = Math.Min(1f, maxWidth / (fitWidth * scaleX));
 
             canvas.Save();
             canvas.Translate(x, y);
@@ -296,8 +320,9 @@ namespace GaugeDotnet.Gauges
             foreach (char c in text)
             {
                 string s = c.ToString();
-                canvas.DrawText(s, pen, 0f, SKTextAlign.Left, font, paint);
-                pen += font.MeasureText(s) + spacing;
+                float slot = Cell(c);
+                canvas.DrawText(s, pen + (slot - font.MeasureText(s)) / 2f, 0f, SKTextAlign.Left, font, paint);
+                pen += slot + spacing;
             }
             canvas.Restore();
         }
@@ -611,7 +636,7 @@ namespace GaugeDotnet.Gauges
             using SKFont valueFont = new(_digitFont, 190f);
             _boldTextPaint.Color = TextColor;
             _boldTextPaint.StrokeWidth = 1f;
-            DrawStyledText(canvas, text, RIGHT_EDGE, 408f, SKTextAlign.Right, valueFont, _boldTextPaint, 0.85f, -0.12f, 2f, VALUE_MAX_WIDTH);
+            DrawStyledText(canvas, text, RIGHT_EDGE, 408f, SKTextAlign.Right, valueFont, _boldTextPaint, 0.85f, -0.12f, 2f, VALUE_MAX_WIDTH, _readoutTemplate);
 
             if (_statusMode is StatusMode.Peak or StatusMode.Min)
             {
@@ -624,7 +649,7 @@ namespace GaugeDotnet.Gauges
                 _boldTextPaint.Color = StatusColor;
                 _boldTextPaint.StrokeWidth = 0f;
                 DrawStyledText(canvas, held.ToString("F" + _decimals, CultureInfo.InvariantCulture), RIGHT_EDGE, 246f,
-                    SKTextAlign.Right, statusFont, _boldTextPaint, 1f, 0f, 6f, STATUS_MAX_WIDTH);
+                    SKTextAlign.Right, statusFont, _boldTextPaint, 1f, 0f, 6f, STATUS_MAX_WIDTH, _readoutTemplate);
             }
             canvas.Restore();
         }
