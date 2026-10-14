@@ -5,7 +5,7 @@ use std::io::BufReader;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use image::{AnimationDecoder, RgbaImage};
+use image::{AnimationDecoder, ImageFormat, RgbaImage};
 use tiny_skia::{Pixmap, PremultipliedColorU8};
 
 /// Resolves a path from gauge JSON: absolute paths as-is, relative ones
@@ -35,26 +35,37 @@ pub fn pixmap_from_rgba(img: &RgbaImage) -> Option<Pixmap> {
 	Some(pixmap)
 }
 
+/// The file's format from its first bytes, like Skia's codec sniffing; the
+/// extension is only a fallback for content `image` can't recognise.
+fn sniff_format(path: &Path) -> Option<ImageFormat> {
+	use std::io::Read;
+	let mut head = [0u8; 32];
+	let n = std::fs::File::open(path).ok()?.read(&mut head).ok()?;
+	image::guess_format(&head[..n]).ok().or_else(|| ImageFormat::from_path(path).ok())
+}
+
 fn decode_still(path: &Path) -> Option<Pixmap> {
-	let img = image::open(path).ok()?;
+	let file = BufReader::new(std::fs::File::open(path).ok()?);
+	let img = image::ImageReader::with_format(file, sniff_format(path)?).decode().ok()?;
 	pixmap_from_rgba(&img.to_rgba8())
 }
 
 /// Decodes every frame of an animated GIF/WebP/APNG, fully composited
 /// (disposal and blending applied), falling back to a single still frame.
 fn decode_frames(path: &Path) -> Option<Vec<Pixmap>> {
-	let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("").to_ascii_lowercase();
 	let open = || std::fs::File::open(path).ok().map(BufReader::new);
-	let frames: Option<Vec<image::Frame>> = match ext.as_str() {
-		"gif" => image::codecs::gif::GifDecoder::new(open()?).ok().and_then(|d| d.into_frames().collect_frames().ok()),
-		"webp" => image::codecs::webp::WebPDecoder::new(open()?).ok().and_then(|d| {
+	let frames: Option<Vec<image::Frame>> = match sniff_format(path)? {
+		ImageFormat::Gif => {
+			image::codecs::gif::GifDecoder::new(open()?).ok().and_then(|d| d.into_frames().collect_frames().ok())
+		}
+		ImageFormat::WebP => image::codecs::webp::WebPDecoder::new(open()?).ok().and_then(|d| {
 			if d.has_animation() {
 				d.into_frames().collect_frames().ok()
 			} else {
 				None
 			}
 		}),
-		"png" | "apng" => image::codecs::png::PngDecoder::new(open()?).ok().and_then(|d| {
+		ImageFormat::Png => image::codecs::png::PngDecoder::new(open()?).ok().and_then(|d| {
 			if d.is_apng().unwrap_or(false) {
 				d.apng().ok().and_then(|a| a.into_frames().collect_frames().ok())
 			} else {
@@ -103,5 +114,29 @@ impl ImageCache {
 	pub fn clear(&mut self) {
 		self.stills.clear();
 		self.animations.clear();
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	#[test]
+	fn format_comes_from_content_and_bmp_loads() {
+		let dir = std::env::temp_dir().join(format!("gauge-images-{}", std::process::id()));
+		std::fs::create_dir_all(&dir).unwrap();
+		let img = RgbaImage::from_pixel(3, 2, image::Rgba([255, 0, 0, 255]));
+		// A PNG saved as .jpg and a BMP picked for a GIF element both load.
+		let png_as_jpg = dir.join("still.jpg");
+		img.save_with_format(&png_as_jpg, ImageFormat::Png).unwrap();
+		let bmp_as_gif = dir.join("anim.gif");
+		image::DynamicImage::ImageRgba8(img).to_rgb8().save_with_format(&bmp_as_gif, ImageFormat::Bmp).unwrap();
+
+		let still = decode_still(&png_as_jpg).expect("png content decodes");
+		assert_eq!((still.width(), still.height()), (3, 2));
+		let frames = decode_frames(&bmp_as_gif).expect("bmp content decodes");
+		assert_eq!(frames.len(), 1);
+		assert_eq!(frames[0].pixel(0, 0).unwrap().red(), 255);
+		let _ = std::fs::remove_dir_all(dir);
 	}
 }

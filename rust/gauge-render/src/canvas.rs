@@ -435,9 +435,18 @@ pub fn arc_path(oval: Rect, start_deg: f32, sweep_deg: f32) -> Option<Path> {
 }
 
 /// Rounded rectangle path (`SKCanvas.DrawRoundRect` / `SKPath.AddRoundRect`).
+/// Radii that don't fit are scaled down by one shared factor, like
+/// `SkRRect::scaleRadii`, so the corners keep their shape on a thin rect.
 pub fn round_rect_path(r: Rect, rx: f32, ry: f32) -> Option<Path> {
-	let rx = rx.min(r.width() / 2.0);
-	let ry = ry.min(r.height() / 2.0);
+	let (rx, ry) = (rx.max(0.0), ry.max(0.0));
+	let mut scale = 1.0f32;
+	if rx * 2.0 > r.width() {
+		scale = scale.min(r.width() / (rx * 2.0));
+	}
+	if ry * 2.0 > r.height() {
+		scale = scale.min(r.height() / (ry * 2.0));
+	}
+	let (rx, ry) = (rx * scale, ry * scale);
 	if rx <= 0.0 || ry <= 0.0 {
 		return Some(PathBuilder::from_rect(r));
 	}
@@ -960,13 +969,15 @@ impl Canvas {
 	}
 
 	/// Draws `image` scaled into `dest` with the given opacity (0..=1).
+	/// Sampling is nearest-neighbour: SkiaSharp's `DrawBitmap(bitmap, dest,
+	/// paint)` samples with `SKSamplingOptions.Default`, which is nearest.
 	pub fn draw_image(&mut self, image: &Pixmap, dest: Rect, opacity: f32) {
 		let sx = dest.width() / image.width() as f32;
 		let sy = dest.height() / image.height() as f32;
 		let shader = Pattern::new(
 			image.as_ref(),
 			SpreadMode::Pad,
-			FilterQuality::Bilinear,
+			FilterQuality::Nearest,
 			opacity.clamp(0.0, 1.0),
 			Transform::from_row(sx, 0.0, 0.0, sy, dest.left(), dest.top()),
 		);

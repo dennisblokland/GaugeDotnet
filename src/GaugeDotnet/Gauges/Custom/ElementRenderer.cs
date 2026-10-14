@@ -86,6 +86,10 @@ public static class ElementRenderer
 			canvas.SaveLayer(layerPaint);
 		}
 
+		// Renderers share one paint; start each element from the defaults so
+		// one element's settings (a graph's round joins, a needle's round
+		// caps) don't leak into the next.
+		RenderContext.ResetPaint();
 		switch (element)
 		{
 			case ArcElement arc:             ArcRenderer.Draw(canvas, arc, value); break;

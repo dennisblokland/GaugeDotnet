@@ -13,7 +13,7 @@ use chrono::NaiveDateTime;
 use crate::canvas::{rect, Blur, Canvas, LineCap, LineJoin, Paint, PaintStyle, Sprite, ARC_SEGMENT_DEG};
 use crate::color::Rgba;
 use crate::composite::IRect;
-use crate::format::{format_datetime, format_number};
+use crate::format::{format_datetime, format_number, DateTimeKind};
 use crate::images::ImageCache;
 use crate::model::*;
 use crate::text::{default_typeface, typeface, TextAlign};
@@ -55,8 +55,8 @@ pub struct ElementRenderer {
 	/// When set, clock elements show this time instead of the system clock
 	/// (deterministic snapshots, designer previews).
 	pub fixed_time: Option<NaiveDateTime>,
-	/// Local and UTC time sampled by the last `prepare`.
-	frame_time: Option<(NaiveDateTime, NaiveDateTime)>,
+	/// Local time, UTC time and the local offset sampled by the last `prepare`.
+	frame_time: Option<FrameTime>,
 }
 
 impl ElementRenderer {
@@ -135,10 +135,7 @@ impl ElementRenderer {
 	) -> Vec<Option<f32>> {
 		let (all_values, all_targets) = merge_calculated(definition, values, target_values);
 		let base_dir = definition.base_directory.as_deref();
-		self.frame_time = Some(match self.fixed_time {
-			Some(t) => (t, t),
-			None => (chrono::Local::now().naive_local(), chrono::Utc::now().naive_utc()),
-		});
+		self.frame_time = Some(FrameTime::sample(self.fixed_time));
 		if let Some(bg) = definition.background_image.as_deref().filter(|s| !s.is_empty()) {
 			self.images.load(bg, base_dir);
 		}
@@ -214,8 +211,7 @@ impl ElementRenderer {
 	/// Draws one element outside a frame (prepares and paints it).
 	pub fn draw_element(&mut self, canvas: &mut Canvas, element: &Element, value: f32, base_dir: Option<&Path>) {
 		if self.frame_time.is_none() || self.fixed_time.is_none() {
-			let now = self.fixed_time.unwrap_or_else(|| chrono::Local::now().naive_local());
-			self.frame_time = Some((now, self.fixed_time.unwrap_or_else(|| chrono::Utc::now().naive_utc())));
+			self.frame_time = Some(FrameTime::sample(self.fixed_time));
 		}
 		self.prepare_element(element, value, base_dir);
 		let definition =
@@ -240,12 +236,36 @@ impl ElementRenderer {
 	}
 
 	fn clock_text(&self, c: &ClockElement) -> String {
-		let (local, utc) = self.frame_time.unwrap_or_else(|| {
-			let now = chrono::Local::now().naive_local();
-			(now, now)
-		});
-		let now = if c.use_utc { utc } else { local };
-		format_datetime(&now, &c.format).unwrap_or_else(|| format_datetime(&now, "HH:mm:ss").unwrap_or_default())
+		let t = self.frame_time.unwrap_or_else(|| FrameTime::sample(self.fixed_time));
+		let (now, kind) = if c.use_utc {
+			(t.utc, DateTimeKind::Utc)
+		} else {
+			(t.local, DateTimeKind::Local { offset_secs: t.offset_secs })
+		};
+		format_datetime(&now, kind, &c.format)
+			.unwrap_or_else(|| format_datetime(&now, kind, "HH:mm:ss").unwrap_or_default())
+	}
+}
+
+/// The clock's view of "now" for one frame (`DateTime.Now` / `UtcNow`).
+#[derive(Clone, Copy)]
+struct FrameTime {
+	local: NaiveDateTime,
+	utc: NaiveDateTime,
+	/// Local time minus UTC.
+	offset_secs: i32,
+}
+
+impl FrameTime {
+	/// The current time, or `fixed` as both local and UTC time (offset 0).
+	fn sample(fixed: Option<NaiveDateTime>) -> Self {
+		match fixed {
+			Some(t) => Self { local: t, utc: t, offset_secs: 0 },
+			None => {
+				let now = chrono::Local::now();
+				Self { local: now.naive_local(), utc: now.naive_utc(), offset_secs: now.offset().local_minus_utc() }
+			}
+		}
 	}
 }
 
