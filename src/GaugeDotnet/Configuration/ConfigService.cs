@@ -20,20 +20,34 @@ namespace GaugeDotnet.Configuration
         {
             string filePath = path ?? DefaultPath;
 
-            if (!File.Exists(filePath))
+            AppConfig? config = null;
+            try
             {
-                AppConfig defaults = CreateDefault();
-                Save(defaults, filePath);
-                return defaults;
+                if (File.Exists(filePath))
+                {
+                    string json = File.ReadAllText(filePath);
+                    config = JsonSerializer.Deserialize(json, AppConfigJsonContext.Default.AppConfig);
+                }
             }
-
-            string json = File.ReadAllText(filePath);
-            AppConfig? config = JsonSerializer.Deserialize(json, AppConfigJsonContext.Default.AppConfig);
+            catch (JsonException e)
+            {
+                // Empty or truncated (say, by a power cut): keep it for recovery
+                // as gauges.json.bad before the defaults replace it.
+                Console.WriteLine($"[config] {filePath}: {e.Message}; using defaults");
+                BackupBad(filePath);
+            }
 
             if (config is null || config.Screens.Count == 0)
             {
                 config = CreateDefault();
-                Save(config, filePath);
+                try
+                {
+                    Save(config, filePath);
+                }
+                catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+                {
+                    Console.WriteLine($"[config] could not write {filePath}: {e.Message}");
+                }
             }
 
             // Enforce max screens
@@ -45,11 +59,44 @@ namespace GaugeDotnet.Configuration
             return config;
         }
 
+        // Writes atomically: the JSON goes to gauges.json.tmp, is fsynced, then
+        // renamed over gauges.json. A power cut on the SD card leaves either the
+        // old or the new file, never a truncated one.
         public static void Save(AppConfig config, string? path = null)
         {
             string filePath = path ?? DefaultPath;
+            string tmpPath = filePath + ".tmp";
             string json = JsonSerializer.Serialize(config, AppConfigJsonContext.Default.AppConfig);
-            File.WriteAllText(filePath, json);
+            try
+            {
+                using (FileStream stream = new(tmpPath, FileMode.Create, FileAccess.Write, FileShare.None))
+                using (StreamWriter writer = new(stream))
+                {
+                    writer.Write(json);
+                    writer.Flush();
+                    stream.Flush(flushToDisk: true);
+                }
+                File.Move(tmpPath, filePath, overwrite: true);
+            }
+            catch
+            {
+                try { File.Delete(tmpPath); } catch { }
+                throw;
+            }
+        }
+
+        private static void BackupBad(string filePath)
+        {
+            string badPath = filePath + ".bad";
+            try
+            {
+                File.Copy(filePath, badPath, overwrite: true);
+                Console.WriteLine($"[config] kept the unreadable config as {badPath}");
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                Console.WriteLine($"[config] could not back up {filePath}: {e.Message}");
+            }
         }
 
         private static AppConfig CreateDefault()

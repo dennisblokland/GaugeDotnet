@@ -61,7 +61,7 @@ namespace GaugeDotnet
 				GamepadKey key = _input.LastGamepadKey;
 				SDL_Keycode? sdlKey = _input.LastSdlKey;
 
-				if (HandleConfigEditor(key, sdlKey))
+				if (HandleConfigEditor(key, _input.KeyboardKey))
 				{
 					continue;
 				}

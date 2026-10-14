@@ -185,7 +185,7 @@ impl GameLoop {
 			return Ok(false);
 		}
 		if let Some(editor) = &mut self.editor {
-			editor.handle_input(&mut self.config, self.config_path.as_deref(), input.key, input.sdl_key);
+			editor.handle_input(&mut self.config, self.config_path.as_deref(), input.key, input.keyboard_key());
 			if editor.active {
 				editor.draw(&self.config, canvas);
 				display.present_full(canvas)?;

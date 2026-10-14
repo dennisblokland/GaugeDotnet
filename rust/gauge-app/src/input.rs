@@ -187,6 +187,13 @@ impl Input {
 		}
 	}
 
+	/// The SDL key pressed this poll when the keyboard is the gamepad (no
+	/// joystick). With a joystick, gptokeyb also turns buttons into keys
+	/// (START can arrive as Return), so those must not override its key.
+	pub fn keyboard_key(&self) -> Option<Keycode> {
+		self.sdl_key.filter(|_| self.joystick.is_none())
+	}
+
 	/// Any button or key pressed this poll (for "press any button" screens).
 	pub fn any_pressed(&self) -> bool {
 		self.sdl_key.is_some() || self.key.is_press()

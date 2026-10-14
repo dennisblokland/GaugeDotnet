@@ -85,7 +85,7 @@ Controls (the gamepad is read from `/dev/input/js0`, as in the C# release build;
 - **Gauge settings:** one row per setting of the gauge type. LEFT/RIGHT cycles the value (type, data source, title, colour, min/max, decimals, segments, smoothing, …). On a Grid gauge, A opens a cell.
 - **Grid cell:** data source, title, unit and decimals.
 
-START saves `gauges.json`, and B goes back a page. Leaving the editor rebuilds the screens. On a keyboard, use the arrows, Return/`z` for A, Escape/`x` for B, `s` for START and Delete/Backspace for X (the C# app had no keyboard key for X).
+START saves `gauges.json`, and B goes back a page. Leaving the editor with B saves any unsaved edits and rebuilds the screens. Saves are atomic (temp file, fsync, rename), and a config that can't be parsed is kept as `gauges.json.bad` before the defaults replace it. With no gamepad, use the arrows, `z` for A, Escape/`x` for B, Return/`s` for START and Delete/Backspace for X (the C# app had no keyboard key for X).
 
 On the RG35XX the Bluetooth bring-up (`rtk_hciattach`, `bluetoothd`) runs automatically when `rtk_hciattach` exists. Force it with `--init-bt` or skip it with `--no-init-bt`.
 

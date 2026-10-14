@@ -16,6 +16,7 @@ namespace GaugeDotnet
         }
 
         private readonly AppConfig _config;
+        private readonly string? _configPath;
         private readonly int _screenWidth;
         private readonly int _screenHeight;
         private readonly SKTypeface _font;
@@ -24,8 +25,13 @@ namespace GaugeDotnet
         private int _cursorIndex;
         private int _selectedScreenIndex;
         private int _selectedCellIndex;
-        private bool _saved;
-        private double _savedMessageTimer;
+        private string? _message;
+        private SKColor _messageColor;
+        private double _messageTimer;
+        // Edits made since the last successful save.
+        private bool _unsaved;
+        // The save on B failed; the next B leaves without saving.
+        private bool _saveFailed;
 
         private static readonly string[] StatusModeOptions = ["Peak", "Min", "Text", "None"];
 
@@ -38,9 +44,10 @@ namespace GaugeDotnet
         public bool IsActive { get; private set; } = true;
         public bool ConfigChanged { get; private set; }
 
-        public ConfigEditor(AppConfig config, int screenWidth, int screenHeight)
+        public ConfigEditor(AppConfig config, int screenWidth, int screenHeight, string? configPath = null)
         {
             _config = config;
+            _configPath = configPath;
             _screenWidth = screenWidth;
             _screenHeight = screenHeight;
             _font = FontHelper.GetFont("Race Sport");
@@ -74,12 +81,18 @@ namespace GaugeDotnet
             return fields;
         }
 
-        public void HandleInput(GamepadKey key, SDL2.SDL.SDL_Keycode? sdlKey = null)
+        /// <param name="keyboardKey">
+        /// The SDL key pressed this frame, only when the keyboard stands in for the
+        /// gamepad. With a gamepad it must be null: gptokeyb also turns buttons into
+        /// keys (START can arrive as Return), and remapping those would turn a START
+        /// press into something else.
+        /// </param>
+        public void HandleInput(GamepadKey key, SDL2.SDL.SDL_Keycode? keyboardKey = null)
         {
-            // Also handle keyboard arrow keys via SDL keycodes
-            if (sdlKey.HasValue)
+            // Keyboard: arrows, z (A), Escape/x (B), Return/s (START, as in KeyBus)
+            if (keyboardKey.HasValue)
             {
-                switch (sdlKey.Value)
+                switch (keyboardKey.Value)
                 {
                     case SDL2.SDL.SDL_Keycode.SDLK_UP:
                         key = GamepadKey.UP;
@@ -93,7 +106,6 @@ namespace GaugeDotnet
                     case SDL2.SDL.SDL_Keycode.SDLK_RIGHT:
                         key = GamepadKey.RIGHT;
                         break;
-                    case SDL2.SDL.SDL_Keycode.SDLK_RETURN:
                     case SDL2.SDL.SDL_Keycode.SDLK_z:
                         key = GamepadKey.A_DOWN;
                         break;
@@ -101,6 +113,7 @@ namespace GaugeDotnet
                     case SDL2.SDL.SDL_Keycode.SDLK_x:
                         key = GamepadKey.B_DOWN;
                         break;
+                    case SDL2.SDL.SDL_Keycode.SDLK_RETURN:
                     case SDL2.SDL.SDL_Keycode.SDLK_s:
                         key = GamepadKey.START_DOWN;
                         break;
@@ -138,13 +151,13 @@ namespace GaugeDotnet
                     break;
             }
 
-            // Draw save confirmation
-            if (_saved && _savedMessageTimer > 0)
+            // Draw save result
+            if (_message != null && _messageTimer > 0)
             {
-                using SKPaint savePaint = new() { Color = SKColors.LimeGreen, IsAntialias = true };
+                using SKPaint savePaint = new() { Color = _messageColor, IsAntialias = true };
                 using SKFont saveFont = new(_font, 20);
-                canvas.DrawText("Config Saved!", _screenWidth / 2f - 60, _screenHeight - 20, saveFont, savePaint);
-                _savedMessageTimer -= 0.016; // ~60fps
+                canvas.DrawText(_message, _screenWidth / 2f - 60, _screenHeight - 20, saveFont, savePaint);
+                _messageTimer -= 0.016; // ~60fps
             }
 
             // Draw controls hint at bottom
@@ -174,12 +187,12 @@ namespace GaugeDotnet
                     else if (_config.Screens.Count < AppConfig.MaxScreens)
                     {
                         _config.Screens.Add(new ScreenConfig());
-                        ConfigChanged = true;
+                        MarkEdited();
                         _cursorIndex = _config.Screens.Count - 1;
                     }
                     break;
                 case GamepadKey.B_DOWN:
-                    IsActive = false;
+                    Close();
                     break;
                 case GamepadKey.START_DOWN:
                     SaveConfig();
@@ -189,7 +202,7 @@ namespace GaugeDotnet
                     if (_cursorIndex < _config.Screens.Count && _config.Screens.Count > 1)
                     {
                         _config.Screens.RemoveAt(_cursorIndex);
-                        ConfigChanged = true;
+                        MarkEdited();
                         if (_cursorIndex >= _config.Screens.Count)
                         {
                             _cursorIndex = _config.Screens.Count;
@@ -215,7 +228,7 @@ namespace GaugeDotnet
                 case GamepadKey.LEFT:
                 case GamepadKey.RIGHT:
                     AdjustField(gauge, fields[_cursorIndex], key == GamepadKey.RIGHT ? 1 : -1);
-                    ConfigChanged = true;
+                    MarkEdited();
                     break;
                 case GamepadKey.A_DOWN:
                     // Open cell edit if on a cell row
@@ -260,7 +273,7 @@ namespace GaugeDotnet
                 case GamepadKey.LEFT:
                 case GamepadKey.RIGHT:
                     AdjustCellField(cell, GridCellFields[_cursorIndex], key == GamepadKey.RIGHT ? 1 : -1);
-                    ConfigChanged = true;
+                    MarkEdited();
                     break;
                 case GamepadKey.B_DOWN:
                     _currentScreen = EditorScreen.GaugeEdit;
@@ -384,12 +397,48 @@ namespace GaugeDotnet
             }
         }
 
-        private void SaveConfig()
+        // The config was edited: screens must be rebuilt and the file saved.
+        private void MarkEdited()
         {
-            ConfigService.Save(_config);
-            _saved = true;
-            _savedMessageTimer = 2.0;
             ConfigChanged = true;
+            _unsaved = true;
+            _saveFailed = false;
+        }
+
+        // B on the screen list: saves unsaved edits, then closes. If the save fails
+        // the editor stays open with the error, and a second B leaves anyway (the
+        // edits still apply until the app restarts).
+        private void Close()
+        {
+            if (_unsaved && !_saveFailed && !SaveConfig())
+            {
+                _saveFailed = true;
+                _message = "Save failed! B: quit";
+                return;
+            }
+            IsActive = false;
+        }
+
+        // Writes the config and shows the result; true if it worked.
+        private bool SaveConfig()
+        {
+            ConfigChanged = true;
+            _messageTimer = 2.0;
+            try
+            {
+                ConfigService.Save(_config, _configPath);
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                Console.WriteLine($"[editor] saving failed: {e.Message}");
+                _message = "Save failed!";
+                _messageColor = new SKColor(255, 32, 32);
+                return false;
+            }
+            _message = "Config Saved!";
+            _messageColor = SKColors.LimeGreen;
+            _unsaved = false;
+            return true;
         }
 
         private void DrawScreenList(SKCanvas canvas)
