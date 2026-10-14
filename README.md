@@ -9,7 +9,7 @@ Real-time automotive gauge display for the [RG35XX](https://anbernic.com) handhe
 - Live gauge rendering at 60 fps via SDL2 + OpenGL ES 2.0
 - BLE connection to Motorsports Electronics ECU (CAN bus frames ME1_1–ME1_8)
 - Multiple built-in gauge styles: circular, sweep, needle, TurboXs, bar, digital, histogram, min/max, grid
-- **Custom gauge designer** — drag-and-drop Avalonia desktop app that exports JSON definitions for the device
+- **Custom gauge designer** — drag-and-drop desktop app that exports JSON definitions for the device. The Rust designer (`rust/gauge-designer`) previews with the renderer the device runs, pixel for pixel; the original Avalonia designer still works
 - 17 custom element types: arcs, zone arcs, needles (with image support), text, value displays, label+value boxes, tick rings, bars, warning indicators, images, value-driven gifs, clocks, mini graphs, peak markers, and more
 - **Calculated channels** — define virtual data sources as math expressions (`Rpm / 1000`, `OilTemp - Iat`) evaluated each frame
 - **Conditional element visibility** — show/hide elements based on a data source value range
@@ -23,12 +23,12 @@ Real-time automotive gauge display for the [RG35XX](https://anbernic.com) handhe
 | Project | Purpose |
 |---------|---------|
 | `GaugeDotnet` | Main app — SDL2 window, gauge rendering, BLE connection |
-| `GaugeDotnet.Designer` | Avalonia 12 drag-and-drop gauge designer (desktop) |
+| `GaugeDotnet.Designer` | Avalonia 12 drag-and-drop gauge designer (desktop, the original) |
 | `ME1_4NET` | CAN bus decoder library (Motorsports Electronics frames ME1_1–ME1_8) |
 | `ME1_4NET.Tests` | xUnit tests for CAN frame decoding |
 | `RG35XX.Core` | Platform abstractions (gamepad, storage interfaces) |
 | `RG35XX.Libraries` | Linux implementations (joystick, keyboard, storage) |
-| `rust/` | Rust port of the renderer (custom + built-in gauges, tiny-skia, optional SDL2 window) — see [rust/README.md](rust/README.md) |
+| `rust/` | Rust port of the renderer (custom + built-in gauges, tiny-skia, optional SDL2 window) and the Rust gauge designer — see [rust/README.md](rust/README.md) |
 
 ## Prerequisites
 
@@ -53,7 +53,8 @@ See [nuget.config](nuget.config) for the package source configuration.
 dotnet build                                    # Build all projects
 dotnet test                                     # Run xUnit tests
 dotnet run --project src/GaugeDotnet            # Run app (SimulatedMeDevice in DEBUG)
-dotnet run --project src/GaugeDotnet.Designer   # Open the gauge designer
+dotnet run --project src/GaugeDotnet.Designer   # Open the Avalonia gauge designer
+(cd rust && cargo run --release -p gauge-designer)   # Open the Rust gauge designer
 ```
 
 ### Deploy to Device
@@ -129,7 +130,7 @@ Design gauges on your desktop, deploy JSON to the device.
 
 ### Workflow
 
-1. Run the designer: `dotnet run --project src/GaugeDotnet.Designer`
+1. Run the designer: `cd rust && cargo run --release -p gauge-designer` (or the Avalonia one: `dotnet run --project src/GaugeDotnet.Designer`). Both read and write the same JSON.
 2. Add and arrange elements, bind data sources, tweak properties
 3. Save → `custom-gauge.json`
 4. Reference in your `gauges.json`:

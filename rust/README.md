@@ -1,6 +1,6 @@
 # GaugeDotnet — Rust renderer
 
-A Rust port of GaugeDotnet's rendering stack. It loads the same `custom-gauge.json` files the Avalonia designer saves, and the same `gauges.json` screen list. It draws them on the CPU with [tiny-skia](https://github.com/RazrFalcon/tiny-skia), and the frames can be shown in an SDL2 window or saved as PNG.
+A Rust port of GaugeDotnet's rendering stack. It loads the same `custom-gauge.json` files the designers save, and the same `gauges.json` screen list. It draws them on the CPU with [tiny-skia](https://github.com/RazrFalcon/tiny-skia), and the frames can be shown in an SDL2 window or saved as PNG. It also has its own [gauge designer](#gauge-designer), which previews with this renderer.
 
 ![showcase](examples/showcase.png)
 
@@ -12,6 +12,7 @@ A Rust port of GaugeDotnet's rendering stack. It loads the same `custom-gauge.js
 | `me-data` | ECU data: CAN frame decoding ME1_1–ME1_8 (port of `ME1_4NET`, with all its tests), `MeData`, data-source names (`DataSourceMapper`) and the RaceChrono BLE packet format |
 | `me-ble` | Bluetooth link to the ECU on btleplug (port of `BleManager`, `MeDevice` and `BluetoothHardwareInit`), with a synchronous `BleLink` handle for render loops |
 | `gauge-app` | `gauge` binary: PNG snapshots, a benchmark, an optional SDL2 window, and Bluetooth tools. Fed by a port of `SimulatedMeDevice` or by the ECU |
+| `gauge-designer` | `gauge-designer` binary: the desktop gauge designer (egui), a port of the Avalonia designer plus the improvements in [Gauge designer](#gauge-designer) |
 
 ### C# → Rust map
 
@@ -35,6 +36,8 @@ A Rust port of GaugeDotnet's rendering stack. It loads the same `custom-gauge.js
 | `ConfigEditor` | `gauge-app/src/editor.rs` |
 | `SplashScreen`, `ErrorScreen`, `FpsCounter`, `BatteryOverlay`, `ScreenKeepAlive` | `gauge-app/src/screens.rs` |
 | `GamePads`, `LinuxGamePadReader`, `KeyBus`, `InputHandler` | `gauge-app/src/input.rs` |
+| `GaugeDotnet.Designer` (`MainWindow`, `GaugeDesignerViewModel`) | `gauge-designer/src/app.rs`, `document.rs` |
+| `Designer/Rendering/ElementRenderer.cs` (`GetBounds`, `HitTest`, `SetBounds`) | `gauge-designer/src/geometry.rs` |
 
 ## Build and run
 
@@ -155,6 +158,61 @@ CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc \
 
 (`build-arm64.sh` above does the full device build.) Built like this, without features, the binary is headless: `render` and `bench` work, but there is no window. Add `--features ble-vendored` for the Bluetooth tools (`ble-scan`, `ble-monitor`). libdbus is then compiled into the binary, so it needs nothing on the device beyond libc; set `CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc` as well. The SDL window (`--features sdl`) also needs the device's `libSDL2` to link against, from a sysroot or by building on the device. The headless aarch64 binary has been checked under `qemu-aarch64`, and its output matches the x86 build pixel for pixel.
 
+## Gauge designer
+
+![gauge designer](../docs/gauge-designer.png)
+
+`gauge-designer` edits custom gauge definitions. Its canvas is drawn by `gauge-render`, so at 100 % zoom what you see is what the RG35XX shows, pixel for pixel: blur, antialiasing, image sampling and round-rect corners included. Files are the same JSON as the Avalonia designer's, both ways.
+
+```shell
+cd rust
+cargo run --release -p gauge-designer                          # starts with the RPM dial
+cargo run --release -p gauge-designer -- my-gauge.json         # open a gauge
+cargo run --release -p gauge-designer -- --config gauges.json  # also open the screen list
+```
+
+It runs on Linux, Windows and macOS. On Linux it needs OpenGL 2 (Mesa is fine) and, on X11, `libxkbcommon-x11`. Use `--release`: the debug build renders slowly and its frame-cost numbers are meaningless.
+
+**What the C# designer did, ported:**
+- toolbox for all 17 element types
+- click to select, Ctrl/Shift multi-select, drag to move, corner handles to resize, arrows nudge 1 px (Shift: 10 px), `G` grid snap
+- element list with `[Canvas] Background`, draw order, duplicate and delete
+- a property panel per element type, background settings and calculated channels
+- test-value sliders for every bound source
+- undo/redo, New / Open / Save
+- on save, images are copied into `images/` next to the JSON: stills are re-encoded to `image_N.png`, GIF/APNG/WebP animations are copied byte for byte, and paths become relative
+
+**Beyond the C# designer:**
+- **Editing:** copy/cut/paste as JSON (also between files and designer windows), group/ungroup, lock and hide per element (kept in `<name>.designer.json` next to the gauge, so gauge files stay what the device reads), and marquee selection.
+- **Arrange:** align left/centre/right/top/middle/bottom, centre on canvas, distribute, bring to front / send to back. Smart guides snap to the edges and centres of other elements and of the canvas (hold Alt to bypass).
+- **View:** zoom and pan, rulers, and a grid of any size.
+- **Angle handles** on arcs, zone arcs, peak markers, tick rings and needles: one rotates the sweep, the other sets where it ends. Images and GIFs get a rotation handle. Shift snaps to 15°.
+- **Named undo:** "Undo Move Arc", "Undo Change Colour of Arc 'RPM Arc'". Repeated edits of one property merge into one step, and Edit → Show history lists the steps.
+- **Validation panel:** colours that render black, unknown data sources, calculated channels that don't parse or use unknown names, missing image files, number and clock formats the device formatter handles differently from .NET, empty ranges, duplicate ids. Click an entry to select the element.
+- **Frame cost:** times every element with the real renderer, each on a fresh thread so glow caching can't hide the cost of a changing value. It shows the full-repaint and per-frame totals with an RG35XX estimate (×3.7, the median ratio of the built-in screens in [`bench/RESULTS.md`](../bench/RESULTS.md)) against the 60 fps budget.
+- **Device preview:** the FPS counter, the low-battery icon, and an approximation of the TurboXs LCD look. The `▶ Animate` button sweeps every value.
+- **Screens (`gauges.json`):** File → Screens edits the screen list, each built-in gauge's settings and grid cells, with a live preview of every screen. Custom screens open in the designer. Saves are atomic.
+- **Deploy to device:** File → Deploy uploads the gauge and its images over ssh/scp, with the `REMOTE_HOST`, `REMOTE_USER`, `REMOTE_PASS` and `BIN_DIR` defaults of `deploy-arm64.sh`, except that the password has no default (type it in, or leave it empty to use your ssh key). Screens → Upload copies `gauges.json`. The app reads files at start-up, so restart it on the device.
+- **Templates and snippets:** File → New starts from a blank canvas or one of four starting points modelled on the built-in screens (RPM dial, needle dial, bar, 2×2 grid). File → Save selection as snippet / Insert snippet reuse groups of elements.
+- **Export:** PNG of the current frame, or an animated GIF of every value sweeping min → max → min.
+
+| Key | Action |
+|---|---|
+| Ctrl+Z / Ctrl+Y (Ctrl+Shift+Z) | undo / redo |
+| Ctrl+C / Ctrl+X / Ctrl+V / Ctrl+D | copy / cut / paste / duplicate |
+| Delete, Backspace | delete the selection |
+| Ctrl+A, Escape | select all, select none |
+| Ctrl+G / Ctrl+Shift+G | group / ungroup |
+| Ctrl+L / Ctrl+H | lock / hide (toggle) |
+| Arrows, Shift+arrows | nudge 1 px / 10 px |
+| G | grid snap on/off |
+| Shift while dragging | move along one axis; snap angles to 15° |
+| Alt while dragging | no grid or guide snapping |
+| Ctrl+wheel, pinch | zoom about the pointer |
+| Wheel, middle drag, Space+drag | pan |
+| Ctrl+0 / Ctrl+1 | fit / 100 % |
+| Ctrl+N / Ctrl+O / Ctrl+S / Ctrl+Shift+S | new / open / save / save as |
+
 ## Performance
 
 Everything is rasterised on the CPU. Glows are the expensive part, so:
@@ -238,6 +296,6 @@ The Rust app aims to look and behave like the C# app. Where they still differ, i
   - "Config Saved!" shows for 2 seconds. C# counts it down by 0.016 s per frame, so it lasts longer when the frame rate is below 60.
 - `BleManager.ScanAsync`'s saved-device allow-list and `ReattachAsync` are not ported: nothing in the C# app calls them.
 
-Everything the device runs is ported. The exception is the Avalonia designer, which can stay in C#: it only writes JSON that the Rust renderer reads. Small helpers the Rust app has no use for (`AppLauncher`, `StorageProvider`, `DeviceInfo`) are not ported.
+Everything the device runs is ported, and so is the Avalonia designer (`gauge-designer`). Small helpers the Rust app has no use for (`AppLauncher`, `StorageProvider`, `DeviceInfo`) are not ported.
 
 The Bluetooth link builds and handles errors, but it hasn't run against a real ECU yet: this environment has no Bluetooth controller. Before relying on it, check it on the device with `gauge ble-monitor --init-bt`.

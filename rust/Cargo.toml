@@ -1,6 +1,9 @@
 [workspace]
 resolver = "2"
-members = ["gauge-render", "gauge-app", "me-data", "me-ble"]
+members = ["gauge-render", "gauge-app", "gauge-designer", "me-data", "me-ble"]
+# Plain `cargo run` / `cargo build` / `cargo test` stay on the device app; the
+# designer is built with `-p gauge-designer`.
+default-members = ["gauge-render", "gauge-app", "me-data", "me-ble"]
 
 [workspace.package]
 edition = "2021"
