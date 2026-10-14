@@ -13,7 +13,7 @@ use chrono::NaiveDateTime;
 use crate::canvas::{rect, Blur, Canvas, LineCap, LineJoin, Paint, PaintStyle, Sprite, ARC_SEGMENT_DEG};
 use crate::color::Rgba;
 use crate::composite::IRect;
-use crate::format::{format_datetime, format_number};
+use crate::format::{format_datetime, format_number, DateTimeKind};
 use crate::images::ImageCache;
 use crate::model::*;
 use crate::text::{default_typeface, typeface, TextAlign};
@@ -55,8 +55,8 @@ pub struct ElementRenderer {
 	/// When set, clock elements show this time instead of the system clock
 	/// (deterministic snapshots, designer previews).
 	pub fixed_time: Option<NaiveDateTime>,
-	/// Local and UTC time sampled by the last `prepare`.
-	frame_time: Option<(NaiveDateTime, NaiveDateTime)>,
+	/// Local time, UTC time and the local offset sampled by the last `prepare`.
+	frame_time: Option<FrameTime>,
 }
 
 impl ElementRenderer {
@@ -135,10 +135,7 @@ impl ElementRenderer {
 	) -> Vec<Option<f32>> {
 		let (all_values, all_targets) = merge_calculated(definition, values, target_values);
 		let base_dir = definition.base_directory.as_deref();
-		self.frame_time = Some(match self.fixed_time {
-			Some(t) => (t, t),
-			None => (chrono::Local::now().naive_local(), chrono::Utc::now().naive_utc()),
-		});
+		self.frame_time = Some(FrameTime::sample(self.fixed_time));
 		if let Some(bg) = definition.background_image.as_deref().filter(|s| !s.is_empty()) {
 			self.images.load(bg, base_dir);
 		}
@@ -214,8 +211,7 @@ impl ElementRenderer {
 	/// Draws one element outside a frame (prepares and paints it).
 	pub fn draw_element(&mut self, canvas: &mut Canvas, element: &Element, value: f32, base_dir: Option<&Path>) {
 		if self.frame_time.is_none() || self.fixed_time.is_none() {
-			let now = self.fixed_time.unwrap_or_else(|| chrono::Local::now().naive_local());
-			self.frame_time = Some((now, self.fixed_time.unwrap_or_else(|| chrono::Utc::now().naive_utc())));
+			self.frame_time = Some(FrameTime::sample(self.fixed_time));
 		}
 		self.prepare_element(element, value, base_dir);
 		let definition =
@@ -240,12 +236,36 @@ impl ElementRenderer {
 	}
 
 	fn clock_text(&self, c: &ClockElement) -> String {
-		let (local, utc) = self.frame_time.unwrap_or_else(|| {
-			let now = chrono::Local::now().naive_local();
-			(now, now)
-		});
-		let now = if c.use_utc { utc } else { local };
-		format_datetime(&now, &c.format).unwrap_or_else(|| format_datetime(&now, "HH:mm:ss").unwrap_or_default())
+		let t = self.frame_time.unwrap_or_else(|| FrameTime::sample(self.fixed_time));
+		let (now, kind) = if c.use_utc {
+			(t.utc, DateTimeKind::Utc)
+		} else {
+			(t.local, DateTimeKind::Local { offset_secs: t.offset_secs })
+		};
+		format_datetime(&now, kind, &c.format)
+			.unwrap_or_else(|| format_datetime(&now, kind, "HH:mm:ss").unwrap_or_default())
+	}
+}
+
+/// The clock's view of "now" for one frame (`DateTime.Now` / `UtcNow`).
+#[derive(Clone, Copy)]
+struct FrameTime {
+	local: NaiveDateTime,
+	utc: NaiveDateTime,
+	/// Local time minus UTC.
+	offset_secs: i32,
+}
+
+impl FrameTime {
+	/// The current time, or `fixed` as both local and UTC time (offset 0).
+	fn sample(fixed: Option<NaiveDateTime>) -> Self {
+		match fixed {
+			Some(t) => Self { local: t, utc: t, offset_secs: 0 },
+			None => {
+				let now = chrono::Local::now();
+				Self { local: now.naive_local(), utc: now.naive_utc(), offset_secs: now.offset().local_minus_utc() }
+			}
+		}
 	}
 }
 
@@ -487,12 +507,19 @@ fn merge_calculated<'a>(
 			continue;
 		}
 		let result = expression::evaluate(&ch.expression, &owned_values);
-		owned_values.insert(ch.name.clone(), result);
+		// C# merges into an OrdinalIgnoreCase dictionary, so a calculated
+		// channel named like a raw one (`rpm` vs `Rpm`) replaces its value.
+		insert_ignore_case(&mut owned_values, &ch.name, result);
 		if let Some(t) = owned_targets.as_mut() {
-			t.insert(ch.name.clone(), result);
+			insert_ignore_case(t, &ch.name, result);
 		}
 	}
 	(Cow::Owned(owned_values), owned_targets.map(Cow::Owned))
+}
+
+fn insert_ignore_case(values: &mut Values, name: &str, value: f32) {
+	let key = crate::find_key(values, name).cloned().unwrap_or_else(|| name.to_string());
+	values.insert(key, value);
 }
 
 /// Whether an element draws the same pixels every frame: no visibility rule,
@@ -1117,6 +1144,19 @@ fn draw_warning(canvas: &mut Canvas, w: &WarningIndicatorElement, value: f32) {
 #[cfg(test)]
 mod tests {
 	use super::*;
+
+	#[test]
+	fn calculated_channel_replaces_raw_channel_ignoring_case() {
+		let definition = CustomGaugeDefinition {
+			calculated_channels: vec![CalculatedChannel { name: "rpm".into(), expression: "Rpm / 1000".into() }],
+			..Default::default()
+		};
+		let values: Values = [("Rpm".to_string(), 6500.0)].into_iter().collect();
+		let (merged, _) = merge_calculated(&definition, &values, None);
+		assert_eq!(merged.len(), 1);
+		assert_eq!(crate::lookup(&merged, "Rpm"), Some(6.5));
+		assert_eq!(crate::lookup(&merged, "RPM"), Some(6.5));
+	}
 
 	#[test]
 	fn frame_selection_matches_csharp() {

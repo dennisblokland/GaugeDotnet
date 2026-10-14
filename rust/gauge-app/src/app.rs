@@ -49,11 +49,18 @@ fn on_rg35xx() -> bool {
 		.unwrap_or(false)
 }
 
+/// Builds the screens. One that fails to load becomes a placeholder showing
+/// the error, so screen `i` is still `config.screens[i]`.
 fn build_screens(config: &AppConfig, dir: Option<&Path>) -> Vec<Screen> {
 	gauges::build_screens(config, WIDTH, HEIGHT, dir)
 		.into_iter()
 		.enumerate()
-		.filter_map(|(i, s)| s.map_err(|e| eprintln!("[app] screen {i} skipped: {e}")).ok())
+		.map(|(i, s)| {
+			s.unwrap_or_else(|e| {
+				eprintln!("[app] screen {i} failed to load: {e}");
+				Screen::Failed(e)
+			})
+		})
 		.collect()
 }
 
@@ -82,10 +89,13 @@ pub fn run(options: AppOptions) -> Result<(), String> {
 			return Ok(());
 		}
 		let (done, error) = feed.startup_state();
-		if let Some(message) = error {
+		// Like SplashScreen.ShowUntil, the splash stays up at least 1.5 s,
+		// even when startup fails.
+		let shown_long_enough = started.elapsed() >= SPLASH_MIN;
+		if let Some(message) = error.filter(|_| shown_long_enough) {
 			return show_error(&mut display, &mut canvas, &mut input, &message);
 		}
-		if done && started.elapsed() >= SPLASH_MIN {
+		if done && shown_long_enough {
 			break;
 		}
 		screens::draw_splash(&mut canvas, started.elapsed().as_secs_f64(), done, "Connecting");
@@ -101,6 +111,7 @@ pub fn run(options: AppOptions) -> Result<(), String> {
 		std::thread::sleep(Duration::from_millis(18));
 	}
 	std::thread::sleep(Duration::from_millis(600));
+	eprintln!("Exiting program...");
 	Ok(())
 }
 

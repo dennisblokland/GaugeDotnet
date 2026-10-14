@@ -17,7 +17,9 @@ pub struct CustomGauge {
 	targets: Values,
 	renderer: ElementRenderer,
 	frame: FrameState,
-	last_frame: Option<Instant>,
+	/// When the previous draw smoothed; starts at construction, like C#'s
+	/// `_lastFrameTicks`, so the first draw smooths over the load time.
+	last_frame: Instant,
 }
 
 impl CustomGauge {
@@ -59,7 +61,7 @@ impl CustomGauge {
 			definition,
 			renderer: ElementRenderer::new(),
 			frame: FrameState::new(),
-			last_frame: None,
+			last_frame: Instant::now(),
 		}
 	}
 
@@ -109,8 +111,8 @@ impl CustomGauge {
 	/// returned [`Damage`] lists them.
 	pub fn draw(&mut self, canvas: &mut Canvas) -> Damage {
 		let now = Instant::now();
-		let dt = self.last_frame.map(|t| now.duration_since(t).as_secs_f32()).unwrap_or(1.0 / 60.0);
-		self.last_frame = Some(now);
+		let dt = now.duration_since(self.last_frame).as_secs_f32();
+		self.last_frame = now;
 		self.draw_with_delta(canvas, dt)
 	}
 
@@ -122,7 +124,8 @@ impl CustomGauge {
 			if let Some(v) = self.values.get_mut(name) {
 				*v += (target - *v) * alpha;
 				// Land exactly on the target once visually there, so a settled
-				// gauge stops producing damage.
+				// gauge stops producing damage. (C# never snaps, but it also
+				// repaints everything every frame.)
 				if (target - *v).abs() <= 1e-4 * (1.0 + target.abs()) {
 					*v = *target;
 				}

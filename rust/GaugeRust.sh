@@ -36,7 +36,11 @@ exec >> "$LOG_FILE" 2>&1
 
 echo ""
 echo "===== GaugeRust launch $(date '+%Y-%m-%d %H:%M:%S') ====="
+echo "GAMEDIR=$GAMEDIR"
 echo "APP_PATH=$APP_PATH"
+echo "PATH=$PATH"
+echo "USER=$(id -un 2>/dev/null || echo unknown)"
+echo "PWD=$(pwd)"
 
 if [ ! -f "$APP_PATH" ]; then
   echo "Missing binary: $APP_PATH"
@@ -54,6 +58,9 @@ if [ -n "${GPTOKEYB:-}" ]; then
 fi
 
 export DBUS_SYSTEM_BUS_ADDRESS=unix:path=/run/dbus/system_bus_socket
+
+# GaugeDotnet.sh holds the Mali GPU clock up for Skia's GL work. The Rust
+# renderer draws on the CPU and never touches the GPU, so it doesn't.
 
 # gauges.json is read from (and created in) $GAMEDIR, next to the binary.
 echo "[APP] starting $APP_PATH app --fullscreen"

@@ -204,18 +204,39 @@ Every screen now holds 60 fps with room to spare. The frames are byte-identical 
 
 ## Differences from the C# renderer
 
-- **Unknown data sources no longer crash the update loop.** In C#, `CustomGauge.UpdateFromDevice` asks `DataSourceMapper.ReadValue` for every bound source, and that throws for names it doesn't know. So an element bound to a calculated channel such as `RpmK` threw on the device. Here unknown names just aren't fed, and calculated channels are computed from their inputs.
+The Rust app aims to look and behave like the C# app. Where they still differ, it is on purpose: mostly where C# crashes or has a bug. Each difference below is kept as is unless noted.
 
-- **CPU rendering** instead of Skia on GLES2. Antialiasing and blur falloff differ slightly: the gaussian is approximated with three box blurs.
+### Rendering
+
+- **CPU rendering** instead of Skia on GLES2. Antialiasing and blur falloff differ slightly: the gaussian is approximated with three box blurs. The TurboXs LCD look only has the CPU path; C#'s GPU shader gives the same output.
+- **Settled values snap to their target.** Smoothing lands exactly on the target once it is within 1e-4 of it, so a settled gauge stops repainting. C# never snaps, but it repaints the whole frame anyway.
+- **No global state.** Graph history, peak-hold values and image caches live in each `ElementRenderer`, not in static dictionaries.
+- Element paints start from the defaults for each element in both apps. C# used to keep one shared paint's settings between elements, so a graph's round joins rounded later rectangle borders; that is fixed in C# (`ElementRenderer.DrawElement` resets the paint).
+
+### Config and values
+
+- **Invalid values don't crash.** Invalid colours render black instead of throwing from `SKColor.Parse`. The `D`/`X` number formats render a rounded integer, where .NET throws for a float, and other unknown format letters print as literal text.
+- **Out-of-range settings are clamped.** `SegmentCount <= 0` and `MaxDataPoints <= 0` count as 1, negative `Decimals` as 0, and `GraphElement.HistoryDepth` below 2 as 2. C# crashes (divide by zero) or draws nothing.
+- **Unknown data sources no longer crash the update loop.** In C#, `CustomGauge.UpdateFromDevice` asks `DataSourceMapper.ReadValue` for every bound source, and that throws for names it doesn't know. So an element bound to a calculated channel such as `RpmK` threw on the device. Here unknown names just aren't fed, and calculated channels are computed from their inputs.
 - **Calculated-channel inputs are tracked.** The C# `CustomGauge` only polls sources bound directly to an element, so `Rpm / 1000` read 0 unless some element also used `Rpm`. Visibility sources are tracked too.
-- **Invalid colours render black** instead of throwing from `SKColor.Parse`. Likewise, the `D`/`X` number formats render a rounded integer, where .NET would throw for a float.
-- **Config editor fixes:**
+- **A custom screen that fails to load** shows the error in its place, so screen numbers still match `gauges.json`. C# fails to start.
+- **`--config`.** Only the Rust app can load a `gauges.json` other than the one next to the executable. `CustomDefinitionFile` paths are relative to that file's folder. C# resolves them against the executable's folder, which is the same place for the default config.
+- A `gauges.json` that can't be parsed is kept as `gauges.json.bad` and replaced by the defaults, in both apps. JSON `null` for a string or list reads as empty.
+
+### Device app
+
+- **Bluetooth bring-up** (`rtk_hciattach`, `bluetoothd`, ...) runs only on the device: when `rtk_hciattach` is on `PATH` (the launcher adds the system folders) or with `--init-bt`. C# always runs it outside demo mode, which on a desktop would restart the system's `bluetoothd`. Clearing BlueZ's cache for the configured MAC happens in both apps whenever a MAC is set.
+- **MAC addresses** may be shorter than 12 hex digits, like C#'s `ulong.Parse` (`1A2B` is `00:00:00:00:1A:2B`). Longer ones are rejected; C# accepts up to 16 digits but can never match them.
+- **Input:**
+  - Key releases don't delay presses. A quick tap (a press and release in the same frame) no longer holds back the next button by a frame.
+  - Without `/dev/input/js0`, the keyboard stands in for the gamepad in every build. The C# Release build then has no input at all.
+  - The error screen closes on a button press. C# also closes on a release or on the joystick's initial-state events, so it can vanish before it is read.
+- **Config editor:**
   - On a keyboard, Escape leaves the editor without also quitting the app. In C# it is both B and MENU.
   - Delete/Backspace act as X.
   - Saving writes to the `gauges.json` the app loaded, and shows "Save failed!" if it can't.
-- **Key releases don't delay presses.** A quick tap (a press and release in the same frame) no longer holds back the next button by a frame.
-- **No global state.** Graph history, peak-hold values and image caches live in each `ElementRenderer`, not in static dictionaries.
-- `GraphElement.HistoryDepth` below 2 is treated as 2. In C# it divides by zero.
+  - "Config Saved!" shows for 2 seconds. C# counts it down by 0.016 s per frame, so it lasts longer when the frame rate is below 60.
+- `BleManager.ScanAsync`'s saved-device allow-list and `ReattachAsync` are not ported: nothing in the C# app calls them.
 
 Everything the device runs is ported. The exception is the Avalonia designer, which can stay in C#: it only writes JSON that the Rust renderer reads. Small helpers the Rust app has no use for (`AppLauncher`, `StorageProvider`, `DeviceInfo`) are not ported.
 

@@ -123,6 +123,9 @@ pub enum Screen {
 	Builtin { gauge: Box<dyn Gauge>, data_source: String },
 	Grid(Box<GridGauge>),
 	Custom(Box<CustomGauge>),
+	/// A screen whose custom definition couldn't be loaded. It keeps its
+	/// place, so screen numbers still match `config.screens`, and shows why.
+	Failed(String),
 }
 
 impl Screen {
@@ -133,6 +136,7 @@ impl Screen {
 			Screen::Builtin { gauge, .. } => gauge.draw(canvas),
 			Screen::Grid(g) => g.draw(canvas),
 			Screen::Custom(g) => return g.draw(canvas),
+			Screen::Failed(message) => draw_failed(canvas, message),
 		}
 		crate::Damage::full(canvas.width(), canvas.height())
 	}
@@ -169,6 +173,7 @@ impl Screen {
 				}
 			}
 			Screen::Custom(g) => g.update_from(read),
+			Screen::Failed(_) => {}
 		}
 	}
 
@@ -176,8 +181,23 @@ impl Screen {
 		match self {
 			Screen::Builtin { gauge, .. } => gauge.reset_saved_state(),
 			Screen::Grid(g) => g.reset_saved_state(),
-			Screen::Custom(_) => {}
+			Screen::Custom(_) | Screen::Failed(_) => {}
 		}
+	}
+}
+
+/// The placeholder for a [`Screen::Failed`]: the reason in red on black.
+fn draw_failed(canvas: &mut Canvas, message: &str) {
+	use crate::text::{default_typeface, TextAlign};
+	canvas.clear(Rgba::BLACK);
+	let x = canvas.width() as f32 / 2.0;
+	let red = Paint::fill(Rgba::rgb(255, 0, 0));
+	canvas.draw_text("Screen failed to load", x, 200.0, TextAlign::Center, default_typeface(), 28.0, &red);
+	let mut y = 240.0;
+	for line in message.lines() {
+		let white = Paint::fill(Rgba::WHITE);
+		canvas.draw_text(line, x, y, TextAlign::Center, default_typeface(), 18.0, &white);
+		y += 24.0;
 	}
 }
 
@@ -201,8 +221,10 @@ pub fn create_gauge(config: &GaugeConfig, width: u32, height: u32) -> Box<dyn Ga
 }
 
 /// Builds every configured screen (`GaugeFactory.BuildScreens`). Custom
-/// definition paths resolve relative to `config_dir` (the folder holding
-/// `gauges.json`).
+/// definition paths resolve relative to `config_dir`, the folder holding
+/// `gauges.json`. C# resolves them against the executable's folder, which
+/// is the same place: C# always loads the `gauges.json` next to the
+/// executable, and only the Rust app can load another one (`--config`).
 pub fn build_screens(
 	config: &AppConfig,
 	width: u32,

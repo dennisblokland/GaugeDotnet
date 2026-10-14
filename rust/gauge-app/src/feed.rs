@@ -18,6 +18,7 @@ pub enum Feed {
 
 impl Feed {
 	pub fn simulated() -> Self {
+		eprintln!("[SimulatedMeDevice] Connected (simulated)");
 		Feed::Sim { sim: Simulator::new(0.0), last: Instant::now() }
 	}
 

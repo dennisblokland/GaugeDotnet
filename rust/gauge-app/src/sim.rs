@@ -50,8 +50,8 @@ impl Simulator {
 			knock_ign_adv_mod: (sine * -2.0) as f32,
 			fuel_pressure: (400.0 + sine * 100.0) as u16,
 			fuel_temp: (40.0 + fast * 10.0) as u8,
-			// C# `(ushort)(fast * 5)` of a negative double wraps; saturate instead.
-			knock_evs_cnt: (fast * 5.0).max(0.0) as u16,
+			// Like C#'s `(ushort)` cast on net10, this saturates: negatives give 0.
+			knock_evs_cnt: (fast * 5.0) as u16,
 			egt1: (700.0 + sine * 200.0) as f32,
 			egt2: (680.0 + sine * 180.0) as f32,
 			gpt1: (sine * 20.0) as i16,

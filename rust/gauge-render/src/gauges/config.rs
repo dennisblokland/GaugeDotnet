@@ -47,9 +47,42 @@ impl GaugeType {
 		}
 	}
 
+	/// `Enum.TryParse(s, ignoreCase: true)`: names in any case, numeric
+	/// strings and comma lists. A number with no matching member gives
+	/// `Bar`, which is what `GaugeFactory` builds for such a value.
 	pub fn parse(s: &str) -> Option<Self> {
-		Self::ALL.into_iter().find(|t| t.name().eq_ignore_ascii_case(s))
+		let names = Self::ALL.map(Self::name);
+		enum_try_parse(s, &names).map(Self::from_value)
 	}
+
+	/// The member for a C# enum value; values with no member give `Bar`.
+	fn from_value(n: i64) -> Self {
+		usize::try_from(n).ok().and_then(|n| Self::ALL.get(n).copied()).unwrap_or_default()
+	}
+}
+
+/// `Enum.TryParse(s, ignoreCase: true, out _)` for an enum whose members are
+/// `names` with the values 0, 1, 2, ... Returns the parsed value, which can
+/// be one with no member, as in .NET: surrounding whitespace is ignored, a
+/// string starting with a digit, `+` or `-` is read as an `int`, and a comma
+/// list of names gives the members' values OR-ed together.
+pub fn enum_try_parse(s: &str, names: &[&str]) -> Option<i64> {
+	let s = s.trim();
+	if s.is_empty() {
+		return None;
+	}
+	if s.starts_with(|c: char| c.is_ascii_digit() || c == '+' || c == '-') {
+		if let Ok(n) = s.parse::<i32>() {
+			return Some(n as i64);
+		}
+	}
+	let mut value = 0i64;
+	for part in s.split(',') {
+		let part = part.trim();
+		let i = names.iter().position(|n| n.eq_ignore_ascii_case(part))?;
+		value |= i as i64;
+	}
+	Some(value)
 }
 
 /// Mirrors `TolerantGaugeTypeConverter`: names (any case) or numbers, with
@@ -59,19 +92,27 @@ impl<'de> Deserialize<'de> for GaugeType {
 		let v = serde_json::Value::deserialize(d)?;
 		Ok(match v {
 			serde_json::Value::String(s) => Self::parse(&s).unwrap_or_default(),
-			serde_json::Value::Number(n) => {
-				n.as_u64().and_then(|n| Self::ALL.get(n as usize).copied()).unwrap_or_default()
-			}
+			serde_json::Value::Number(n) => n.as_i64().map(Self::from_value).unwrap_or_default(),
 			_ => Self::default(),
 		})
 	}
 }
 
+/// A JSON `null` reads as the type's default (`""`, an empty list) instead of
+/// failing the whole file. System.Text.Json stores the `null`, and the C#
+/// app treats a null string or list as empty.
+fn null_as_default<'de, D: Deserializer<'de>, T: Deserialize<'de> + Default>(d: D) -> Result<T, D::Error> {
+	Ok(Option::<T>::deserialize(d)?.unwrap_or_default())
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase", default)]
 pub struct GridCellConfig {
+	#[serde(deserialize_with = "null_as_default")]
 	pub data_source: String,
+	#[serde(deserialize_with = "null_as_default")]
 	pub title: String,
+	#[serde(deserialize_with = "null_as_default")]
 	pub unit: String,
 	pub decimals: i32,
 }
@@ -87,9 +128,13 @@ impl Default for GridCellConfig {
 pub struct GaugeConfig {
 	#[serde(rename = "Type")]
 	pub gauge_type: GaugeType,
+	#[serde(deserialize_with = "null_as_default")]
 	pub data_source: String,
+	#[serde(deserialize_with = "null_as_default")]
 	pub color_hex: String,
+	#[serde(deserialize_with = "null_as_default")]
 	pub title: String,
+	#[serde(deserialize_with = "null_as_default")]
 	pub unit: String,
 	pub min_value: f32,
 	pub max_value: f32,
@@ -100,15 +145,19 @@ pub struct GaugeConfig {
 	pub max_data_points: i32,
 	pub interval_ms: i32,
 	/// TurboXs: `Peak`, `Min`, `Text` or `None` (the status block under the title).
+	#[serde(deserialize_with = "null_as_default")]
 	pub status_mode: String,
 	/// TurboXs: first status line; empty picks `Peak:`, `Min:` or `Datalog:`.
+	#[serde(deserialize_with = "null_as_default")]
 	pub status_label: String,
 	/// TurboXs: second status line in `Text` mode.
+	#[serde(deserialize_with = "null_as_default")]
 	pub status_text: String,
 	/// TurboXs: old-LCD look (low resolution, pixel grid, backlight tint, ghosting).
 	pub lcd: bool,
 	/// TurboXs: share of the previous frame that lingers in Lcd mode (0 = none, up to 0.9).
 	pub lcd_ghosting: f32,
+	#[serde(deserialize_with = "null_as_default")]
 	pub cells: Vec<GridCellConfig>,
 }
 
@@ -141,6 +190,7 @@ impl Default for GaugeConfig {
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase", default)]
 pub struct ScreenConfig {
+	#[serde(deserialize_with = "null_as_default")]
 	pub gauge: GaugeConfig,
 	pub custom_definition_file: Option<String>,
 }
@@ -151,6 +201,7 @@ pub struct AppConfig {
 	pub demo_mode: bool,
 	pub simulate_battery_percent: Option<i32>,
 	pub device_mac_address: Option<String>,
+	#[serde(deserialize_with = "null_as_default")]
 	pub screens: Vec<ScreenConfig>,
 }
 
@@ -173,8 +224,14 @@ impl AppConfig {
 		serde_json::from_str(json.trim_start_matches('\u{feff}'))
 	}
 
+	/// The config as System.Text.Json writes it, byte for byte: indented,
+	/// non-ASCII and HTML-sensitive characters escaped, floats without a
+	/// trailing `.0`.
 	pub fn to_json(&self) -> String {
-		serde_json::to_string_pretty(self).expect("config serialises")
+		let mut out = Vec::new();
+		let mut ser = serde_json::Serializer::with_formatter(&mut out, DotNetFormatter::default());
+		self.serialize(&mut ser).expect("config serialises");
+		String::from_utf8(out).expect("escaped JSON is ASCII")
 	}
 
 	/// The config written when none exists (`ConfigService.CreateDefault`).
@@ -260,6 +317,91 @@ impl AppConfig {
 	}
 }
 
+/// Writes JSON like `Utf8JsonWriter` with `WriteIndented` and the default
+/// `JavaScriptEncoder`: two-space indents, everything outside printable
+/// ASCII plus ``"&'+<>` `` as `\uXXXX`, and floats in their shortest form.
+#[derive(Default)]
+struct DotNetFormatter {
+	pretty: serde_json::ser::PrettyFormatter<'static>,
+}
+
+impl DotNetFormatter {
+	fn escape<W: ?Sized + std::io::Write>(writer: &mut W, units: &[u16]) -> std::io::Result<()> {
+		for u in units {
+			write!(writer, "\\u{u:04X}")?;
+		}
+		Ok(())
+	}
+}
+
+impl serde_json::ser::Formatter for DotNetFormatter {
+	fn write_f32<W: ?Sized + std::io::Write>(&mut self, writer: &mut W, value: f32) -> std::io::Result<()> {
+		writer.write_all(crate::format::format_number(value, "R").as_bytes())
+	}
+
+	fn write_string_fragment<W: ?Sized + std::io::Write>(
+		&mut self,
+		writer: &mut W,
+		fragment: &str,
+	) -> std::io::Result<()> {
+		for c in fragment.chars() {
+			if c.is_ascii() && !c.is_ascii_control() && !matches!(c, '&' | '\'' | '+' | '<' | '>' | '`') {
+				writer.write_all(&[c as u8])?;
+			} else {
+				Self::escape(writer, c.encode_utf16(&mut [0; 2]))?;
+			}
+		}
+		Ok(())
+	}
+
+	fn write_char_escape<W: ?Sized + std::io::Write>(
+		&mut self,
+		writer: &mut W,
+		escape: serde_json::ser::CharEscape,
+	) -> std::io::Result<()> {
+		use serde_json::ser::CharEscape;
+		match escape {
+			CharEscape::Quote => Self::escape(writer, &[0x22]),
+			CharEscape::ReverseSolidus => writer.write_all(b"\\\\"),
+			CharEscape::Solidus => writer.write_all(b"/"),
+			CharEscape::Backspace => writer.write_all(b"\\b"),
+			CharEscape::FormFeed => writer.write_all(b"\\f"),
+			CharEscape::LineFeed => writer.write_all(b"\\n"),
+			CharEscape::CarriageReturn => writer.write_all(b"\\r"),
+			CharEscape::Tab => writer.write_all(b"\\t"),
+			CharEscape::AsciiControl(b) => Self::escape(writer, &[b.into()]),
+		}
+	}
+
+	fn begin_array<W: ?Sized + std::io::Write>(&mut self, w: &mut W) -> std::io::Result<()> {
+		self.pretty.begin_array(w)
+	}
+	fn end_array<W: ?Sized + std::io::Write>(&mut self, w: &mut W) -> std::io::Result<()> {
+		self.pretty.end_array(w)
+	}
+	fn begin_array_value<W: ?Sized + std::io::Write>(&mut self, w: &mut W, first: bool) -> std::io::Result<()> {
+		self.pretty.begin_array_value(w, first)
+	}
+	fn end_array_value<W: ?Sized + std::io::Write>(&mut self, w: &mut W) -> std::io::Result<()> {
+		self.pretty.end_array_value(w)
+	}
+	fn begin_object<W: ?Sized + std::io::Write>(&mut self, w: &mut W) -> std::io::Result<()> {
+		self.pretty.begin_object(w)
+	}
+	fn end_object<W: ?Sized + std::io::Write>(&mut self, w: &mut W) -> std::io::Result<()> {
+		self.pretty.end_object(w)
+	}
+	fn begin_object_key<W: ?Sized + std::io::Write>(&mut self, w: &mut W, first: bool) -> std::io::Result<()> {
+		self.pretty.begin_object_key(w, first)
+	}
+	fn begin_object_value<W: ?Sized + std::io::Write>(&mut self, w: &mut W) -> std::io::Result<()> {
+		self.pretty.begin_object_value(w)
+	}
+	fn end_object_value<W: ?Sized + std::io::Write>(&mut self, w: &mut W) -> std::io::Result<()> {
+		self.pretty.end_object_value(w)
+	}
+}
+
 /// `path` with `suffix` appended to its file name (`gauges.json.tmp`).
 fn sibling(path: &std::path::Path, suffix: &str) -> std::path::PathBuf {
 	let mut name = path.file_name().unwrap_or_default().to_os_string();
@@ -323,5 +465,40 @@ mod tests {
 		assert_eq!(cfg.screens[0].gauge.max_value, 8000.0);
 		assert_eq!(cfg.screens[0].gauge.segment_count, 32);
 		assert_eq!(cfg.screens[3].custom_definition_file.as_deref(), Some("custom-gauge.json"));
+	}
+
+	#[test]
+	fn gauge_type_parses_like_enum_try_parse() {
+		assert_eq!(GaugeType::parse(" Needle "), Some(GaugeType::Needle));
+		assert_eq!(GaugeType::parse("3"), Some(GaugeType::Needle));
+		assert_eq!(GaugeType::parse("+9"), Some(GaugeType::TurboXs));
+		assert_eq!(GaugeType::parse("Circular, Histogram"), Some(GaugeType::Needle), "1 | 2");
+		assert_eq!(GaugeType::parse("42"), Some(GaugeType::Bar), "no member: GaugeFactory builds a bar");
+		assert_eq!(GaugeType::parse("Circular, Legacy"), None);
+		assert_eq!(GaugeType::parse(""), None);
+	}
+
+	#[test]
+	fn json_is_written_like_system_text_json() {
+		let mut cfg = AppConfig::default_config();
+		cfg.screens[0].gauge.unit = "\u{b0}C <&> 'x' \"q\" \\ \u{1F600}".into();
+		let json = cfg.to_json();
+		let unit = r#""Unit": "\u00B0C \u003C\u0026\u003E \u0027x\u0027 \u0022q\u0022 \\ \uD83D\uDE00","#;
+		assert!(json.contains(unit), "{json}");
+		assert!(json.contains(r#""MinValue": 8,"#), "{json}");
+		assert!(json.contains(r#""InitialValue": 14.7,"#), "{json}");
+		assert!(json.contains("\n  \"Screens\": [\n    {\n      \"Gauge\": {\n"), "{json}");
+		assert_eq!(AppConfig::from_json(&json).unwrap().screens[0].gauge.unit, cfg.screens[0].gauge.unit);
+	}
+
+	#[test]
+	fn nulls_read_as_empty() {
+		let cfg = AppConfig::from_json(
+			r#"{"Screens":[{"Gauge":{"Title":null,"Unit":null,"Cells":null,"StatusMode":null},"CustomDefinitionFile":null}]}"#,
+		)
+		.unwrap();
+		let g = &cfg.screens[0].gauge;
+		assert_eq!((g.title.as_str(), g.unit.as_str(), g.cells.len()), ("", "", 0));
+		assert!(AppConfig::from_json(r#"{"Screens":null}"#).unwrap().screens.is_empty());
 	}
 }
