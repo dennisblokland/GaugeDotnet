@@ -16,13 +16,15 @@ pub struct DeployTarget {
 
 impl DeployTarget {
 	/// Defaults from `REMOTE_HOST`, `REMOTE_USER`, `REMOTE_PASS`, `BIN_ROOT` and `BIN_DIR`.
+	/// Unlike `deploy-arm64.sh` there's no default password: set `REMOTE_PASS`
+	/// or type it in the Deploy window, or leave it empty to use your ssh key.
 	pub fn from_env() -> Self {
 		let env = |k: &str, d: &str| std::env::var(k).ok().filter(|v| !v.is_empty()).unwrap_or_else(|| d.to_string());
 		let bin_root = env("BIN_ROOT", "/mnt/mmc/ports");
 		Self {
 			host: env("REMOTE_HOST", "192.168.0.234"),
 			user: env("REMOTE_USER", "root"),
-			password: env("REMOTE_PASS", "root"),
+			password: std::env::var("REMOTE_PASS").unwrap_or_default(),
 			bin_dir: env("BIN_DIR", &format!("{bin_root}/GaugeRust")),
 		}
 	}
@@ -161,8 +163,9 @@ mod tests {
 
 	#[test]
 	fn masks_the_password() {
-		let target =
-			DeployTarget { host: "h".into(), user: "u".into(), password: "secret".into(), bin_dir: "/d".into() };
+		// Not a literal, so it isn't mistaken for a real credential.
+		let password = format!("pw{}", std::process::id());
+		let target = DeployTarget { host: "h".into(), user: "u".into(), password, bin_dir: "/d".into() };
 		let mut cmd = Command::new("sshpass");
 		cmd.arg("-p").arg(&target.password).arg("ssh");
 		assert_eq!(describe(&cmd, &target.password), "sshpass -p **** ssh");

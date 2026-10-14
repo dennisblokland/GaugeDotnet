@@ -471,14 +471,14 @@ fn screen_label(i: usize, s: &ScreenConfig) -> String {
 /// Edits a serde struct through its JSON form with the field table.
 fn edit_json<T: serde::Serialize + serde::de::DeserializeOwned>(
 	ui: &mut egui::Ui,
-	salt: &str,
+	grid_id: &str,
 	fields: &[Field],
 	target: &mut T,
 	ctx: &PropContext,
 ) -> bool {
 	let Ok(mut value) = serde_json::to_value(&*target) else { return false };
 	let Some(obj) = value.as_object_mut() else { return false };
-	if props::edit_fields(ui, salt, fields, obj, ctx).is_none() {
+	if props::edit_fields(ui, grid_id, fields, obj, ctx).is_none() {
 		return false;
 	}
 	// These configs have no optional strings: "(none)" means empty.

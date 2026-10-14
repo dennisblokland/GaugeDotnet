@@ -23,7 +23,7 @@ pub const ERROR: Color32 = Color32::from_rgb(0xFF, 0x60, 0x60);
 /// of the property that changed, if any.
 pub fn edit_fields(
 	ui: &mut Ui,
-	id_salt: &str,
+	grid_id: &str,
 	fields: &[Field],
 	obj: &mut Map<String, Value>,
 	ctx: &PropContext,
@@ -44,7 +44,7 @@ pub fn edit_fields(
 			ui.separator();
 			ui.label(RichText::new(h.label).strong());
 		}
-		egui::Grid::new((id_salt, i)).num_columns(2).spacing([8.0, 4.0]).striped(false).show(ui, |ui| {
+		egui::Grid::new((grid_id, i)).num_columns(2).spacing([8.0, 4.0]).striped(false).show(ui, |ui| {
 			for field in rows {
 				ui.label(field.label);
 				ui.push_id(field.key, |ui| {
