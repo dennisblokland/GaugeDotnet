@@ -66,15 +66,20 @@ enum StatusMode {
 	Min,
 	Text,
 	None,
+	/// A number with no member (`"7"`): C# keeps the value, so the label is
+	/// drawn but no reading or text.
+	LabelOnly,
 }
 
 impl StatusMode {
-	/// Case-insensitive; unknown values fall back to `Peak`, like `Enum.TryParse`.
+	/// `Enum.TryParse(ignoreCase)`: names in any case, numeric strings and
+	/// comma lists; values it can't parse fall back to `Peak`.
 	fn parse(s: &str) -> Self {
-		[Self::Peak, Self::Min, Self::Text, Self::None]
-			.into_iter()
-			.find(|m| format!("{m:?}").eq_ignore_ascii_case(s))
-			.unwrap_or(Self::Peak)
+		const ALL: [StatusMode; 4] = [StatusMode::Peak, StatusMode::Min, StatusMode::Text, StatusMode::None];
+		match super::config::enum_try_parse(s, &["Peak", "Min", "Text", "None"]) {
+			Some(n) => usize::try_from(n).ok().and_then(|n| ALL.get(n).copied()).unwrap_or(Self::LabelOnly),
+			Option::None => Self::Peak,
+		}
 	}
 }
 
@@ -544,6 +549,9 @@ mod tests {
 		assert_eq!(StatusMode::parse("MIN"), StatusMode::Min);
 		assert_eq!(StatusMode::parse("None"), StatusMode::None);
 		assert_eq!(StatusMode::parse("bogus"), StatusMode::Peak);
+		assert_eq!(StatusMode::parse(" 2 "), StatusMode::Text);
+		assert_eq!(StatusMode::parse("Min, Text"), StatusMode::None);
+		assert_eq!(StatusMode::parse("7"), StatusMode::LabelOnly);
 	}
 
 	#[test]

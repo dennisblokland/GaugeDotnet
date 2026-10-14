@@ -49,11 +49,18 @@ fn on_rg35xx() -> bool {
 		.unwrap_or(false)
 }
 
+/// Builds the screens. One that fails to load becomes a placeholder showing
+/// the error, so screen `i` is still `config.screens[i]`.
 fn build_screens(config: &AppConfig, dir: Option<&Path>) -> Vec<Screen> {
 	gauges::build_screens(config, WIDTH, HEIGHT, dir)
 		.into_iter()
 		.enumerate()
-		.filter_map(|(i, s)| s.map_err(|e| eprintln!("[app] screen {i} skipped: {e}")).ok())
+		.map(|(i, s)| {
+			s.unwrap_or_else(|e| {
+				eprintln!("[app] screen {i} failed to load: {e}");
+				Screen::Failed(e)
+			})
+		})
 		.collect()
 }
 

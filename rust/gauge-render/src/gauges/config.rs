@@ -47,9 +47,42 @@ impl GaugeType {
 		}
 	}
 
+	/// `Enum.TryParse(s, ignoreCase: true)`: names in any case, numeric
+	/// strings and comma lists. A number with no matching member gives
+	/// `Bar`, which is what `GaugeFactory` builds for such a value.
 	pub fn parse(s: &str) -> Option<Self> {
-		Self::ALL.into_iter().find(|t| t.name().eq_ignore_ascii_case(s))
+		let names = Self::ALL.map(Self::name);
+		enum_try_parse(s, &names).map(Self::from_value)
 	}
+
+	/// The member for a C# enum value; values with no member give `Bar`.
+	fn from_value(n: i64) -> Self {
+		usize::try_from(n).ok().and_then(|n| Self::ALL.get(n).copied()).unwrap_or_default()
+	}
+}
+
+/// `Enum.TryParse(s, ignoreCase: true, out _)` for an enum whose members are
+/// `names` with the values 0, 1, 2, ... Returns the parsed value, which can
+/// be one with no member, as in .NET: surrounding whitespace is ignored, a
+/// string starting with a digit, `+` or `-` is read as an `int`, and a comma
+/// list of names gives the members' values OR-ed together.
+pub fn enum_try_parse(s: &str, names: &[&str]) -> Option<i64> {
+	let s = s.trim();
+	if s.is_empty() {
+		return None;
+	}
+	if s.starts_with(|c: char| c.is_ascii_digit() || c == '+' || c == '-') {
+		if let Ok(n) = s.parse::<i32>() {
+			return Some(n as i64);
+		}
+	}
+	let mut value = 0i64;
+	for part in s.split(',') {
+		let part = part.trim();
+		let i = names.iter().position(|n| n.eq_ignore_ascii_case(part))?;
+		value |= i as i64;
+	}
+	Some(value)
 }
 
 /// Mirrors `TolerantGaugeTypeConverter`: names (any case) or numbers, with
@@ -59,19 +92,27 @@ impl<'de> Deserialize<'de> for GaugeType {
 		let v = serde_json::Value::deserialize(d)?;
 		Ok(match v {
 			serde_json::Value::String(s) => Self::parse(&s).unwrap_or_default(),
-			serde_json::Value::Number(n) => {
-				n.as_u64().and_then(|n| Self::ALL.get(n as usize).copied()).unwrap_or_default()
-			}
+			serde_json::Value::Number(n) => n.as_i64().map(Self::from_value).unwrap_or_default(),
 			_ => Self::default(),
 		})
 	}
 }
 
+/// A JSON `null` reads as the type's default (`""`, an empty list) instead of
+/// failing the whole file. System.Text.Json stores the `null`, and the C#
+/// app treats a null string or list as empty.
+fn null_as_default<'de, D: Deserializer<'de>, T: Deserialize<'de> + Default>(d: D) -> Result<T, D::Error> {
+	Ok(Option::<T>::deserialize(d)?.unwrap_or_default())
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase", default)]
 pub struct GridCellConfig {
+	#[serde(deserialize_with = "null_as_default")]
 	pub data_source: String,
+	#[serde(deserialize_with = "null_as_default")]
 	pub title: String,
+	#[serde(deserialize_with = "null_as_default")]
 	pub unit: String,
 	pub decimals: i32,
 }
@@ -87,9 +128,13 @@ impl Default for GridCellConfig {
 pub struct GaugeConfig {
 	#[serde(rename = "Type")]
 	pub gauge_type: GaugeType,
+	#[serde(deserialize_with = "null_as_default")]
 	pub data_source: String,
+	#[serde(deserialize_with = "null_as_default")]
 	pub color_hex: String,
+	#[serde(deserialize_with = "null_as_default")]
 	pub title: String,
+	#[serde(deserialize_with = "null_as_default")]
 	pub unit: String,
 	pub min_value: f32,
 	pub max_value: f32,
@@ -100,15 +145,19 @@ pub struct GaugeConfig {
 	pub max_data_points: i32,
 	pub interval_ms: i32,
 	/// TurboXs: `Peak`, `Min`, `Text` or `None` (the status block under the title).
+	#[serde(deserialize_with = "null_as_default")]
 	pub status_mode: String,
 	/// TurboXs: first status line; empty picks `Peak:`, `Min:` or `Datalog:`.
+	#[serde(deserialize_with = "null_as_default")]
 	pub status_label: String,
 	/// TurboXs: second status line in `Text` mode.
+	#[serde(deserialize_with = "null_as_default")]
 	pub status_text: String,
 	/// TurboXs: old-LCD look (low resolution, pixel grid, backlight tint, ghosting).
 	pub lcd: bool,
 	/// TurboXs: share of the previous frame that lingers in Lcd mode (0 = none, up to 0.9).
 	pub lcd_ghosting: f32,
+	#[serde(deserialize_with = "null_as_default")]
 	pub cells: Vec<GridCellConfig>,
 }
 
@@ -141,6 +190,7 @@ impl Default for GaugeConfig {
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase", default)]
 pub struct ScreenConfig {
+	#[serde(deserialize_with = "null_as_default")]
 	pub gauge: GaugeConfig,
 	pub custom_definition_file: Option<String>,
 }
@@ -151,6 +201,7 @@ pub struct AppConfig {
 	pub demo_mode: bool,
 	pub simulate_battery_percent: Option<i32>,
 	pub device_mac_address: Option<String>,
+	#[serde(deserialize_with = "null_as_default")]
 	pub screens: Vec<ScreenConfig>,
 }
 
@@ -323,5 +374,27 @@ mod tests {
 		assert_eq!(cfg.screens[0].gauge.max_value, 8000.0);
 		assert_eq!(cfg.screens[0].gauge.segment_count, 32);
 		assert_eq!(cfg.screens[3].custom_definition_file.as_deref(), Some("custom-gauge.json"));
+	}
+
+	#[test]
+	fn gauge_type_parses_like_enum_try_parse() {
+		assert_eq!(GaugeType::parse(" Needle "), Some(GaugeType::Needle));
+		assert_eq!(GaugeType::parse("3"), Some(GaugeType::Needle));
+		assert_eq!(GaugeType::parse("+9"), Some(GaugeType::TurboXs));
+		assert_eq!(GaugeType::parse("Circular, Histogram"), Some(GaugeType::Needle), "1 | 2");
+		assert_eq!(GaugeType::parse("42"), Some(GaugeType::Bar), "no member: GaugeFactory builds a bar");
+		assert_eq!(GaugeType::parse("Circular, Legacy"), None);
+		assert_eq!(GaugeType::parse(""), None);
+	}
+
+	#[test]
+	fn nulls_read_as_empty() {
+		let cfg = AppConfig::from_json(
+			r#"{"Screens":[{"Gauge":{"Title":null,"Unit":null,"Cells":null,"StatusMode":null},"CustomDefinitionFile":null}]}"#,
+		)
+		.unwrap();
+		let g = &cfg.screens[0].gauge;
+		assert_eq!((g.title.as_str(), g.unit.as_str(), g.cells.len()), ("", "", 0));
+		assert!(AppConfig::from_json(r#"{"Screens":null}"#).unwrap().screens.is_empty());
 	}
 }
