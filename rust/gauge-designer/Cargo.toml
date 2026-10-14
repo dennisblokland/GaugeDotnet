@@ -1,0 +1,23 @@
+[package]
+name = "gauge-designer"
+version = "0.1.0"
+description = "Desktop designer for GaugeDotnet custom gauges, previewing with the device renderer"
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "gauge-designer"
+path = "src/main.rs"
+
+[dependencies]
+gauge-render = { path = "../gauge-render" }
+me-data = { path = "../me-data" }
+# glow (OpenGL) instead of the default wgpu: fewer dependencies, runs on llvmpipe too.
+eframe = { version = "0.36", default-features = false, features = ["accesskit", "default_fonts", "glow", "wayland", "x11"] }
+# Only to switch on winit's default features (dlopen'd Wayland, client-side decorations), which eframe's `default` would.
+winit = "0.30"
+rfd = "0.17"
+image = { version = "0.25.10", default-features = false, features = ["png", "jpeg", "gif", "webp"] }
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.152"
+chrono = "0.4.45"

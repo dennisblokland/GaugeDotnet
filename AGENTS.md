@@ -7,7 +7,8 @@ Real-time automotive gauge display for the RG35XX handheld (ARM64 Linux). Connec
 | Project | Purpose |
 |---------|---------|
 | `GaugeDotnet` | Main app — SDL2 window, gauge rendering, BLE connection |
-| `GaugeDotnet.Designer` | Avalonia 12 drag-and-drop gauge designer (desktop) |
+| `GaugeDotnet.Designer` | Avalonia 12 drag-and-drop gauge designer (desktop, the original) |
+| `rust/gauge-designer` | Rust (egui) gauge designer that previews with the device renderer — see `rust/README.md` |
 | `ME1_4NET` | CAN bus decoder library (MegaSquirt frames `ME1_1`–`ME1_8`) |
 | `ME1_4NET.Tests` | xUnit tests for CAN frame decoding |
 | `RG35XX.Core` | Platform abstractions (gamepad, storage interfaces) |
@@ -51,7 +52,7 @@ Drag-and-drop gauge designer → JSON definition → runtime rendering on device
 
 ### Workflow
 
-1. `dotnet run --project src/GaugeDotnet.Designer` — opens Avalonia designer
+1. `cd rust && cargo run --release -p gauge-designer` — opens the Rust designer (`dotnet run --project src/GaugeDotnet.Designer` opens the Avalonia one)
 2. Add/arrange elements, bind data sources, tweak properties
 3. Save → `custom-gauge.json`
 4. Reference in `gauges.json`: `{ "Gauge": { "Type": "Custom" }, "CustomDefinitionFile": "custom-gauge.json" }`
@@ -98,6 +99,7 @@ All `GaugeElement` subclasses have:
 - `Configuration/DataSourceMapper.cs` — Maps string names → `MEData` fields
 - `GaugeDotnet.Designer/Rendering/ElementRenderer.cs` — Designer wrapper (hit-test, selection highlights)
 - `GaugeDotnet.Designer/MainWindow.axaml(.cs)` — Full designer UI
+- `rust/gauge-designer/src/` — Rust designer: `app.rs` (UI), `geometry.rs` (bounds, hit test, resize, angle handles), `fields.rs` (one property-table line per element property), `package.rs` (save with `images/`)
 
 ### Smoothing
 
@@ -119,6 +121,8 @@ When using `ImagePath` on a `NeedleElement`, the image is rotated around the ele
 **Recommended dimensions:** For a 640×480 gauge canvas, a needle image of roughly 20×180 px works well. Use a tall narrow PNG (e.g., 40×360 source scaled down to `ImageWidth: 20, ImageLength: 180`).
 
 ### Designer Keyboard Shortcuts
+
+Avalonia designer (the Rust designer has these plus more; see `rust/README.md`):
 
 | Key | Action |
 |-----|--------|
