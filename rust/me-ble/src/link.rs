@@ -28,9 +28,10 @@ pub enum LinkStatus {
 pub struct LinkOptions {
 	/// ECU MAC address (`DeviceMacAddress`); `None` connects to the first ME device found.
 	pub mac: Option<String>,
-	/// Run the RG35XX Bluetooth bring-up first and clear BlueZ's cache for `mac`.
+	/// Run the RG35XX Bluetooth bring-up first.
 	pub init_hardware: bool,
-	/// How long to scan before giving up (the C# app uses 60 s).
+	/// How long clearing BlueZ's cache and scanning may take before giving
+	/// up (the C# app uses 60 s).
 	pub scan_timeout: Duration,
 }
 
@@ -125,29 +126,31 @@ async fn run(
 
 	if options.init_hardware {
 		set(&status, LinkStatus::InitializingHardware);
-		let mac = mac.map(str::to_string);
-		let _ = tokio::task::spawn_blocking(move || {
-			hardware::initialize();
-			// A cached device updates silently instead of re-announcing; start clean.
-			if let Some(mac) = mac {
-				hardware::disconnect_cached_device(&mac);
-				hardware::evict_cached_device(&mac);
-			}
-		})
-		.await;
+		let _ = tokio::task::spawn_blocking(hardware::initialize).await;
 	}
 
-	let adapter = match device::adapter().await {
-		Ok(a) => a,
-		Err(e) => return fail(format!("Bluetooth error:\n{e}")),
-	};
-
-	set(&status, LinkStatus::Scanning);
-	eprintln!("[BLE] scanning for {}", mac.unwrap_or("any ME device"));
-	let peripheral = match tokio::time::timeout(options.scan_timeout, device::find(&adapter, address)).await {
+	// Like C#'s 60 s CancelAfter, the timeout covers clearing the cache too.
+	let found = tokio::time::timeout(options.scan_timeout, async {
+		// A cached device updates silently instead of re-announcing; start
+		// clean. C# does this whenever a MAC is configured.
+		if let Some(mac) = mac.map(str::to_string) {
+			let _ = tokio::task::spawn_blocking(move || {
+				hardware::disconnect_cached_device(&mac);
+				hardware::evict_cached_device(&mac);
+			})
+			.await;
+		}
+		let adapter = device::adapter().await?;
+		set(&status, LinkStatus::Scanning);
+		eprintln!("[BLE] scanning for {}", mac.unwrap_or("any ME device"));
+		let peripheral = device::find(&adapter, address).await?;
+		Ok::<_, device::Error>((adapter, peripheral))
+	})
+	.await;
+	let (adapter, peripheral) = match found {
 		Err(_) => return fail("Timed out while scanning\nfor ME device.".into()),
 		Ok(Err(e)) => return fail(format!("Bluetooth error:\n{e}")),
-		Ok(Ok(p)) => p,
+		Ok(Ok(found)) => found,
 	};
 
 	set(&status, LinkStatus::Connecting);

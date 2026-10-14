@@ -29,10 +29,12 @@ pub enum ConnectionState {
 	Reconnecting,
 }
 
-/// Parses `AA:BB:CC:DD:EE:FF`, `AA-BB-…` or `AABBCCDDEEFF` (like the C# `ParseIdentifier`).
+/// Parses `AA:BB:CC:DD:EE:FF`, `AA-BB-…` or `AABBCCDDEEFF` (like the C#
+/// `ParseIdentifier`). Like `ulong.Parse` there, fewer digits are fine and
+/// read as a number (`1A2B` is `00:00:00:00:1A:2B`).
 pub fn parse_mac(text: &str) -> Option<BDAddr> {
 	let hex: String = text.trim().chars().filter(|c| *c != ':' && *c != '-').collect();
-	if hex.len() != 12 {
+	if hex.is_empty() || hex.len() > 12 || !hex.bytes().all(|b| b.is_ascii_hexdigit()) {
 		return None;
 	}
 	let n = u64::from_str_radix(&hex, 16).ok()?;
@@ -255,7 +257,9 @@ mod tests {
 		assert_eq!(parse_mac("20:E7:C8:B9:20:2A"), Some(want));
 		assert_eq!(parse_mac(" 20-e7-c8-b9-20-2a "), Some(want));
 		assert_eq!(parse_mac("20E7C8B9202A"), Some(want));
-		assert_eq!(parse_mac("20:E7:C8"), None);
+		assert_eq!(parse_mac("20:E7:C8"), Some(BDAddr::from([0, 0, 0, 0x20, 0xE7, 0xC8])), "short, like ulong.Parse");
+		assert_eq!(parse_mac(""), None);
+		assert_eq!(parse_mac("20:E7:C8:B9:20:2A:00"), None);
 		assert_eq!(parse_mac("ZZ:E7:C8:B9:20:2A"), None);
 	}
 

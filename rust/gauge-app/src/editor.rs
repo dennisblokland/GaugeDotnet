@@ -429,7 +429,8 @@ fn field_value(gauge: &GaugeConfig, field: Field) -> String {
 		Field::IntervalMs => format!("{}ms", gauge.interval_ms),
 		Field::StatusMode => gauge.status_mode.clone(),
 		Field::Lcd => if gauge.lcd { "ON" } else { "OFF" }.into(),
-		Field::LcdGhosting => format!("{:.1}", gauge.lcd_ghosting),
+		// "0.0" rounds halves away from zero, like the C# editor.
+		Field::LcdGhosting => gauge_render::format::format_number(gauge.lcd_ghosting, "0.0"),
 		Field::Cell(i) => gauge.cells.get(i).map_or("?".into(), |c| format!("{} ({})", c.data_source, c.unit)),
 	}
 }

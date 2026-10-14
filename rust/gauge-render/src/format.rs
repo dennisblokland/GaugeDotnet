@@ -308,7 +308,14 @@ fn find_section(format: &[char], mut section: usize) -> usize {
 fn custom(v: f32, format: &str) -> String {
 	let fmt: Vec<char> = format.chars().collect();
 	let mut n = Number::significant(v, 7);
-	let mut section = find_section(&fmt, if n.digits.is_empty() { 2 } else if n.negative { 1 } else { 0 });
+	let wanted = if n.digits.is_empty() {
+		2
+	} else if n.negative {
+		1
+	} else {
+		0
+	};
+	let mut section = find_section(&fmt, wanted);
 
 	// Scan the section's placeholders.
 	let (digit_count, decimal_pos, first_digit, last_digit, mut scientific, thousand_seps);
@@ -467,7 +474,9 @@ fn custom(v: f32, format: &str) -> String {
 				dig_pos -= 1;
 			}
 			'.' => {
-				if dig_pos == 0 && !decimal_written && (last_digit < 0 || (decimal_pos < digit_count && cur < n.digits.len()))
+				if dig_pos == 0
+					&& !decimal_written
+					&& (last_digit < 0 || (decimal_pos < digit_count && cur < n.digits.len()))
 				{
 					out.push('.');
 					decimal_written = true;
@@ -769,7 +778,7 @@ mod tests {
 		assert_eq!(format_number(1e9, "G"), "1E+09");
 		assert_eq!(format_number(123456789.0, "G"), "123456790");
 		assert_eq!(format_number(1e15, "R"), "1E+15");
-		assert_eq!(format_number(4567.89101, "G"), "4567.891");
+		assert_eq!(format_number(4567.89101_f64 as f32, "G"), "4567.891");
 		assert_eq!(format_number(f32::MAX, "G"), "3.4028235E+38");
 		assert_eq!(format_number(f32::from_bits(1), "G"), "1E-45");
 		assert_eq!(format_number(-0.0, "G"), "-0");

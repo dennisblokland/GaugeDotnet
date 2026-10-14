@@ -89,10 +89,13 @@ pub fn run(options: AppOptions) -> Result<(), String> {
 			return Ok(());
 		}
 		let (done, error) = feed.startup_state();
-		if let Some(message) = error {
+		// Like SplashScreen.ShowUntil, the splash stays up at least 1.5 s,
+		// even when startup fails.
+		let shown_long_enough = started.elapsed() >= SPLASH_MIN;
+		if let Some(message) = error.filter(|_| shown_long_enough) {
 			return show_error(&mut display, &mut canvas, &mut input, &message);
 		}
-		if done && started.elapsed() >= SPLASH_MIN {
+		if done && shown_long_enough {
 			break;
 		}
 		screens::draw_splash(&mut canvas, started.elapsed().as_secs_f64(), done, "Connecting");
@@ -108,6 +111,7 @@ pub fn run(options: AppOptions) -> Result<(), String> {
 		std::thread::sleep(Duration::from_millis(18));
 	}
 	std::thread::sleep(Duration::from_millis(600));
+	eprintln!("Exiting program...");
 	Ok(())
 }
 

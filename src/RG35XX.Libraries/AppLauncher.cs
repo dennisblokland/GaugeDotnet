@@ -127,6 +127,7 @@
 
             while (File.Exists(nextFile))
             {
+                index++;
                 nextFile = $"/tmp/.next-{index}";
             }
 

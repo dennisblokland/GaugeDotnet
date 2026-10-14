@@ -224,8 +224,14 @@ impl AppConfig {
 		serde_json::from_str(json.trim_start_matches('\u{feff}'))
 	}
 
+	/// The config as System.Text.Json writes it, byte for byte: indented,
+	/// non-ASCII and HTML-sensitive characters escaped, floats without a
+	/// trailing `.0`.
 	pub fn to_json(&self) -> String {
-		serde_json::to_string_pretty(self).expect("config serialises")
+		let mut out = Vec::new();
+		let mut ser = serde_json::Serializer::with_formatter(&mut out, DotNetFormatter::default());
+		self.serialize(&mut ser).expect("config serialises");
+		String::from_utf8(out).expect("escaped JSON is ASCII")
 	}
 
 	/// The config written when none exists (`ConfigService.CreateDefault`).
@@ -311,6 +317,91 @@ impl AppConfig {
 	}
 }
 
+/// Writes JSON like `Utf8JsonWriter` with `WriteIndented` and the default
+/// `JavaScriptEncoder`: two-space indents, everything outside printable
+/// ASCII plus ``"&'+<>` `` as `\uXXXX`, and floats in their shortest form.
+#[derive(Default)]
+struct DotNetFormatter {
+	pretty: serde_json::ser::PrettyFormatter<'static>,
+}
+
+impl DotNetFormatter {
+	fn escape<W: ?Sized + std::io::Write>(writer: &mut W, units: &[u16]) -> std::io::Result<()> {
+		for u in units {
+			write!(writer, "\\u{u:04X}")?;
+		}
+		Ok(())
+	}
+}
+
+impl serde_json::ser::Formatter for DotNetFormatter {
+	fn write_f32<W: ?Sized + std::io::Write>(&mut self, writer: &mut W, value: f32) -> std::io::Result<()> {
+		writer.write_all(crate::format::format_number(value, "R").as_bytes())
+	}
+
+	fn write_string_fragment<W: ?Sized + std::io::Write>(
+		&mut self,
+		writer: &mut W,
+		fragment: &str,
+	) -> std::io::Result<()> {
+		for c in fragment.chars() {
+			if c.is_ascii() && !c.is_ascii_control() && !matches!(c, '&' | '\'' | '+' | '<' | '>' | '`') {
+				writer.write_all(&[c as u8])?;
+			} else {
+				Self::escape(writer, c.encode_utf16(&mut [0; 2]))?;
+			}
+		}
+		Ok(())
+	}
+
+	fn write_char_escape<W: ?Sized + std::io::Write>(
+		&mut self,
+		writer: &mut W,
+		escape: serde_json::ser::CharEscape,
+	) -> std::io::Result<()> {
+		use serde_json::ser::CharEscape;
+		match escape {
+			CharEscape::Quote => Self::escape(writer, &[0x22]),
+			CharEscape::ReverseSolidus => writer.write_all(b"\\\\"),
+			CharEscape::Solidus => writer.write_all(b"/"),
+			CharEscape::Backspace => writer.write_all(b"\\b"),
+			CharEscape::FormFeed => writer.write_all(b"\\f"),
+			CharEscape::LineFeed => writer.write_all(b"\\n"),
+			CharEscape::CarriageReturn => writer.write_all(b"\\r"),
+			CharEscape::Tab => writer.write_all(b"\\t"),
+			CharEscape::AsciiControl(b) => Self::escape(writer, &[b.into()]),
+		}
+	}
+
+	fn begin_array<W: ?Sized + std::io::Write>(&mut self, w: &mut W) -> std::io::Result<()> {
+		self.pretty.begin_array(w)
+	}
+	fn end_array<W: ?Sized + std::io::Write>(&mut self, w: &mut W) -> std::io::Result<()> {
+		self.pretty.end_array(w)
+	}
+	fn begin_array_value<W: ?Sized + std::io::Write>(&mut self, w: &mut W, first: bool) -> std::io::Result<()> {
+		self.pretty.begin_array_value(w, first)
+	}
+	fn end_array_value<W: ?Sized + std::io::Write>(&mut self, w: &mut W) -> std::io::Result<()> {
+		self.pretty.end_array_value(w)
+	}
+	fn begin_object<W: ?Sized + std::io::Write>(&mut self, w: &mut W) -> std::io::Result<()> {
+		self.pretty.begin_object(w)
+	}
+	fn end_object<W: ?Sized + std::io::Write>(&mut self, w: &mut W) -> std::io::Result<()> {
+		self.pretty.end_object(w)
+	}
+	fn begin_object_key<W: ?Sized + std::io::Write>(&mut self, w: &mut W, first: bool) -> std::io::Result<()> {
+		self.pretty.begin_object_key(w, first)
+	}
+	fn begin_object_value<W: ?Sized + std::io::Write>(&mut self, w: &mut W) -> std::io::Result<()> {
+		self.pretty.begin_object_value(w)
+	}
+	fn end_object_value<W: ?Sized + std::io::Write>(&mut self, w: &mut W) -> std::io::Result<()> {
+		self.pretty.end_object_value(w)
+	}
+}
+
 /// `path` with `suffix` appended to its file name (`gauges.json.tmp`).
 fn sibling(path: &std::path::Path, suffix: &str) -> std::path::PathBuf {
 	let mut name = path.file_name().unwrap_or_default().to_os_string();
@@ -385,6 +476,19 @@ mod tests {
 		assert_eq!(GaugeType::parse("42"), Some(GaugeType::Bar), "no member: GaugeFactory builds a bar");
 		assert_eq!(GaugeType::parse("Circular, Legacy"), None);
 		assert_eq!(GaugeType::parse(""), None);
+	}
+
+	#[test]
+	fn json_is_written_like_system_text_json() {
+		let mut cfg = AppConfig::default_config();
+		cfg.screens[0].gauge.unit = "\u{b0}C <&> 'x' \"q\" \\ \u{1F600}".into();
+		let json = cfg.to_json();
+		let unit = r#""Unit": "\u00B0C \u003C\u0026\u003E \u0027x\u0027 \u0022q\u0022 \\ \uD83D\uDE00","#;
+		assert!(json.contains(unit), "{json}");
+		assert!(json.contains(r#""MinValue": 8,"#), "{json}");
+		assert!(json.contains(r#""InitialValue": 14.7,"#), "{json}");
+		assert!(json.contains("\n  \"Screens\": [\n    {\n      \"Gauge\": {\n"), "{json}");
+		assert_eq!(AppConfig::from_json(&json).unwrap().screens[0].gauge.unit, cfg.screens[0].gauge.unit);
 	}
 
 	#[test]
