@@ -507,12 +507,19 @@ fn merge_calculated<'a>(
 			continue;
 		}
 		let result = expression::evaluate(&ch.expression, &owned_values);
-		owned_values.insert(ch.name.clone(), result);
+		// C# merges into an OrdinalIgnoreCase dictionary, so a calculated
+		// channel named like a raw one (`rpm` vs `Rpm`) replaces its value.
+		insert_ignore_case(&mut owned_values, &ch.name, result);
 		if let Some(t) = owned_targets.as_mut() {
-			t.insert(ch.name.clone(), result);
+			insert_ignore_case(t, &ch.name, result);
 		}
 	}
 	(Cow::Owned(owned_values), owned_targets.map(Cow::Owned))
+}
+
+fn insert_ignore_case(values: &mut Values, name: &str, value: f32) {
+	let key = crate::find_key(values, name).cloned().unwrap_or_else(|| name.to_string());
+	values.insert(key, value);
 }
 
 /// Whether an element draws the same pixels every frame: no visibility rule,
@@ -1137,6 +1144,19 @@ fn draw_warning(canvas: &mut Canvas, w: &WarningIndicatorElement, value: f32) {
 #[cfg(test)]
 mod tests {
 	use super::*;
+
+	#[test]
+	fn calculated_channel_replaces_raw_channel_ignoring_case() {
+		let definition = CustomGaugeDefinition {
+			calculated_channels: vec![CalculatedChannel { name: "rpm".into(), expression: "Rpm / 1000".into() }],
+			..Default::default()
+		};
+		let values: Values = [("Rpm".to_string(), 6500.0)].into_iter().collect();
+		let (merged, _) = merge_calculated(&definition, &values, None);
+		assert_eq!(merged.len(), 1);
+		assert_eq!(crate::lookup(&merged, "Rpm"), Some(6.5));
+		assert_eq!(crate::lookup(&merged, "RPM"), Some(6.5));
+	}
 
 	#[test]
 	fn frame_selection_matches_csharp() {

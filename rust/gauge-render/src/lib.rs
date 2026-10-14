@@ -35,5 +35,24 @@ pub type Values = HashMap<String, f32>;
 /// Looks a channel up by exact name, then case-insensitively (the C#
 /// renderer switches to `OrdinalIgnoreCase` once calculated channels exist).
 pub fn lookup(values: &Values, name: &str) -> Option<f32> {
-	values.get(name).copied().or_else(|| values.iter().find(|(k, _)| k.eq_ignore_ascii_case(name)).map(|(_, v)| *v))
+	values.get(name).copied().or_else(|| values.iter().find(|(k, _)| eq_ignore_case(k, name)).map(|(_, v)| *v))
+}
+
+/// The key `values` stores `name` under: `name` itself, else the first key
+/// equal to it ignoring case.
+pub(crate) fn find_key<'a>(values: &'a Values, name: &str) -> Option<&'a String> {
+	values.get_key_value(name).map(|(k, _)| k).or_else(|| values.keys().find(|k| eq_ignore_case(k, name)))
+}
+
+/// `StringComparer.OrdinalIgnoreCase`: compares the upper-case form of each
+/// character (simple, one-to-one mapping), so `Öltemp` matches `ÖLTEMP`.
+pub fn eq_ignore_case(a: &str, b: &str) -> bool {
+	fn upper(c: char) -> char {
+		let mut u = c.to_uppercase();
+		match (u.next(), u.next()) {
+			(Some(u), None) => u,
+			_ => c,
+		}
+	}
+	a.chars().map(upper).eq(b.chars().map(upper))
 }
