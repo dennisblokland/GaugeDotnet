@@ -36,8 +36,10 @@ impl DeployTarget {
 	fn command(&self, program: &str) -> Command {
 		let use_sshpass = !self.password.is_empty() && which("sshpass");
 		let mut cmd = if use_sshpass {
+			// `-e` reads it from SSHPASS, so it's never on the command line
+			// (visible in `ps`) or in the log.
 			let mut c = Command::new("sshpass");
-			c.arg("-p").arg(&self.password).arg(program);
+			c.arg("-e").arg(program).env("SSHPASS", &self.password);
 			c
 		} else {
 			Command::new(program)
@@ -47,7 +49,7 @@ impl DeployTarget {
 	}
 
 	fn run(&self, mut cmd: Command, log: &mut String) -> Result<(), String> {
-		log.push_str(&format!("$ {}\n", describe(&cmd, &self.password)));
+		log.push_str(&format!("$ {}\n", describe(&cmd)));
 		let out = cmd.output().map_err(|e| format!("{}: {e}", cmd.get_program().to_string_lossy()))?;
 		log.push_str(&String::from_utf8_lossy(&out.stdout));
 		log.push_str(&String::from_utf8_lossy(&out.stderr));
@@ -141,13 +143,10 @@ fn shell_quote(s: &str) -> String {
 	format!("'{}'", s.replace('\'', r"'\''"))
 }
 
-/// The command line for the log, with the password masked.
-fn describe(cmd: &Command, password: &str) -> String {
+/// The command line for the log.
+fn describe(cmd: &Command) -> String {
 	let mut parts = vec![cmd.get_program().to_string_lossy().to_string()];
-	for arg in cmd.get_args() {
-		let a = arg.to_string_lossy();
-		parts.push(if !password.is_empty() && a == password { "****".into() } else { a.to_string() });
-	}
+	parts.extend(cmd.get_args().map(|a| a.to_string_lossy().to_string()));
 	parts.join(" ")
 }
 
@@ -162,12 +161,12 @@ mod tests {
 	}
 
 	#[test]
-	fn masks_the_password() {
+	fn keeps_the_password_off_the_command_line() {
 		// Not a literal, so it isn't mistaken for a real credential.
 		let password = format!("pw{}", std::process::id());
 		let target = DeployTarget { host: "h".into(), user: "u".into(), password, bin_dir: "/d".into() };
 		let mut cmd = Command::new("sshpass");
-		cmd.arg("-p").arg(&target.password).arg("ssh");
-		assert_eq!(describe(&cmd, &target.password), "sshpass -p **** ssh");
+		cmd.arg("-e").arg("ssh").env("SSHPASS", &target.password);
+		assert!(!describe(&cmd).contains(&target.password));
 	}
 }
