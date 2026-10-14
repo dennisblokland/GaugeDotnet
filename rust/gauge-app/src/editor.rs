@@ -1,6 +1,7 @@
 //! On-device config editor (port of `ConfigEditor`): SELECT opens a screen
 //! list, each screen's gauge settings and, for Grid gauges, each cell's
-//! settings. LEFT/RIGHT change values, START saves `gauges.json`.
+//! settings. LEFT/RIGHT change values, START saves `gauges.json`, and
+//! leaving the editor with B saves any edits not saved yet.
 
 use std::path::Path;
 use std::time::{Duration, Instant};
@@ -120,6 +121,10 @@ pub struct ConfigEditor {
 	pub active: bool,
 	/// The config was edited (screens must be rebuilt).
 	pub changed: bool,
+	/// Edits made since the last successful save.
+	unsaved: bool,
+	/// The save on B failed; the next B leaves without saving.
+	save_failed: bool,
 }
 
 impl ConfigEditor {
@@ -132,27 +137,32 @@ impl ConfigEditor {
 			message: None,
 			active: true,
 			changed: false,
+			unsaved: false,
+			save_failed: false,
 		}
 	}
 
-	/// `HandleInput`: keyboard arrows, Return/z (A), Escape/x (B) and s
-	/// (START) override the gamepad key, so the editor works from a keyboard;
-	/// Delete/Backspace is X.
+	/// `HandleInput`. `keyboard` is the SDL key pressed this frame when no
+	/// gamepad is in use: arrows, z (A), Escape/x (B), Return/s (START, as in
+	/// `KeyBus`) and Delete/Backspace (X) then override the gamepad key, so
+	/// the editor works from a keyboard. With a gamepad it must be `None`:
+	/// gptokeyb also turns buttons into keys, and remapping those would turn
+	/// a START press into something else.
 	pub fn handle_input(
 		&mut self,
 		config: &mut AppConfig,
 		path: Option<&Path>,
 		key: GamepadKey,
-		sdl_key: Option<Keycode>,
+		keyboard: Option<Keycode>,
 	) {
-		let key = match sdl_key {
+		let key = match keyboard {
 			Some(Keycode::Up) => GamepadKey::UP,
 			Some(Keycode::Down) => GamepadKey::DOWN,
 			Some(Keycode::Left) => GamepadKey::LEFT,
 			Some(Keycode::Right) => GamepadKey::RIGHT,
-			Some(Keycode::Return | Keycode::Z) => GamepadKey::A_DOWN,
+			Some(Keycode::Z) => GamepadKey::A_DOWN,
 			Some(Keycode::Escape | Keycode::X) => GamepadKey::B_DOWN,
-			Some(Keycode::S) => GamepadKey::START_DOWN,
+			Some(Keycode::Return | Keycode::S) => GamepadKey::START_DOWN,
 			// Not in C#, where `x` is B, so a keyboard couldn't delete screens.
 			Some(Keycode::Delete | Keycode::Backspace) => GamepadKey::X_DOWN,
 			_ => key,
@@ -162,13 +172,34 @@ impl ConfigEditor {
 			return;
 		}
 		match self.page {
-			Page::ScreenList => self.handle_screen_list(config, key),
+			Page::ScreenList => self.handle_screen_list(config, path, key),
 			Page::GaugeEdit => self.handle_gauge_edit(config, key),
 			Page::GridCellEdit => self.handle_cell_edit(config, key),
 		}
 	}
 
-	fn handle_screen_list(&mut self, config: &mut AppConfig, key: GamepadKey) {
+	/// The config was edited: screens must be rebuilt and the file saved.
+	fn edited(&mut self) {
+		self.changed = true;
+		self.unsaved = true;
+		self.save_failed = false;
+	}
+
+	/// B on the screen list: saves unsaved edits, then closes. If the save
+	/// fails the editor stays open with "Save failed!", and a second B
+	/// leaves anyway (the edits still apply until the app restarts).
+	fn close(&mut self, config: &AppConfig, path: Option<&Path>) {
+		if self.unsaved && !self.save_failed && !self.save(config, path) {
+			self.save_failed = true;
+			if let Some(message) = &mut self.message {
+				message.0 = "Save failed! B: quit".into();
+			}
+			return;
+		}
+		self.active = false;
+	}
+
+	fn handle_screen_list(&mut self, config: &mut AppConfig, path: Option<&Path>, key: GamepadKey) {
 		let screens = config.screens.len();
 		match key {
 			GamepadKey::UP => self.cursor = self.cursor.saturating_sub(1),
@@ -181,13 +212,13 @@ impl ConfigEditor {
 			}
 			GamepadKey::A_DOWN if screens < AppConfig::MAX_SCREENS => {
 				config.screens.push(ScreenConfig::default());
-				self.changed = true;
+				self.edited();
 				self.cursor = config.screens.len() - 1;
 			}
-			GamepadKey::B_DOWN => self.active = false,
+			GamepadKey::B_DOWN => self.close(config, path),
 			GamepadKey::X_DOWN if self.cursor < screens && screens > 1 => {
 				config.screens.remove(self.cursor);
-				self.changed = true;
+				self.edited();
 				self.cursor = self.cursor.min(config.screens.len());
 			}
 			_ => {}
@@ -204,7 +235,7 @@ impl ConfigEditor {
 				adjust_field(gauge, fields[self.cursor], if key == GamepadKey::RIGHT { 1 } else { -1 });
 				// A new type can have fewer fields.
 				self.cursor = self.cursor.min(fields_for(gauge).len() - 1);
-				self.changed = true;
+				self.edited();
 			}
 			GamepadKey::A_DOWN => {
 				if let Field::Cell(i) = fields[self.cursor] {
@@ -228,7 +259,7 @@ impl ConfigEditor {
 			GamepadKey::DOWN => self.cursor = (self.cursor + 1).min(CELL_FIELDS.len() - 1),
 			GamepadKey::LEFT | GamepadKey::RIGHT => {
 				adjust_cell(cell, CELL_FIELDS[self.cursor], if key == GamepadKey::RIGHT { 1 } else { -1 });
-				self.changed = true;
+				self.edited();
 			}
 			GamepadKey::B_DOWN => {
 				self.page = Page::GaugeEdit;
@@ -238,17 +269,23 @@ impl ConfigEditor {
 		}
 	}
 
-	fn save(&mut self, config: &AppConfig, path: Option<&Path>) {
+	/// Writes `config` to `path` and shows the result; true if it worked.
+	fn save(&mut self, config: &AppConfig, path: Option<&Path>) -> bool {
 		let until = Instant::now() + Duration::from_secs(2);
 		let result = path.map_or(Ok(()), |p| config.save(p));
-		self.message = Some(match result {
-			Ok(()) => ("Config Saved!".into(), LIME_GREEN, until),
+		self.changed = true;
+		match result {
+			Ok(()) => {
+				self.message = Some(("Config Saved!".into(), LIME_GREEN, until));
+				self.unsaved = false;
+				true
+			}
 			Err(e) => {
 				eprintln!("[editor] saving failed: {e}");
-				("Save failed!".into(), Rgba::rgb(255, 32, 32), until)
+				self.message = Some(("Save failed!".into(), Rgba::rgb(255, 32, 32), until));
+				false
 			}
-		});
-		self.changed = true;
+		}
 	}
 
 	/// Draws the whole editor (it covers the screen).
@@ -531,8 +568,8 @@ mod tests {
 		let path = dir.join("gauges.json");
 		let mut config = AppConfig::default_config();
 		let mut editor = ConfigEditor::new();
-		// Return = A (open screen 1), Right = next type, s = START (save).
-		for k in [Keycode::Return, Keycode::Right, Keycode::S] {
+		// z = A (open screen 1), Right = next type, s = START (save).
+		for k in [Keycode::Z, Keycode::Right, Keycode::S] {
 			editor.handle_input(&mut config, Some(&path), GamepadKey::NONE, Some(k));
 		}
 		let saved = AppConfig::load_or_create(&path);
@@ -542,6 +579,69 @@ mod tests {
 		editor.handle_input(&mut config, Some(&path), GamepadKey::MENU_DOWN, Some(Keycode::Escape));
 		editor.handle_input(&mut config, Some(&path), GamepadKey::MENU_DOWN, Some(Keycode::Escape));
 		assert!(!editor.active);
+		let _ = std::fs::remove_dir_all(dir);
+	}
+
+	#[test]
+	fn leaving_with_b_saves_edits() {
+		let dir = std::env::temp_dir().join(format!("gauge-editor-b-{}", std::process::id()));
+		std::fs::create_dir_all(&dir).unwrap();
+		let path = dir.join("gauges.json");
+		let mut config = AppConfig::default_config();
+		let mut editor = ConfigEditor::new();
+		use GamepadKey as K;
+		// Open screen 1, change its type, back to the list and out: no START.
+		for k in [K::A_DOWN, K::RIGHT, K::B_DOWN, K::B_DOWN] {
+			editor.handle_input(&mut config, Some(&path), k, None);
+		}
+		assert!(!editor.active && editor.changed);
+		assert_eq!(AppConfig::load_or_create(&path).screens[0].gauge.gauge_type, GaugeType::Circular);
+		let _ = std::fs::remove_dir_all(dir);
+	}
+
+	#[test]
+	fn leaving_without_edits_writes_nothing() {
+		let path = std::env::temp_dir().join(format!("gauge-editor-none-{}", std::process::id())).join("gauges.json");
+		let mut config = AppConfig::default_config();
+		let mut editor = ConfigEditor::new();
+		editor.handle_input(&mut config, Some(&path), GamepadKey::B_DOWN, None);
+		assert!(!editor.active && !editor.changed);
+		assert!(!path.exists());
+	}
+
+	#[test]
+	fn failed_save_on_b_keeps_editor_open_once() {
+		// The parent directory doesn't exist, so the save fails.
+		let path =
+			std::env::temp_dir().join(format!("gauge-editor-missing-{}", std::process::id())).join("gauges.json");
+		let mut config = AppConfig::default_config();
+		let mut editor = ConfigEditor::new();
+		use GamepadKey as K;
+		for k in [K::A_DOWN, K::RIGHT, K::B_DOWN, K::B_DOWN] {
+			editor.handle_input(&mut config, Some(&path), k, None);
+		}
+		assert!(editor.active, "stays open so the failure is seen");
+		assert_eq!(editor.message.as_ref().map(|m| m.0.as_str()), Some("Save failed! B: quit"));
+		editor.handle_input(&mut config, Some(&path), K::B_DOWN, None);
+		assert!(!editor.active, "second B leaves anyway");
+	}
+
+	#[test]
+	fn start_with_gamepad_is_not_remapped() {
+		// With a gamepad, gptokeyb may also send START as Return; the caller
+		// passes no keyboard key then, and Return itself means START anyway.
+		let dir = std::env::temp_dir().join(format!("gauge-editor-start-{}", std::process::id()));
+		std::fs::create_dir_all(&dir).unwrap();
+		let path = dir.join("gauges.json");
+		let mut config = AppConfig::default_config();
+		let mut editor = ConfigEditor::new();
+		editor.handle_input(&mut config, Some(&path), GamepadKey::START_DOWN, None);
+		assert_eq!(editor.page, Page::ScreenList, "START didn't open a screen");
+		assert!(path.exists());
+		std::fs::remove_file(&path).unwrap();
+		editor.handle_input(&mut config, Some(&path), GamepadKey::START_DOWN, Some(Keycode::Return));
+		assert_eq!(editor.page, Page::ScreenList);
+		assert!(path.exists());
 		let _ = std::fs::remove_dir_all(dir);
 	}
 

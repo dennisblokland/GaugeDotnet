@@ -15,6 +15,9 @@ namespace RG35XX.Libraries
         private FileStream? _stream;
         private volatile bool _disposed;
 
+        /// <summary>True once the joystick device was opened.</summary>
+        public bool IsOpen => _stream != null;
+
         public void ClearBuffer()
         {
             _keyBuffer.Clear();

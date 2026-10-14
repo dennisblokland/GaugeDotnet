@@ -201,17 +201,23 @@ impl AppConfig {
 		}
 	}
 
-	/// Loads `path` like `ConfigService.Load`: a missing, unreadable or empty
-	/// config is replaced by the default (and written back), and extra
-	/// screens beyond [`Self::MAX_SCREENS`] are dropped.
+	/// Loads `path` like `ConfigService.Load`: a missing or empty config is
+	/// replaced by the default (and written back), and extra screens beyond
+	/// [`Self::MAX_SCREENS`] are dropped. A config that exists but can't be
+	/// parsed (say, truncated by a power cut) is first copied to
+	/// `gauges.json.bad` so the user's settings can still be recovered.
 	pub fn load_or_create(path: &std::path::Path) -> Self {
-		let loaded = std::fs::read_to_string(path).ok().and_then(|json| match Self::from_json(&json) {
-			Ok(c) => Some(c),
-			Err(e) => {
-				eprintln!("[config] {}: {e}; using defaults", path.display());
-				None
-			}
-		});
+		let loaded = match std::fs::read_to_string(path) {
+			Ok(json) => match Self::from_json(&json) {
+				Ok(c) => Some(c),
+				Err(e) => {
+					eprintln!("[config] {}: {e}; using defaults", path.display());
+					backup_bad(path);
+					None
+				}
+			},
+			Err(_) => None,
+		};
 		let mut config = match loaded {
 			Some(c) if !c.screens.is_empty() => c,
 			_ => {
@@ -226,8 +232,48 @@ impl AppConfig {
 		config
 	}
 
+	/// Writes `path` atomically: the JSON goes to `<path>.tmp`, is fsynced,
+	/// then renamed over `path`, and the directory is fsynced. A power cut
+	/// on the SD card leaves either the old or the new file, never a
+	/// truncated one.
 	pub fn save(&self, path: &std::path::Path) -> std::io::Result<()> {
-		std::fs::write(path, self.to_json())
+		use std::io::Write;
+		let tmp = sibling(path, ".tmp");
+		let result = (|| {
+			let mut file = std::fs::File::create(&tmp)?;
+			file.write_all(self.to_json().as_bytes())?;
+			file.sync_all()?;
+			drop(file);
+			std::fs::rename(&tmp, path)
+		})();
+		if result.is_err() {
+			let _ = std::fs::remove_file(&tmp);
+		}
+		result?;
+		// Makes the rename itself durable. Not every filesystem lets a
+		// directory be opened or synced, and the data is already safe.
+		let dir = path.parent().filter(|d| !d.as_os_str().is_empty()).unwrap_or(std::path::Path::new("."));
+		if let Ok(d) = std::fs::File::open(dir) {
+			let _ = d.sync_all();
+		}
+		Ok(())
+	}
+}
+
+/// `path` with `suffix` appended to its file name (`gauges.json.tmp`).
+fn sibling(path: &std::path::Path, suffix: &str) -> std::path::PathBuf {
+	let mut name = path.file_name().unwrap_or_default().to_os_string();
+	name.push(suffix);
+	path.with_file_name(name)
+}
+
+/// Keeps an unparsable config as `gauges.json.bad` before the defaults
+/// replace it.
+fn backup_bad(path: &std::path::Path) {
+	let bad = sibling(path, ".bad");
+	match std::fs::copy(path, &bad) {
+		Ok(_) => eprintln!("[config] kept the unreadable config as {}", bad.display()),
+		Err(e) => eprintln!("[config] could not back up {}: {e}", path.display()),
 	}
 }
 
@@ -255,6 +301,9 @@ mod tests {
 
 		std::fs::write(&path, "{ not json").unwrap();
 		assert_eq!(AppConfig::load_or_create(&path).screens.len(), 1);
+		let bad = dir.join("gauges.json.bad");
+		assert_eq!(std::fs::read_to_string(&bad).unwrap(), "{ not json", "the broken config is kept");
+		assert!(!dir.join("gauges.json.tmp").exists(), "save leaves no temp file");
 		let _ = std::fs::remove_dir_all(dir);
 	}
 

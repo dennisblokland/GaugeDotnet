@@ -1,15 +1,21 @@
 using static SDL2.SDL;
 using RG35XX.Core.GamePads;
-using RG35XX.Core.Interfaces;
 using RG35XX.Libraries;
 
 namespace GaugeDotnet
 {
 	public class InputHandler : IDisposable
 	{
-		private readonly IGamePadReader _gamePadReader;
+		private readonly GamePadReader _gamePadReader;
 
 		public SDL_Keycode? LastSdlKey { get; private set; }
+
+		/// <summary>
+		/// The SDL key pressed this poll when the keyboard stands in for the gamepad.
+		/// With a joystick, gptokeyb also turns buttons into keys (START can arrive
+		/// as Return), so those must not override the gamepad key.
+		/// </summary>
+		public SDL_Keycode? KeyboardKey => _gamePadReader.UsesKeyboard ? LastSdlKey : null;
 		public GamepadKey LastGamepadKey { get; private set; }
 		public bool QuitRequested { get; private set; }
 

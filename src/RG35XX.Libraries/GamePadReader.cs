@@ -17,6 +17,12 @@ namespace RG35XX.Libraries
 #endif
         }
 
+        /// <summary>
+        /// True when no joystick device is read, so the keyboard stands in for the
+        /// gamepad (DEBUG builds, or a desktop without /dev/input/js0).
+        /// </summary>
+        public bool UsesKeyboard => _gamePadReader is not LinuxGamePadReader { IsOpen: true };
+
         public void ClearBuffer()
         {
             _gamePadReader.ClearBuffer();
