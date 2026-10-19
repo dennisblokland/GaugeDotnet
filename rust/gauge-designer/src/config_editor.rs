@@ -183,7 +183,7 @@ impl ConfigEditor {
 							g.snap_to_targets();
 						}
 						Screen::Grid(_) => screen.update(|_| Some(cfg.initial_value)),
-						Screen::Builtin { .. } => {}
+						Screen::Builtin { .. } | Screen::Failed(_) => {}
 					}
 					screen.draw(&mut canvas);
 				}
