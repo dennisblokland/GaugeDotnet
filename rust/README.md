@@ -59,6 +59,10 @@ cargo run --release --features sdl -- run examples/gauges.json
 
 Relative paths inside a definition (images, needle images, GIFs) resolve against the JSON file's folder, as in the C# app.
 
+`examples/retro.json` is an 80s digital dash: a segmented amber tach, cyan LCD bars for fuel pressure and coolant, and seven-segment readouts. Its segments come from `SegmentCount` on arcs and bars.
+
+![retro dash](../docs/retro-dash.png)
+
 ### The device app
 
 `gauge app` is the port of the C# `Program` and `GameLoop`:

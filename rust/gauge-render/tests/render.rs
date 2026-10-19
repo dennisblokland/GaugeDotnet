@@ -238,6 +238,71 @@ fn incremental_and_threaded_renders_match_full_render() {
 }
 
 #[test]
+fn segmented_arcs_and_bars_light_whole_segments() {
+	// 4 segments of 23 px with 2 px gaps; a segment lights once the value reaches its end.
+	let json = r##"{ "BackgroundColor": "#000000", "Elements": [
+		{ "$type": "linearbar", "X": 0, "Y": 0, "Width": 98, "Height": 10, "DataSource": "Rpm",
+		  "MaxValue": 100, "FillColor": "#FFFFFF", "TrackColor": "#400000", "BorderWidth": 0, "CornerRadius": 0,
+		  "SegmentCount": 4, "SegmentGap": 2 },
+		{ "$type": "linearbar", "X": 0, "Y": 20, "Width": 10, "Height": 98, "IsVertical": true, "DataSource": "Rpm",
+		  "MaxValue": 100, "FillColor": "#FFFFFF", "TrackColor": "#400000", "BorderWidth": 0, "CornerRadius": 0,
+		  "SegmentCount": 4, "SegmentGap": 2 },
+		{ "$type": "arc", "X": 300, "Y": 300, "Radius": 100, "StrokeWidth": 10, "StartAngleDeg": 0, "SweepAngleDeg": 90,
+		  "DataSource": "Rpm", "MaxValue": 100, "Color": "#FFFFFF", "TrackColor": "#400000",
+		  "SegmentCount": 3, "SegmentGap": 10 }
+	]}"##;
+	let def = CustomGaugeDefinition::from_json(json).unwrap();
+	let mut r = ElementRenderer::new();
+	let mut canvas = Canvas::new(400, 420);
+	let lit = |c: &Canvas, x, y| c.pixel(x, y).unwrap().g > 200;
+
+	// 70 % lights two of four segments: the third (50-75 %) waits for 75 %.
+	r.render(&mut canvas, &def, &values(&[("Rpm", 70.0)]), None);
+	assert!(lit(&canvas, 10, 5) && lit(&canvas, 35, 5));
+	assert!(!lit(&canvas, 60, 5), "a partly reached segment stays unlit");
+	let gap = canvas.pixel(74, 5).unwrap();
+	assert!(gap.r < 8 && gap.g < 8, "gap between unlit segments shows the background, got {gap:?}");
+	assert!(lit(&canvas, 5, 20 + 98 - 10) && !lit(&canvas, 5, 20 + 98 - 60), "vertical bars fill from the bottom");
+	// Arc: three 30° segments less the gaps; at 70 % only the first two light.
+	let at = |deg: f32| {
+		let a = deg.to_radians();
+		((300.0 + 100.0 * a.cos()) as u32, (300.0 + 100.0 * a.sin()) as u32)
+	};
+	let ((x1, y1), (x2, y2), (x3, y3)) = (at(15.0), at(45.0), at(75.0));
+	assert!(lit(&canvas, x1, y1) && lit(&canvas, x2, y2) && !lit(&canvas, x3, y3));
+
+	r.render(&mut canvas, &def, &values(&[("Rpm", 75.0)]), None);
+	assert!(lit(&canvas, 60, 5), "the segment lights at its end value");
+}
+
+#[test]
+fn retro_dash_repaints_only_changed_segments() {
+	use gauge_render::FrameState;
+
+	let def = CustomGaugeDefinition::load(examples_dir().join("retro.json")).unwrap();
+	let time = chrono::NaiveDate::from_ymd_opt(2026, 1, 1).unwrap().and_hms_opt(9, 30, 0);
+	let (mut full, mut inc) = (ElementRenderer::new(), ElementRenderer::new());
+	full.fixed_time = time;
+	inc.fixed_time = time;
+	let mut state = FrameState::new();
+	let (mut a, mut b) = (Canvas::new(640, 480), Canvas::new(640, 480));
+
+	// Rpm crosses the curve/straight join and the red zone; 3010 → 3040 stays inside one segment.
+	let frames = [3010.0, 3040.0, 3700.0, 4100.0, 7300.0, 6900.0, 500.0];
+	let mut damages = Vec::new();
+	for (n, &rpm) in frames.iter().enumerate() {
+		let v = values(&[("Rpm", rpm), ("VehicleSpeed", 88.0), ("FuelPressure", 380.0), ("Clt", 90.0)]);
+		full.render(&mut a, &def, &v, Some(&v));
+		let d = inc.render_incremental(&mut b, &def, &v, Some(&v), &mut state);
+		assert_frames_match(&a, &b, &format!("frame {n} (rpm {rpm})"));
+		damages.push(d.area());
+	}
+	// Only the SHIFT lamp (bound to Rpm, unchanged look) repaints; the tach segments don't.
+	assert!(damages[1] <= 32 * 32, "a move inside one segment repainted {} px", damages[1]);
+	assert!(damages[2] < 640 * 480 / 10, "a few segments repainted {} px", damages[2]);
+}
+
+#[test]
 fn turboxs_needle_follows_the_270_degree_scale() {
 	// -10..20 sweeps clockwise from 6 o'clock to 3 o'clock around (221, 243).
 	let config = GaugeConfig {

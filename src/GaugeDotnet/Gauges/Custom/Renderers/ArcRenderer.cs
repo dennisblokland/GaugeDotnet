@@ -14,6 +14,12 @@ internal static class ArcRenderer
 		SKRect rect = new(arc.X - arc.Radius, arc.Y - arc.Radius, arc.X + arc.Radius, arc.Y + arc.Radius);
 		float sign = arc.AntiClockwise ? -1f : 1f;
 
+		if (arc.SegmentCount > 1)
+		{
+			DrawSegmented(canvas, arc, value, rect, sign);
+			return;
+		}
+
 		if (arc.ShowTrack)
 		{
 			paint.Style = SKPaintStyle.Stroke;
@@ -33,14 +39,7 @@ internal static class ArcRenderer
 		}
 		fillSweep *= sign;
 
-		string fillColor = arc.Color;
-		if (arc.UseConditionalColor && !string.IsNullOrEmpty(arc.DataSource))
-		{
-			if (value >= arc.DangerThreshold) fillColor = arc.DangerColor;
-			else if (value >= arc.WarnThreshold) fillColor = arc.WarnColor;
-		}
-
-		SKColor fillSKColor = ColorCache.Get(fillColor);
+		SKColor fillSKColor = ColorCache.Get(FillColor(arc, value));
 
 		paint.Style = SKPaintStyle.Stroke;
 		paint.StrokeWidth = arc.StrokeWidth;
@@ -55,6 +54,62 @@ internal static class ArcRenderer
 			paint.Color = fillSKColor.WithAlpha(GlowAlpha);
 			paint.MaskFilter = RenderContext.GetBlur(GlowSigma);
 			canvas.DrawArc(rect, arc.StartAngleDeg, fillSweep, false, paint);
+			paint.MaskFilter = null;
+		}
+	}
+
+	private static string FillColor(ArcElement arc, float value)
+	{
+		if (arc.UseConditionalColor && !string.IsNullOrEmpty(arc.DataSource))
+		{
+			if (value >= arc.DangerThreshold) return arc.DangerColor;
+			if (value >= arc.WarnThreshold) return arc.WarnColor;
+		}
+		return arc.Color;
+	}
+
+	/// <summary>
+	/// <see cref="ArcElement.SegmentCount"/> segments separated by <see cref="ArcElement.SegmentGap"/>
+	/// pixels; a segment lights once the value reaches its end.
+	/// </summary>
+	private static void DrawSegmented(SKCanvas canvas, ArcElement arc, float value, SKRect rect, float sign)
+	{
+		SKPaint paint = RenderContext.Paint;
+		int n = arc.SegmentCount;
+		float t = 1f;
+		if (arc.IsDynamic && !string.IsNullOrEmpty(arc.DataSource))
+		{
+			float range = arc.MaxValue - arc.MinValue;
+			t = range > 0 ? Math.Clamp((value - arc.MinValue) / range, 0f, 1f) : 0f;
+		}
+		int lit = Segments.Lit(n, t);
+		float gap = Math.Max(arc.SegmentGap, 0f) / Math.Max(arc.Radius, 1f) * 180f / MathF.PI;
+		gap = Math.Min(gap, 0.8f * arc.SweepAngleDeg / (n - 1));
+		float seg = (arc.SweepAngleDeg - gap * (n - 1)) / n;
+		float step = seg + gap;
+
+		SKColor fillSKColor = ColorCache.Get(FillColor(arc, value));
+		SKColor trackColor = ColorCache.Get(arc.TrackColor);
+		paint.Style = SKPaintStyle.Stroke;
+		paint.StrokeWidth = arc.StrokeWidth;
+		paint.StrokeCap = SKStrokeCap.Butt;
+		paint.MaskFilter = null;
+		for (int i = 0; i < n; i++)
+		{
+			if (i >= lit && !arc.ShowTrack)
+			{
+				continue;
+			}
+			paint.Color = i < lit ? fillSKColor : trackColor;
+			canvas.DrawArc(rect, arc.StartAngleDeg + i * step * sign, seg * sign, false, paint);
+		}
+
+		if (lit > 0)
+		{
+			paint.StrokeWidth = arc.StrokeWidth + GlowStrokeExtra;
+			paint.Color = fillSKColor.WithAlpha(GlowAlpha);
+			paint.MaskFilter = RenderContext.GetBlur(GlowSigma);
+			canvas.DrawArc(rect, arc.StartAngleDeg, (lit * step - gap) * sign, false, paint);
 			paint.MaskFilter = null;
 		}
 	}

@@ -85,6 +85,10 @@ public class ArcElement : GaugeElement
 	public string WarnColor { get; set; } = "#FFCC00";
 	public float DangerThreshold { get; set; } = 95f;
 	public string DangerColor { get; set; } = "#FF3333";
+	/// <summary>Splits the arc into this many lit/unlit segments; 0 or 1 draws it continuous.</summary>
+	public int SegmentCount { get; set; } = 0;
+	/// <summary>Gap between segments, in pixels along the arc.</summary>
+	public float SegmentGap { get; set; } = 2f;
 
 	[JsonIgnore]
 	public override string TypeLabel => "Arc";
@@ -212,6 +216,10 @@ public class LinearBarElement : GaugeElement
 	public string WarnColor { get; set; } = "#FFCC00";
 	public float DangerThreshold { get; set; } = 95f;
 	public string DangerColor { get; set; } = "#FF3333";
+	/// <summary>Splits the bar into this many lit/unlit segments; 0 or 1 draws it continuous.</summary>
+	public int SegmentCount { get; set; } = 0;
+	/// <summary>Gap between segments, in pixels.</summary>
+	public float SegmentGap { get; set; } = 2f;
 
 	[JsonIgnore]
 	public override string TypeLabel => "Bar";

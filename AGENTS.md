@@ -91,6 +91,8 @@ All `GaugeElement` subclasses have:
 
 `ArcElement` and `LinearBarElement` have `UseConditionalColor` + `WarnThreshold`/`WarnColor`/`DangerThreshold`/`DangerColor` for threshold-based color switching. `ArcElement` also has `AntiClockwise` (bool) to reverse sweep direction.
 
+`ArcElement` and `LinearBarElement` have `SegmentCount` (0 = continuous) and `SegmentGap` (px; along the arc for arcs): the track and fill split into that many segments, and a segment lights once the value reaches its end, like an LCD or VFD bar. `rust/examples/retro.json` uses them for an 80s digital dash.
+
 ### Key Files
 
 - `Gauges/Custom/GaugeElement.cs` — Polymorphic element models (`[JsonDerivedType]`)
