@@ -12,6 +12,7 @@
       { "DataSource": "Rpm", "Title": "RPM" },
       { "DataSource": "AfrCurr1", "Title": "AFR", "Decimals": 1 },
       { "DataSource": "OilTemp", "Title": "OIL", "Unit": "C" },
-      { "DataSource": "Vbat", "Title": "BATT", "Unit": "V", "Decimals": 1 } ] } }
+      { "DataSource": "Vbat", "Title": "BATT", "Unit": "V", "Decimals": 1 } ] } },
+    { "Gauge": { "Type": "Custom" }, "CustomDefinitionFile": "retro.json" }
   ]
 }

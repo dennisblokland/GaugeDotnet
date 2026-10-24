@@ -2,7 +2,7 @@
 //! designer's `Rendering/ElementRenderer.cs` (`GetBounds`, `HitTest`,
 //! `SetBounds`), plus moving and the angle handles the C# designer lacked.
 
-use gauge_render::format::format_datetime;
+use gauge_render::format::{format_datetime, DateTimeKind};
 use gauge_render::model::*;
 use gauge_render::text::typeface;
 
@@ -74,8 +74,9 @@ fn ring(cx: f32, cy: f32, radius: f32, stroke: f32) -> Bounds {
 
 /// Sample text used to size a clock (the current time in its format).
 pub fn clock_sample(clock: &ClockElement) -> String {
-	let now = chrono::Local::now().naive_local();
-	format_datetime(&now, &clock.format).unwrap_or_else(|| "88:88:88".into())
+	let now = chrono::Local::now();
+	let kind = DateTimeKind::Local { offset_secs: now.offset().local_minus_utc() };
+	format_datetime(&now.naive_local(), kind, &clock.format).unwrap_or_else(|| "88:88:88".into())
 }
 
 /// `GetBounds`: the box the selection outline and resize handles use.

@@ -215,6 +215,8 @@ element!(
 		warn_color: String = "#FFCC00".into(),
 		danger_threshold: f32 = 95.0,
 		danger_color: String = "#FF3333".into(),
+		segment_count: i32 = 0,
+		segment_gap: f32 = 2.0,
 	}
 );
 
@@ -320,6 +322,8 @@ element!(
 		warn_color: String = "#FFCC00".into(),
 		danger_threshold: f32 = 95.0,
 		danger_color: String = "#FF3333".into(),
+		segment_count: i32 = 0,
+		segment_gap: f32 = 2.0,
 	}
 );
 

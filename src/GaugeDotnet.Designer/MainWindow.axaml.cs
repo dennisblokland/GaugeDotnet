@@ -638,6 +638,8 @@ public partial class MainWindow : Window
 				AddBoolProp("Show Track", arc.ShowTrack, v => arc.ShowTrack = v);
 				AddBoolProp("Anti-clockwise", arc.AntiClockwise, v => arc.AntiClockwise = v);
 				AddBoolProp("Dynamic (value-driven)", arc.IsDynamic, v => arc.IsDynamic = v);
+				AddIntProp("Segments (0 = continuous)", arc.SegmentCount, v => arc.SegmentCount = v, 0, 200);
+				AddFloatProp("Segment Gap", arc.SegmentGap, v => arc.SegmentGap = v, 0, 40, 0.5f);
 				AddSeparator();
 				AddBoolProp("Conditional Color", arc.UseConditionalColor, v => arc.UseConditionalColor = v);
 				AddFloatProp("Warn Threshold", arc.WarnThreshold, v => arc.WarnThreshold = v, -10000, 100000);
@@ -736,6 +738,8 @@ public partial class MainWindow : Window
 				AddColorProp("Border Color", bar.BorderColor, v => bar.BorderColor = v);
 				AddFloatProp("Border Width", bar.BorderWidth, v => bar.BorderWidth = v, 0, 5, 0.5f);
 				AddFloatProp("Corner Radius", bar.CornerRadius, v => bar.CornerRadius = v, 0, 20);
+				AddIntProp("Segments (0 = continuous)", bar.SegmentCount, v => bar.SegmentCount = v, 0, 200);
+				AddFloatProp("Segment Gap", bar.SegmentGap, v => bar.SegmentGap = v, 0, 40, 0.5f);
 				AddSeparator();
 				AddBoolProp("Conditional Color", bar.UseConditionalColor, v => bar.UseConditionalColor = v);
 				AddFloatProp("Warn Threshold", bar.WarnThreshold, v => bar.WarnThreshold = v, -10000, 100000);
