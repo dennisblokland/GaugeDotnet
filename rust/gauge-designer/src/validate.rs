@@ -223,7 +223,7 @@ pub fn check_number_format(format: &str) -> Option<String> {
 
 pub fn check_date_format(format: &str) -> Option<String> {
 	let now = chrono::NaiveDate::from_ymd_opt(2024, 1, 2).and_then(|d| d.and_hms_opt(3, 4, 5))?;
-	if format_datetime(&now, DateTimeKind::Local { offset_secs: 0 }, format).is_none() {
+	if format_datetime(&now, DateTimeKind::Utc, format).is_none() {
 		return Some("not a valid date format; the clock falls back to HH:mm:ss".into());
 	}
 	// Single-letter standard formats are expanded, so only look at custom ones.

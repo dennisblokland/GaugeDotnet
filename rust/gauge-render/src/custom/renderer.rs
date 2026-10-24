@@ -644,7 +644,12 @@ pub(crate) fn partial_damage(element: &Element, old: f32, new: f32, size: (u32, 
 				)
 			};
 			// A colour change, or the fill appearing/disappearing, repaints the whole arc.
-			let (t0, t1) = (arc.base.normalized(old), arc.base.normalized(new));
+			let segments = segment_count(arc.segment_count);
+			let t0 = quantize(segments, arc.base.normalized(old));
+			let t1 = quantize(segments, arc.base.normalized(new));
+			if segments.is_some() && t0 == t1 && fill(old) == fill(new) {
+				return Some(None);
+			}
 			if fill(old) != fill(new) || t0 == 0.0 || t1 == 0.0 {
 				return None;
 			}
@@ -672,7 +677,12 @@ pub(crate) fn partial_damage(element: &Element, old: f32, new: f32, size: (u32, 
 					v,
 				)
 			};
-			let (t0, t1) = (bar.base.normalized(old), bar.base.normalized(new));
+			let segments = segment_count(bar.segment_count);
+			let t0 = quantize(segments, bar.base.normalized(old));
+			let t1 = quantize(segments, bar.base.normalized(new));
+			if segments.is_some() && t0 == t1 && fill(old) == fill(new) {
+				return Some(None);
+			}
 			if fill(old) != fill(new) || t0 == 0.0 || t1 == 0.0 {
 				return None;
 			}
@@ -776,6 +786,42 @@ fn draw_background(
 	}
 }
 
+/// `SegmentCount` of an arc or bar when it is split into segments (2 or more).
+fn segment_count(count: i32) -> Option<usize> {
+	(count > 1).then_some(count as usize)
+}
+
+/// Segments lit at `t` (0–1): a segment lights once the value reaches its end.
+fn lit_segments(n: usize, t: f32) -> usize {
+	((t * n as f32 + 1e-4).floor() as usize).min(n)
+}
+
+/// `t` rounded down to the end of the last lit segment.
+fn quantize(segments: Option<usize>, t: f32) -> f32 {
+	match segments {
+		Some(n) => lit_segments(n, t) as f32 / n as f32,
+		None => t,
+	}
+}
+
+/// Sweep of one arc segment and the step from one segment's start to the
+/// next, in degrees. `SegmentGap` is in pixels along the arc.
+fn arc_segments(arc: &ArcElement, n: usize) -> (f32, f32) {
+	let gap = (arc.segment_gap.max(0.0) / arc.radius.max(1.0)).to_degrees();
+	let gap = gap.min(0.8 * arc.sweep_angle_deg / (n - 1) as f32);
+	let seg = (arc.sweep_angle_deg - gap * (n - 1) as f32) / n as f32;
+	(seg, seg + gap)
+}
+
+/// Length of one bar segment and the step between segment starts, in pixels
+/// along the bar.
+fn bar_segments(bar: &LinearBarElement, n: usize) -> (f32, f32) {
+	let len = if bar.is_vertical { bar.height } else { bar.width };
+	let gap = bar.segment_gap.max(0.0).min(0.8 * len / (n - 1) as f32);
+	let seg = (len - gap * (n - 1) as f32) / n as f32;
+	(seg, seg + gap)
+}
+
 fn draw_arc(canvas: &mut Canvas, arc: &ArcElement, value: f32) {
 	const GLOW_ALPHA: u8 = 60;
 	const GLOW_SIGMA: f32 = 8.0;
@@ -785,6 +831,40 @@ fn draw_arc(canvas: &mut Canvas, arc: &ArcElement, value: f32) {
 		return;
 	};
 	let sign = if arc.anti_clockwise { -1.0 } else { 1.0 };
+
+	let mut fill_color = &arc.color;
+	if arc.use_conditional_color && arc.base.has_source() {
+		if value >= arc.danger_threshold {
+			fill_color = &arc.danger_color;
+		} else if value >= arc.warn_threshold {
+			fill_color = &arc.warn_color;
+		}
+	}
+	let fill = color(fill_color);
+
+	if let Some(n) = segment_count(arc.segment_count) {
+		let t = if arc.is_dynamic && arc.base.has_source() { arc.base.normalized(value) } else { 1.0 };
+		let lit = lit_segments(n, t);
+		let (seg, step) = arc_segments(arc, n);
+		let track = Paint::stroke(color(&arc.track_color), arc.stroke_width);
+		let lit_paint = Paint::stroke(fill, arc.stroke_width);
+		for i in 0..n {
+			let paint = if i < lit {
+				&lit_paint
+			} else if arc.show_track {
+				&track
+			} else {
+				continue;
+			};
+			canvas.draw_arc(oval, arc.start_angle_deg + i as f32 * step * sign, seg * sign, paint);
+		}
+		if lit > 0 {
+			let glow = Paint::stroke(fill.with_alpha(GLOW_ALPHA), arc.stroke_width + GLOW_STROKE_EXTRA)
+				.with_blur(Some(Blur::normal(GLOW_SIGMA)));
+			canvas.draw_arc(oval, arc.start_angle_deg, (lit as f32 * step - (step - seg)) * sign, &glow);
+		}
+		return;
+	}
 
 	if arc.show_track {
 		let track = Paint::stroke(color(&arc.track_color), arc.stroke_width);
@@ -796,16 +876,6 @@ fn draw_arc(canvas: &mut Canvas, arc: &ArcElement, value: f32) {
 		fill_sweep = arc.sweep_angle_deg * arc.base.normalized(value);
 	}
 	fill_sweep *= sign;
-
-	let mut fill_color = &arc.color;
-	if arc.use_conditional_color && arc.base.has_source() {
-		if value >= arc.danger_threshold {
-			fill_color = &arc.danger_color;
-		} else if value >= arc.warn_threshold {
-			fill_color = &arc.warn_color;
-		}
-	}
-	let fill = color(fill_color);
 
 	canvas.draw_arc(oval, arc.start_angle_deg, fill_sweep, &Paint::stroke(fill, arc.stroke_width));
 	if fill_sweep != 0.0 {
@@ -1073,14 +1143,6 @@ fn draw_linear_bar(canvas: &mut Canvas, bar: &LinearBarElement, value: f32) {
 	let Some(track) = rect(x, y, x + bar.width, y + bar.height) else {
 		return;
 	};
-	draw_rect_or_round(canvas, track, bar.corner_radius, &Paint::fill(color(&bar.track_color)));
-
-	let (fl, ft, fr, fb) = if bar.is_vertical {
-		let h = bar.height * t;
-		(x, y + bar.height - h, x + bar.width, y + bar.height)
-	} else {
-		(x, y, x + bar.width * t, y + bar.height)
-	};
 
 	let mut fill_hex = &bar.fill_color;
 	if bar.use_conditional_color && bar.base.has_source() {
@@ -1090,6 +1152,58 @@ fn draw_linear_bar(canvas: &mut Canvas, bar: &LinearBarElement, value: f32) {
 			fill_hex = &bar.warn_color;
 		}
 	}
+
+	if let Some(n) = segment_count(bar.segment_count) {
+		let lit = lit_segments(n, t);
+		let (seg, step) = bar_segments(bar, n);
+		// Segment `i` counted from the bar's start (left, or bottom when vertical).
+		let segment = |i: usize, count: usize| {
+			let a = i as f32 * step;
+			let b = a + count as f32 * step - (step - seg);
+			if bar.is_vertical {
+				rect(x, y + bar.height - b, x + bar.width, y + bar.height - a)
+			} else {
+				rect(x + a, y, x + b, y + bar.height)
+			}
+		};
+		let fill = color(fill_hex);
+		let (lit_paint, track_paint) = (Paint::fill(fill), Paint::fill(color(&bar.track_color)));
+		for i in 0..n {
+			if let Some(r) = segment(i, 1) {
+				draw_rect_or_round(canvas, r, bar.corner_radius, if i < lit { &lit_paint } else { &track_paint });
+			}
+		}
+		if let Some(r) = segment(0, lit).filter(|_| lit > 0) {
+			canvas.draw_rect(r, &Paint::fill(fill.with_alpha(GLOW_ALPHA)).with_blur(Some(Blur::normal(GLOW_SIGMA))));
+		}
+	} else {
+		draw_rect_or_round(canvas, track, bar.corner_radius, &Paint::fill(color(&bar.track_color)));
+		draw_bar_fill(canvas, bar, track, t, fill_hex);
+	}
+
+	if bar.border_width > 0.0 {
+		draw_rect_or_round(
+			canvas,
+			track,
+			bar.corner_radius,
+			&Paint::stroke(color(&bar.border_color), bar.border_width),
+		);
+	}
+}
+
+/// The fill of a continuous (unsegmented) bar, clipped to its rounded track.
+fn draw_bar_fill(canvas: &mut Canvas, bar: &LinearBarElement, track: tiny_skia::Rect, t: f32, fill_hex: &str) {
+	const GLOW_ALPHA: u8 = 60;
+	const GLOW_SIGMA: f32 = 6.0;
+
+	let (x, y) = (bar.base.x, bar.base.y);
+
+	let (fl, ft, fr, fb) = if bar.is_vertical {
+		let h = bar.height * t;
+		(x, y + bar.height - h, x + bar.width, y + bar.height)
+	} else {
+		(x, y, x + bar.width * t, y + bar.height)
+	};
 
 	if fr - fl > 0.0 && fb - ft > 0.0 {
 		if let Some(fill_rect) = rect(fl, ft, fr, fb) {
@@ -1107,15 +1221,6 @@ fn draw_linear_bar(canvas: &mut Canvas, bar: &LinearBarElement, value: f32) {
 			);
 			canvas.restore();
 		}
-	}
-
-	if bar.border_width > 0.0 {
-		draw_rect_or_round(
-			canvas,
-			track,
-			bar.corner_radius,
-			&Paint::stroke(color(&bar.border_color), bar.border_width),
-		);
 	}
 }
 
