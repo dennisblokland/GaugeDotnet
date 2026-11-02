@@ -82,7 +82,9 @@ internal class Program
         AppConfig appConfig = ConfigService.Load();
         Console.WriteLine($"Loaded {appConfig.Screens.Count} screen(s) from config");
 
-        if (!appConfig.DemoMode)
+        // On ROCKNIX the kernel attaches the controller and the launcher starts the
+        // system's bluetooth.service; this muOS bring-up would kill its bluetoothd.
+        if (!appConfig.DemoMode && !PlatformInfo.IsRocknix)
             await BluetoothHardwareInit.InitializeAsync(exit.Token);
 
         // BleManager owns native callback delegates; keep it rooted for the entire program lifetime

@@ -4,11 +4,11 @@ namespace RG35XX.Libraries
 {
     public class LinuxStorageProvider : IStorageProvider
     {
-        public string MMC => "/mnt/mmc";
+        public string MMC => PlatformInfo.IsRocknix ? "/storage" : "/mnt/mmc";
 
         public string ROOT => "/";
 
-        public string SD => "/mnt/sdcard";
+        public string SD => PlatformInfo.IsRocknix ? "/storage/games-external" : "/mnt/sdcard";
 
         public void Initialize()
         {

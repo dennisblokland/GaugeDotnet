@@ -3,6 +3,8 @@ namespace RG35XX.Libraries;
 /// <summary>
 /// Prevents MuOS screen dimming by writing idle_inhibit = 1 (INHIBIT_BOTH).
 /// MuOS idle.sh resets this every 5s, so callers should poke every ~3s.
+/// ROCKNIX has no such file: its launcher holds a logind idle lock and SDL holds
+/// a Wayland idle inhibitor for the window.
 /// </summary>
 public static class ScreenKeepAlive
 {

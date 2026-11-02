@@ -60,12 +60,12 @@ dotnet run --project src/GaugeDotnet.Designer   # Open the Avalonia gauge design
 ### Deploy to Device
 
 ```shell
-./deploy-arm64.sh
+REMOTE_HOST=<device ip> ./deploy-arm64.sh
 ```
 
-Publishes a self-contained linux-arm64 binary and SCPs it to the RG35XX. It also uploads the artwork muOS shows in the Ports list (box art, preview and description from [`muos/`](muos/README.md)).
+Publishes a self-contained linux-arm64 binary and copies it to the RG35XX. The target OS, muOS or [ROCKNIX](rocknix/README.md), is detected over ssh. It also uploads the artwork shown in the Ports list (box art, preview and description from [`muos/`](muos/README.md)).
 
-The launcher, `GaugeDotnet.sh`, holds the Mali GPU at its top clock while the app runs and restores the previous floor on exit. The default `simple_ondemand` governor never raises the clock for the app, and frames take 20–40% longer at the bottom step (see `bench/RESULTS.md`).
+On muOS, the launcher, `GaugeDotnet.sh`, holds the Mali GPU at its top clock while the app runs and restores the previous floor on exit. The default `simple_ondemand` governor never raises the clock for the app, and frames take 20–40% longer at the bottom step (see `bench/RESULTS.md`).
 
 ## Architecture
 

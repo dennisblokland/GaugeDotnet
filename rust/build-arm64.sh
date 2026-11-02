@@ -13,7 +13,7 @@
 #
 # With zig and cargo-zigbuild installed (or USE_ZIG=1), it builds on the host
 # against glibc $GLIBC (default 2.36) instead, whatever the host's glibc is.
-# The device (muOS) has glibc 2.38.
+# muOS has glibc 2.38 and ROCKNIX 2.44; a binary linked against 2.36 runs on both.
 set -euo pipefail
 cd "$(dirname "$0")"
 

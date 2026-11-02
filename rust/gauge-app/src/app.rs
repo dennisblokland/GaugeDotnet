@@ -85,7 +85,10 @@ pub fn run(options: AppOptions) -> Result<(), String> {
 	let started = Instant::now();
 	loop {
 		input.poll(&mut display.events);
-		if input.quit {
+		// MENU works here too: a scan can take a minute and nobody should be
+		// stuck behind the splash for it.
+		if input.quit || input.key == GamepadKey::MENU_DOWN {
+			eprintln!("[app] quit during startup");
 			return Ok(());
 		}
 		let (done, error) = feed.startup_state();
@@ -203,6 +206,8 @@ impl GameLoop {
 				return Ok(true);
 			}
 			self.close_editor();
+			// Editor frames aren't counted, so time in there isn't a stutter.
+			self.fps = FpsCounter::new();
 			// The key that closed the editor is used up (on a keyboard, Escape
 			// is both B and MENU), so just show the gauges again.
 			self.render(display, canvas)?;

@@ -156,6 +156,11 @@ namespace RG35XX.Libraries
                     handle.Free();
                 }
 
+                if (PlatformInfo.IsRocknix)
+                {
+                    return RocknixGamePad.Translate(evt.Type, evt.Number, evt.Value);
+                }
+
                 JoystickInput input = new()
                 {
                     Type = evt.Type,

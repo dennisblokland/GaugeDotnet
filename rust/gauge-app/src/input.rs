@@ -6,6 +6,10 @@
 //! (desktop), SDL keyboard events are mapped to the same keys, like the C#
 //! debug build. Only one source is used, so PortMaster's gptokeyb (which
 //! turns buttons into key presses) doesn't produce double inputs.
+//!
+//! The same hardware numbers its buttons differently per OS: muOS uses the
+//! numbers the C# `GamepadKey` codes were written for, ROCKNIX's mainline
+//! driver has its own (see [`JoystickLayout`]).
 
 use std::collections::VecDeque;
 use std::fs::File;
@@ -60,6 +64,35 @@ impl GamepadKey {
 		Self(((number as i32) << 16) | value as i32)
 	}
 
+	/// Decodes a `struct js_event` from ROCKNIX's `H700 Gamepad` into the same
+	/// codes as muOS. Sticks and the stick buttons have no function here.
+	fn from_rocknix_event(event: &[u8; 8]) -> Option<Self> {
+		const JS_EVENT_BUTTON: u8 = 0x01;
+		const MENU_RELEASE: GamepadKey = GamepadKey(524288);
+		if event[6] & 0x7F != JS_EVENT_BUTTON {
+			return None;
+		}
+		let (down, up) = match event[7] {
+			0 => (Self::B_DOWN, Self::B_UP),
+			1 => (Self::A_DOWN, Self::A_UP),
+			2 => (Self::Y_DOWN, Self::Y_UP),
+			3 => (Self::X_DOWN, Self::X_UP),
+			4 => (Self::L1_DOWN, Self::L1_UP),
+			5 => (Self::R1_DOWN, Self::R1_UP),
+			6 => (Self::L2_DOWN, Self::L2_UP),
+			7 => (Self::R2_DOWN, Self::R2_UP),
+			8 => (Self::SELECT_DOWN, Self::SELECT_UP),
+			9 => (Self::START_DOWN, Self::START_UP),
+			10 => (Self::MENU_DOWN, MENU_RELEASE),
+			13 => (Self::UP, Self::UP_DOWN_UP),
+			14 => (Self::DOWN, Self::UP_DOWN_UP),
+			15 => (Self::LEFT, Self::LEFT_RIGHT_UP),
+			16 => (Self::RIGHT, Self::LEFT_RIGHT_UP),
+			_ => return None,
+		};
+		Some(if i16::from_le_bytes([event[4], event[5]]) != 0 { down } else { up })
+	}
+
 	/// A button press or d-pad push. Releases have a zero value, except the
 	/// keyboard's `MENU_UP`, which C# gives a code of its own.
 	pub fn is_press(self) -> bool {
@@ -96,6 +129,40 @@ impl GamepadKey {
 	}
 }
 
+/// How the OS numbers the buttons of `/dev/input/js0`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum JoystickLayout {
+	/// The numbers the `GamepadKey` codes are built from (muOS).
+	Native,
+	/// ROCKNIX's `H700 Gamepad`: the D-pad is buttons 13-16 and the sticks
+	/// are axes whose numbers overlap the buttons.
+	Rocknix,
+}
+
+impl JoystickLayout {
+	fn detect() -> Self {
+		let os_release = std::fs::read_to_string("/etc/os-release").unwrap_or_default();
+		Self::from_os_release(&os_release)
+	}
+
+	fn from_os_release(text: &str) -> Self {
+		let rocknix = text.lines().any(|l| l.replace('"', "").trim() == "OS_NAME=ROCKNIX");
+		if rocknix {
+			Self::Rocknix
+		} else {
+			Self::Native
+		}
+	}
+
+	/// The key for a `struct js_event`, or `None` for an unmapped input.
+	fn translate(self, event: &[u8; 8]) -> Option<GamepadKey> {
+		match self {
+			Self::Native => Some(GamepadKey::from_js_event(event)),
+			Self::Rocknix => GamepadKey::from_rocknix_event(event),
+		}
+	}
+}
+
 /// Reads `/dev/input/js0` on a background thread (`LinuxGamePadReader`).
 struct JoystickReader {
 	rx: Receiver<GamepadKey>,
@@ -110,6 +177,8 @@ impl JoystickReader {
 				return None;
 			}
 		};
+		let layout = JoystickLayout::detect();
+		eprintln!("[input] gamepad at {path}, {layout:?} button layout");
 		let (tx, rx) = channel();
 		std::thread::Builder::new()
 			.name("gamepad".into())
@@ -120,7 +189,8 @@ impl JoystickReader {
 					if buf[6] & 0x80 != 0 {
 						continue;
 					}
-					if tx.send(GamepadKey::from_js_event(&buf)).is_err() {
+					let Some(key) = layout.translate(&buf) else { continue };
+					if tx.send(key).is_err() {
 						break;
 					}
 				}
@@ -222,6 +292,57 @@ mod tests {
 		assert_eq!(GamepadKey::from_js_event(&js(-32767, 4)), GamepadKey::UP);
 		assert_eq!(GamepadKey::from_js_event(&js(32767, 4)), GamepadKey::DOWN);
 		assert_eq!(GamepadKey::from_js_event(&js(0, 3)), GamepadKey::LEFT_RIGHT_UP);
+	}
+
+	#[test]
+	fn rocknix_buttons_map_to_the_same_codes() {
+		let rocknix = JoystickLayout::Rocknix;
+		for (number, down, up) in [
+			(0, GamepadKey::B_DOWN, GamepadKey::B_UP),
+			(1, GamepadKey::A_DOWN, GamepadKey::A_UP),
+			(2, GamepadKey::Y_DOWN, GamepadKey::Y_UP),
+			(3, GamepadKey::X_DOWN, GamepadKey::X_UP),
+			(4, GamepadKey::L1_DOWN, GamepadKey::L1_UP),
+			(5, GamepadKey::R1_DOWN, GamepadKey::R1_UP),
+			(6, GamepadKey::L2_DOWN, GamepadKey::L2_UP),
+			(7, GamepadKey::R2_DOWN, GamepadKey::R2_UP),
+			(8, GamepadKey::SELECT_DOWN, GamepadKey::SELECT_UP),
+			(9, GamepadKey::START_DOWN, GamepadKey::START_UP),
+			(13, GamepadKey::UP, GamepadKey::UP_DOWN_UP),
+			(14, GamepadKey::DOWN, GamepadKey::UP_DOWN_UP),
+			(15, GamepadKey::LEFT, GamepadKey::LEFT_RIGHT_UP),
+			(16, GamepadKey::RIGHT, GamepadKey::LEFT_RIGHT_UP),
+		] {
+			assert_eq!(rocknix.translate(&js(1, number)), Some(down), "button {number} down");
+			assert_eq!(rocknix.translate(&js(0, number)), Some(up), "button {number} up");
+		}
+		assert_eq!(rocknix.translate(&js(1, 10)), Some(GamepadKey::MENU_DOWN));
+		assert!(!rocknix.translate(&js(0, 10)).unwrap().is_press(), "MENU release is not a press");
+	}
+
+	#[test]
+	fn rocknix_ignores_sticks_and_stick_buttons() {
+		let rocknix = JoystickLayout::Rocknix;
+		let mut axis = js(-32767, 3);
+		axis[6] = 2; // JS_EVENT_AXIS: a stick, even though button 3 exists
+		assert_eq!(rocknix.translate(&axis), None);
+		assert_eq!(rocknix.translate(&js(1, 11)), None);
+		assert_eq!(rocknix.translate(&js(1, 12)), None);
+	}
+
+	#[test]
+	fn native_layout_is_unchanged_by_the_rocknix_table() {
+		for event in [js(1, 8), js(1, 7), js(-32767, 3), js(32767, 4), js(0, 3)] {
+			assert_eq!(JoystickLayout::Native.translate(&event), Some(GamepadKey::from_js_event(&event)));
+		}
+	}
+
+	#[test]
+	fn layout_comes_from_os_release() {
+		let rocknix = "OS_NAME=\"ROCKNIX\"\nOS_VERSION=\"20261101\"\n";
+		assert_eq!(JoystickLayout::from_os_release(rocknix), JoystickLayout::Rocknix);
+		assert_eq!(JoystickLayout::from_os_release("NAME=\"Debian\"\n"), JoystickLayout::Native);
+		assert_eq!(JoystickLayout::from_os_release(""), JoystickLayout::Native);
 	}
 
 	#[test]
