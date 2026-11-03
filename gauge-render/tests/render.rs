@@ -13,6 +13,19 @@ fn temp_dir(name: &str) -> PathBuf {
 	dir
 }
 
+/// The showcase, for tests that compare two renderers frame by frame. A peak
+/// marker decays on the wall clock, so on a slow machine one renderer's marker
+/// can drop a frame before the other's; holding it removes that race.
+fn showcase_without_peak_decay() -> CustomGaugeDefinition {
+	let mut def = CustomGaugeDefinition::load(examples_dir().join("showcase.json")).unwrap();
+	for element in &mut def.elements {
+		if let gauge_render::Element::Peak(peak) = element {
+			peak.decay_seconds = 0.0;
+		}
+	}
+	def
+}
+
 fn values(pairs: &[(&str, f32)]) -> Values {
 	pairs.iter().map(|(k, v)| (k.to_string(), *v)).collect()
 }
@@ -155,7 +168,7 @@ fn example_config_builds_all_screens() {
 fn cached_static_runs_match_uncached_render() {
 	use gauge_render::custom::StaticCache;
 
-	let def = CustomGaugeDefinition::load(examples_dir().join("showcase.json")).unwrap();
+	let def = showcase_without_peak_decay();
 	let time = chrono::NaiveDate::from_ymd_opt(2026, 1, 1).unwrap().and_hms_opt(8, 15, 0);
 	let (mut plain, mut cached) = (ElementRenderer::new(), ElementRenderer::new());
 	plain.fixed_time = time;
@@ -194,7 +207,7 @@ fn assert_frames_match(a: &Canvas, b: &Canvas, what: &str) {
 fn incremental_and_threaded_renders_match_full_render() {
 	use gauge_render::FrameState;
 
-	let def = CustomGaugeDefinition::load(examples_dir().join("showcase.json")).unwrap();
+	let def = showcase_without_peak_decay();
 	let (mut full, mut inc1, mut inc4) = (ElementRenderer::new(), ElementRenderer::new(), ElementRenderer::new());
 	let (mut st1, mut st4) = (FrameState::new(), FrameState::new());
 	st1.threads = 1;
@@ -245,7 +258,11 @@ fn incremental_frames_stay_close_to_full_renders_over_a_long_run() {
 	use gauge_render::FrameState;
 
 	for file in ["showcase.json", "retro.json"] {
-		let def = CustomGaugeDefinition::load(examples_dir().join(file)).unwrap();
+		let def = if file == "showcase.json" {
+			showcase_without_peak_decay()
+		} else {
+			CustomGaugeDefinition::load(examples_dir().join(file)).unwrap()
+		};
 		let time = chrono::NaiveDate::from_ymd_opt(2026, 1, 1).unwrap().and_hms_opt(9, 30, 0);
 		let (mut full, mut inc) = (ElementRenderer::new(), ElementRenderer::new());
 		full.fixed_time = time;
