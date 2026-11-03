@@ -1,29 +1,28 @@
 # ROCKNIX
 
-Both apps run on ROCKNIX on the Anbernic RG35XX-SP (H700), next to their muOS
-support. Launchers and apps detect the OS from `OS_NAME` in `/etc/os-release`, so
-there is one build and one launcher per app.
+The app runs on ROCKNIX on the Anbernic RG35XX-SP (H700), next to its muOS
+support. Launcher and app detect the OS from `OS_NAME` in `/etc/os-release`, so
+there is one build and one launcher.
 
 ## Deploy
 
 ```bash
-REMOTE_HOST=<device ip> ./rust/deploy-arm64.sh   # Rust: Ports and the Gauges card
-REMOTE_HOST=<device ip> ./deploy-arm64.sh        # C#: Ports only
+REMOTE_HOST=<device ip> ./rust/deploy-arm64.sh
 ```
 
 The target is detected over ssh; `TARGET=rocknix` or `TARGET=muos` overrides it.
-With `ES_SYSTEM=0`, the Rust deploy leaves out the home screen card.
+With `ES_SYSTEM=0`, the deploy leaves out the home screen card.
 
 | What | Where |
 |---|---|
-| Binary, `gauges.json`, log, `rocknix-launcher.sh` | `/storage/GaugeRust`, `/storage/GaugeDotnet` |
+| Binary, `gauges.json`, log, `rocknix-launcher.sh` | `/storage/GaugeRust` |
 | Launcher and Ports entry | `/storage/roms/ports/<App>.sh`, `gamelist.xml`, `images/` |
 | "Gauges" home screen card | `/storage/.config/emulationstation/es_systems_gauge.cfg`, `/storage/GaugeMenu` |
 | Direct launch from the card | `/storage/.config/emulationstation/scripts/{system,game}-selected/gauge-direct-launch.sh` |
 | The card's art | `/storage/roms/_userdata/theme-customizations/art-book-next/artwork/gauges.png` |
 
 All of it is under `/storage`, which survives OS updates. Nothing the system ships
-is edited. The Rust deploy also sets two theme options in ES's settings the first time,
+is edited. The deploy also sets two theme options in ES's settings the first time,
 restarting ES to do so: **Distribution: RockNIX** and **System Artwork: Custom**. Other
 cards keep their art, because the theme uses a custom image only where one exists. If
 either option is already set to something else, the deploy leaves it and says so, and
@@ -36,25 +35,25 @@ and run `systemctl start essway`.
 
 ## Using it
 
-- **Start:** press A on the **Gauges** card on the home screen, which starts the Rust
-  app straight away. Both apps are also listed under **Ports**.
+- **Start:** press A on the **Gauges** card on the home screen, which starts the
+  app straight away. It is also listed under **Ports**.
 - **After quitting from the card:** ES is back on the card's one-item list; B returns to
   the home screen.
 - **Quit:** MENU, also during "Connecting". If the app ever hangs, the system's
   hotkey (L1 + SELECT + START) ends it, by force after 5 seconds.
-- **Settings:** an optional `GaugeRust.env` / `GaugeDotnet.env` next to the binary,
+- **Settings:** an optional `GaugeRust.env` next to the binary,
   sourced by the launcher:
 
 | Setting | Default | Effect |
 |---|---|---|
-| `GAUGE_ARGS` | empty | Extra arguments for `gauge app`, e.g. `--demo` (Rust only) |
+| `GAUGE_ARGS` | empty | Extra arguments for `gauge app`, e.g. `--demo` |
 | `KEEP_AWAKE` | `1` | Hold the logind idle lock |
 | `GPU_FLOOR` | `0` | Hold the GPU at `max_freq` while running |
 
 ## How it differs from muOS
 
-**Buttons.** ROCKNIX numbers `/dev/input/js0` differently. Both apps translate to the
-codes written for muOS (`gauge-app/src/input.rs`, `RG35XX.Libraries/RocknixGamePad.cs`).
+**Buttons.** ROCKNIX numbers `/dev/input/js0` differently. The app translates to the
+codes written for muOS (`gauge-app/src/input.rs`).
 
 | Button | ROCKNIX | muOS |
 |---|---|---|
@@ -105,13 +104,12 @@ opens its list. It does run event scripts, and it reports `game-selected` when t
 opens, so `es-direct-launch.sh` starts the app from there. ES also reports that event
 when the app ends and when games are reloaded with the list open, and it queues a
 launch per request. So the script only fires once after `system-selected` has reported
-the Gauges card, otherwise the app would restart repeatedly.
-
-The card holds one app for this to work, which is why the C# deploy stays in Ports.
+the Gauges card, otherwise the app would restart repeatedly. The card holds one app
+for this to work.
 
 ## Logs
 
-`/storage/GaugeRust/GaugeRust.log`, or `GaugeDotnet.log`; one previous log is kept as
+`/storage/GaugeRust/GaugeRust.log`; one previous log is kept as
 `.log.1` once it passes 1 MiB.
 
 | Line | Meaning |
@@ -120,8 +118,8 @@ The card holds one app for this to work, which is why the C# deploy stays in Por
 | `[BT] no hci0: rebinding ...`, `[BT] hci0 present` | Cold boot Bluetooth fix ran |
 | `[BT] FAILED: still no hci0` | The adapter didn't come up |
 | `[BT] started bluetooth.service`, `Powered: yes` | Bluetooth is up |
-| `[BLE] scanning for <mac>` | Looking for the ECU (Rust); 60 second limit |
-| `[BLE] ME device <mac> connected` | Connected to the ECU (Rust) |
-| `[fps] 60.00 avg over 30 s, slowest frame 23.5 ms` | Frame rate; a large slowest frame is a stutter (Rust) |
+| `[BLE] scanning for <mac>` | Looking for the ECU; 60 second limit |
+| `[BLE] ME device <mac> connected` | Connected to the ECU |
+| `[fps] 60.00 avg over 30 s, slowest frame 23.5 ms` | Frame rate; a large slowest frame is a stutter |
 | `[MON] ...` | Once a minute: battery, backlight, output power, clocks, temperature, Bluetooth |
 | `[KERNEL] ccu_helper warnings: N, panfrost faults/resets: N` | At start and end; compare them |

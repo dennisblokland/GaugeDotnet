@@ -1,6 +1,8 @@
-# GaugeDotnet — Rust renderer
+# GaugeDotnet — Rust workspace
 
-A Rust port of GaugeDotnet's rendering stack. It loads the same `custom-gauge.json` files the designers save, and the same `gauges.json` screen list. It draws them on the CPU with [tiny-skia](https://github.com/RazrFalcon/tiny-skia), and the frames can be shown in an SDL2 window or saved as PNG. It also has its own [gauge designer](#gauge-designer), which previews with this renderer.
+The app, its renderer and its designer. It loads `custom-gauge.json` definitions and the `gauges.json` screen list, and draws them on the CPU with [tiny-skia](https://github.com/RazrFalcon/tiny-skia). Frames can be shown in an SDL2 window or saved as PNG. It also has its own [gauge designer](#gauge-designer), which previews with this renderer.
+
+Rust replaced the original C# app, which is in the git history up to commit `7405d83`. JSON files written for it load unchanged. The format strings in those files are still .NET format strings (`F1`, `HH:mm`), handled by `format.rs`.
 
 ![showcase](examples/showcase.png)
 
@@ -9,35 +11,10 @@ A Rust port of GaugeDotnet's rendering stack. It loads the same `custom-gauge.js
 | Crate | Purpose |
 |-------|---------|
 | `gauge-render` | Library: canvas, fonts, the 17 custom element renderers, calculated channels, the 9 built-in gauges and the `gauges.json` factory |
-| `me-data` | ECU data: CAN frame decoding ME1_1–ME1_8 (port of `ME1_4NET`, with all its tests), `MeData`, data-source names (`DataSourceMapper`) and the RaceChrono BLE packet format |
-| `me-ble` | Bluetooth link to the ECU on btleplug (port of `BleManager`, `MeDevice` and `BluetoothHardwareInit`), with a synchronous `BleLink` handle for render loops |
-| `gauge-app` | `gauge` binary: PNG snapshots, a benchmark, an optional SDL2 window, and Bluetooth tools. Fed by a port of `SimulatedMeDevice` or by the ECU |
-| `gauge-designer` | `gauge-designer` binary: the desktop gauge designer (egui), a port of the Avalonia designer plus the improvements in [Gauge designer](#gauge-designer) |
-
-### C# → Rust map
-
-| C# | Rust |
-|----|------|
-| `Gauges/Custom/GaugeElement.cs` | `model.rs` (serde, the same `$type` names and PascalCase properties) |
-| `Gauges/Custom/ElementRenderer.cs` + `Renderers/*` | `custom/renderer.rs` (`ElementRenderer`) |
-| `Gauges/Custom/CustomGauge.cs` | `custom/gauge.rs` (frame-rate independent smoothing) |
-| `Gauges/Custom/ExpressionEvaluator.cs` | `expression.rs` |
-| `ImageCache` / `GifCache` | `images.rs` (PNG, JPEG, WebP, plus GIF/APNG/WebP animation frames) |
-| `Rendering/FontHelper.cs` | `text.rs` (the bundled fonts are embedded in the binary) |
-| `BaseGauge`, `BarGauge`, `CircularGauge`, `NeedleGauge`, `TurboXsGauge`, `SweepGauge`, `DigitalGauge`, `MinMaxGauge`, `HistogramGauge`, `GridGauge`, `SegmentDisplay` | `gauges/*.rs` |
-| `GaugeFactory`, `AppConfig`, `GaugeConfig`, `TolerantGaugeTypeConverter` | `gauges/mod.rs`, `gauges/config.rs` |
-| `SKCanvas` / `SKPaint` / `SKMaskFilter` | `canvas.rs` (save/restore, transforms, clips, `SaveLayer` opacity, arcs, round rects, text, normal and outer blur) |
-| `value.ToString("F1")`, `DateTime.ToString("HH:mm")` | `format.rs` (standard and custom .NET numeric and date format strings, invariant culture) |
-| `ME1_4NET` (`CanDecoder`, `Frames/*`, `MEData`), `DataSourceMapper` | `me-data` |
-| `BleManager`, `MeDevice`, `RaceChronoIds` | `me-ble/src/device.rs`, `me-data/src/racechrono.rs` |
-| `RG35XX.Libraries/BluetoothHardwareInit` | `me-ble/src/hardware.rs` |
-| `SimulatedMeDevice` | `gauge-app/src/sim.rs` |
-| `Program`, `GameLoop`, `GaugeSDL` | `gauge-app/src/app.rs`, `display.rs` (the `run` viewer is `window.rs`) |
-| `ConfigEditor` | `gauge-app/src/editor.rs` |
-| `SplashScreen`, `ErrorScreen`, `FpsCounter`, `BatteryOverlay`, `ScreenKeepAlive` | `gauge-app/src/screens.rs` |
-| `GamePads`, `LinuxGamePadReader`, `KeyBus`, `InputHandler` | `gauge-app/src/input.rs` |
-| `GaugeDotnet.Designer` (`MainWindow`, `GaugeDesignerViewModel`) | `gauge-designer/src/app.rs`, `document.rs` |
-| `Designer/Rendering/ElementRenderer.cs` (`GetBounds`, `HitTest`, `SetBounds`) | `gauge-designer/src/geometry.rs` |
+| `me-data` | ECU data: CAN frame decoding ME1_1–ME1_8, `MeData`, data-source names and the RaceChrono BLE packet format |
+| `me-ble` | Bluetooth link to the ECU on btleplug, with a synchronous `BleLink` handle for render loops |
+| `gauge-app` | `gauge` binary: PNG snapshots, a benchmark, an optional SDL2 window, and Bluetooth tools. Fed by simulated data or by the ECU |
+| `gauge-designer` | `gauge-designer` binary: the desktop [gauge designer](#gauge-designer) (egui) |
 
 ## Build and run
 
@@ -57,7 +34,7 @@ cargo run --release -- bench examples/showcase.json --full --threads 1  # worst 
 cargo run --release --features sdl -- run examples/gauges.json
 ```
 
-Relative paths inside a definition (images, needle images, GIFs) resolve against the JSON file's folder, as in the C# app.
+Relative paths inside a definition (images, needle images, GIFs) resolve against the JSON file's folder.
 
 `examples/retro.json` is an 80s digital dash: a segmented amber tach, cyan LCD bars for fuel pressure and coolant, and seven-segment readouts. Its segments come from `SegmentCount` on arcs and bars.
 
@@ -65,8 +42,8 @@ Relative paths inside a definition (images, needle images, GIFs) resolve against
 
 ### The device app
 
-`gauge app` is the port of the C# `Program` and `GameLoop`:
-1. It loads `gauges.json` (by default the one next to the binary; `--config` picks another). If the file is missing, it writes the same default as the C# app, a Bar gauge for AFR, and only the first 10 screens are kept.
+`gauge app`:
+1. It loads `gauges.json` (by default the one next to the binary; `--config` picks another). If the file is missing, it writes a default, a Bar gauge for AFR, and only the first 10 screens are kept.
 2. It shows the splash screen while Bluetooth comes up and the ECU connects. In `DemoMode`, or with `--demo`, it uses simulated data instead.
 3. It runs the screens. The FPS counter and the low-battery icon are drawn over them, and the OS is kept from sleeping (muOS: `idle_inhibit`; ROCKNIX: see [`../rocknix/README.md`](../rocknix/README.md)).
 4. When you quit, it plays the exit animation.
@@ -78,7 +55,7 @@ cargo run --release --features sdl -- app --demo                 # desktop, simu
 cargo run --release --features sdl,ble -- app --config my.json    # desktop, real ECU
 ```
 
-Controls (the gamepad is read from `/dev/input/js0`, as in the C# release build; without one, the keyboard is used):
+Controls (the gamepad is read from `/dev/input/js0`; without one, the keyboard is used):
 
 | Button | Key | Action |
 |---|---|---|
@@ -87,12 +64,12 @@ Controls (the gamepad is read from `/dev/input/js0`, as in the C# release build;
 | MENU | Esc | quit |
 | SELECT | Tab | open the config editor |
 
-**Config editor**, a port of the C# `ConfigEditor`, has three pages:
+**Config editor** has three pages:
 - **Screens:** the screen list. A edits the highlighted screen, the last row adds a screen (up to 10), and X deletes one (the last screen can't be deleted).
 - **Gauge settings:** one row per setting of the gauge type. LEFT/RIGHT cycles the value (type, data source, title, colour, min/max, decimals, segments, smoothing, …). On a Grid gauge, A opens a cell.
 - **Grid cell:** data source, title, unit and decimals.
 
-START saves `gauges.json`, and B goes back a page. Leaving the editor with B saves any unsaved edits and rebuilds the screens. Saves are atomic (temp file, fsync, rename), and a config that can't be parsed is kept as `gauges.json.bad` before the defaults replace it. With no gamepad, use the arrows, `z` for A, Escape/`x` for B, Return/`s` for START and Delete/Backspace for X (the C# app had no keyboard key for X).
+START saves `gauges.json`, and B goes back a page. Leaving the editor with B saves any unsaved edits and rebuilds the screens. Saves are atomic (temp file, fsync, rename), and a config that can't be parsed is kept as `gauges.json.bad` before the defaults replace it. With no gamepad, use the arrows, `z` for A, Escape/`x` for B, Return/`s` for START and Delete/Backspace for X.
 
 On the RG35XX the Bluetooth bring-up (`rtk_hciattach`, `bluetoothd`) runs automatically when `rtk_hciattach` exists. Force it with `--init-bt` or skip it with `--no-init-bt`.
 
@@ -100,7 +77,7 @@ On the RG35XX the Bluetooth bring-up (`rtk_hciattach`, `bluetoothd`) runs automa
 
 ```shell
 ./build-arm64.sh          # -> target/aarch64-unknown-linux-gnu/release/gauge
-./deploy-arm64.sh         # build, then scp to the device (REMOTE_HOST, REMOTE_PASS, ... as in ../deploy-arm64.sh)
+./deploy-arm64.sh         # build, then scp to the device (REMOTE_HOST, REMOTE_USER, REMOTE_PASS, ...)
 SKIP_BUILD=1 ./deploy-arm64.sh   # upload the existing build only
 ```
 
@@ -108,9 +85,9 @@ SKIP_BUILD=1 ./deploy-arm64.sh   # upload the existing build only
 
 **Login:** `deploy-arm64.sh` uses your SSH key if the device accepts it, then `sshpass` with `REMOTE_PASS` when `sshpass` is installed, then plain `ssh`. To set up a key, run `ssh-copy-id root@<host>` once.
 
-`build-arm64.sh` cross-compiles with `--features sdl,ble-vendored`. It needs the `aarch64-unknown-linux-gnu` rustup target, `gcc-aarch64-linux-gnu`, `curl` and `dpkg-deb`. On first use it fetches the arm64 `libSDL2` from Ubuntu's archive to link against. At run time the binary uses the device's own `libSDL2-2.0.so.0`, as the C# app does, and libdbus is compiled in. So the only thing installed is a single 5 MB `gauge` binary.
+`build-arm64.sh` cross-compiles with `--features sdl,ble-vendored`. It needs the `aarch64-unknown-linux-gnu` rustup target, `gcc-aarch64-linux-gnu`, `curl` and `dpkg-deb`. On first use it fetches the arm64 `libSDL2` from Ubuntu's archive to link against. At run time the binary uses the device's own `libSDL2-2.0.so.0`, and libdbus is compiled in. So the only thing installed is a single 5 MB `gauge` binary.
 
-`REMOTE_HOST=<ip> ./deploy-arm64.sh` detects muOS or ROCKNIX over ssh (`TARGET=` overrides it). ROCKNIX paths are in [`../rocknix/README.md`](../rocknix/README.md). On muOS it copies the binary to `/mnt/mmc/ports/GaugeRust`, separate from the C# app, and copies the launcher `GaugeRust.sh` to `/mnt/mmc/roms/ports`, so it shows up under Ports. `gauges.json` lives next to the binary. Copy over the C# one, or use `UPLOAD_CONFIG=1` to upload `./gauges.json`. The log is `GaugeRust.log` in the same folder. It also uploads the Ports-list artwork (`../muos/GaugeRust.png` and `.txt`) to muOS's `External - Ports` catalogue.
+`REMOTE_HOST=<ip> ./deploy-arm64.sh` detects muOS or ROCKNIX over ssh (`TARGET=` overrides it). ROCKNIX paths are in [`../rocknix/README.md`](../rocknix/README.md). On muOS it copies the binary to `/mnt/mmc/ports/GaugeRust` and copies the launcher `GaugeRust.sh` to `/mnt/mmc/roms/ports`, so it shows up under Ports. `gauges.json` lives next to the binary. Copy over an existing one, or use `UPLOAD_CONFIG=1` to upload `./gauges.json`. The log is `GaugeRust.log` in the same folder. It also uploads the Ports-list artwork (`../muos/GaugeRust.png` and `.txt`) to muOS's `External - Ports` catalogue.
 
 **glibc:** muOS has **glibc 2.38** and ROCKNIX **2.44** (confirmed running a binary built for 2.36), and the binary needs no newer glibc than the one it was linked against. A host cross toolchain links against the host's glibc (Arch's is 2.4x), so the binary won't start on the device (`GLIBC_2.39' not found`). Ways to build for an older glibc:
 
@@ -129,7 +106,7 @@ cargo run --release --features ble -- ble-monitor --mac 20:E7:C8:B9:20:2A   # pr
 cargo run --release --features sdl,ble -- run examples/gauges.json --ble    # gauges from the ECU
 ```
 
-`run --ble` takes the MAC from `--mac`, or else from `DeviceMacAddress` in `gauges.json`. Without either, it uses the first device advertising the RaceChrono service. On the RG35XX, add `--init-bt`: it runs the controller and BlueZ bring-up the C# app does at startup (`rtk_hciattach`, `bluetoothd`, clearing stale links) and clears BlueZ's cache for the MAC. While the ECU isn't connected, a banner shows the state (searching, reconnecting, or the error message). The link reconnects on its own, with a 1–10 s backoff, and re-subscribes after every reconnect.
+`run --ble` takes the MAC from `--mac`, or else from `DeviceMacAddress` in `gauges.json`. Without either, it uses the first device advertising the RaceChrono service. On the RG35XX, add `--init-bt`: it runs the controller and BlueZ bring-up (`rtk_hciattach`, `bluetoothd`, clearing stale links) and clears BlueZ's cache for the MAC. While the ECU isn't connected, a banner shows the state (searching, reconnecting, or the error message). The link reconnects on its own, with a 1–10 s backoff, and re-subscribes after every reconnect.
 
 ### Using the library
 
@@ -166,8 +143,7 @@ CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc \
 
 ![gauge designer](../docs/gauge-designer.png)
 
-`gauge-designer` edits custom gauge definitions. Its canvas is drawn by `gauge-render`, so at 100 % zoom what you see is what the RG35XX shows, pixel for pixel: blur, antialiasing, image sampling and round-rect corners included. Files are the same JSON as the Avalonia designer's, both ways.
-
+`gauge-designer` edits custom gauge definitions. Its canvas is drawn by `gauge-render`, so at 100 % zoom what you see is what the RG35XX shows, pixel for pixel: blur, antialiasing, image sampling and round-rect corners included.
 ```shell
 cd rust
 cargo run --release -p gauge-designer                          # starts with the RPM dial
@@ -177,7 +153,7 @@ cargo run --release -p gauge-designer -- --config gauges.json  # also open the s
 
 It runs on Linux, Windows and macOS. On Linux it needs OpenGL 2 (Mesa is fine) and, on X11, `libxkbcommon-x11`. Use `--release`: the debug build renders slowly and its frame-cost numbers are meaningless.
 
-**What the C# designer did, ported:**
+**Basics:**
 - toolbox for all 17 element types
 - click to select, Ctrl/Shift multi-select, drag to move, corner handles to resize, arrows nudge 1 px (Shift: 10 px), `G` grid snap
 - element list with `[Canvas] Background`, draw order, duplicate and delete
@@ -186,7 +162,7 @@ It runs on Linux, Windows and macOS. On Linux it needs OpenGL 2 (Mesa is fine) a
 - undo/redo, New / Open / Save
 - on save, images are copied into `images/` next to the JSON: stills are re-encoded to `image_N.png`, GIF/APNG/WebP animations are copied byte for byte, and paths become relative
 
-**Beyond the C# designer:**
+**More:**
 - **Editing:** copy/cut/paste as JSON (also between files and designer windows), group/ungroup, lock and hide per element (kept in `<name>.designer.json` next to the gauge, so gauge files stay what the device reads), and marquee selection.
 - **Arrange:** align left/centre/right/top/middle/bottom, centre on canvas, distribute, bring to front / send to back. Smart guides snap to the edges and centres of other elements and of the canvas (hold Alt to bypass).
 - **View:** zoom and pan, rulers, and a grid of any size.
@@ -245,7 +221,7 @@ Custom gauges also redraw incrementally, using several cores (`ElementRenderer::
 | Values gliding (20 Hz data) | 1.36 ms | 1.03 ms | 25 % |
 | Values settled (only the graph scrolls) | 0.09 ms | 0.08 ms | 3 % |
 
-The C# renderer takes 8.7 ms for a full frame on the same CPU; see [`bench/`](../bench/README.md).
+See [`bench/`](../bench/README.md) for more.
 
 On the RG35XX (Cortex-A53 at 1.5 GHz, `gauge bench examples/gauges.json`, new data every frame), ms/frame before and after the aarch64 work described in [`bench/RESULTS.md`](../bench/RESULTS.md#5-on-the-device-rg35xx):
 
@@ -264,42 +240,36 @@ On the RG35XX (Cortex-A53 at 1.5 GHz, `gauge bench examples/gauges.json`, new da
 
 Every screen now holds 60 fps with room to spare. The frames are byte-identical before and after, on x86 and on the device.
 
-## Differences from the C# renderer
-
-The Rust app aims to look and behave like the C# app. Where they still differ, it is on purpose: mostly where C# crashes or has a bug. Each difference below is kept as is unless noted.
+## Behaviour notes
 
 ### Rendering
 
-- **CPU rendering** instead of Skia on GLES2. Antialiasing and blur falloff differ slightly: the gaussian is approximated with three box blurs. The TurboXs LCD look only has the CPU path; C#'s GPU shader gives the same output.
-- **Settled values snap to their target.** Smoothing lands exactly on the target once it is within 1e-4 of it, so a settled gauge stops repainting. C# never snaps, but it repaints the whole frame anyway.
-- **No global state.** Graph history, peak-hold values and image caches live in each `ElementRenderer`, not in static dictionaries.
-- Element paints start from the defaults for each element in both apps. C# used to keep one shared paint's settings between elements, so a graph's round joins rounded later rectangle borders; that is fixed in C# (`ElementRenderer.DrawElement` resets the paint).
+- **Settled values snap to their target.** Smoothing lands exactly on the target once it is within 1e-4 of it, so a settled gauge stops repainting.
+- **Blur:** the gaussian is approximated with three box blurs.
+- **No global state.** Graph history, peak-hold values and image caches live in each `ElementRenderer`.
 
 ### Config and values
 
-- **Invalid values don't crash.** Invalid colours render black instead of throwing from `SKColor.Parse`. The `D`/`X` number formats render a rounded integer, where .NET throws for a float, and other unknown format letters print as literal text.
-- **Out-of-range settings are clamped.** `SegmentCount <= 0` and `MaxDataPoints <= 0` count as 1, negative `Decimals` as 0, and `GraphElement.HistoryDepth` below 2 as 2. C# crashes (divide by zero) or draws nothing.
-- **Unknown data sources no longer crash the update loop.** In C#, `CustomGauge.UpdateFromDevice` asks `DataSourceMapper.ReadValue` for every bound source, and that throws for names it doesn't know. So an element bound to a calculated channel such as `RpmK` threw on the device. Here unknown names just aren't fed, and calculated channels are computed from their inputs.
-- **Calculated-channel inputs are tracked.** The C# `CustomGauge` only polls sources bound directly to an element, so `Rpm / 1000` read 0 unless some element also used `Rpm`. Visibility sources are tracked too.
-- **A custom screen that fails to load** shows the error in its place, so screen numbers still match `gauges.json`. C# fails to start.
-- **`--config`.** Only the Rust app can load a `gauges.json` other than the one next to the executable. `CustomDefinitionFile` paths are relative to that file's folder. C# resolves them against the executable's folder, which is the same place for the default config.
-- A `gauges.json` that can't be parsed is kept as `gauges.json.bad` and replaced by the defaults, in both apps. JSON `null` for a string or list reads as empty.
+- **Invalid values don't crash.** Invalid colours render black. The `D`/`X` number formats render a rounded integer, and other unknown format letters print as literal text.
+- **Out-of-range settings are clamped.** `SegmentCount <= 0` and `MaxDataPoints <= 0` count as 1, negative `Decimals` as 0, and `GraphElement.HistoryDepth` below 2 as 2.
+- **Unknown data sources** aren't fed and don't stop the update loop. Calculated channels are computed from their inputs.
+- **Calculated-channel inputs are tracked**, so `Rpm / 1000` works even if no element uses `Rpm` directly. Visibility sources are tracked too.
+- **A custom screen that fails to load** shows the error in its place, so screen numbers still match `gauges.json`.
+- **`--config`** loads a `gauges.json` other than the one next to the executable. `CustomDefinitionFile` paths are relative to that file's folder.
+- A `gauges.json` that can't be parsed is kept as `gauges.json.bad` and replaced by the defaults. JSON `null` for a string or list reads as empty.
 
 ### Device app
 
-- **Bluetooth bring-up** (`rtk_hciattach`, `bluetoothd`, ...) runs only on the device: when `rtk_hciattach` is on `PATH` (the launcher adds the system folders) or with `--init-bt`. C# always runs it outside demo mode, which on a desktop would restart the system's `bluetoothd`. Clearing BlueZ's cache for the configured MAC happens in both apps whenever a MAC is set.
-- **MAC addresses** may be shorter than 12 hex digits, like C#'s `ulong.Parse` (`1A2B` is `00:00:00:00:1A:2B`). Longer ones are rejected; C# accepts up to 16 digits but can never match them.
+- **Bluetooth bring-up** (`rtk_hciattach`, `bluetoothd`, ...) runs only on the device: when `rtk_hciattach` is on `PATH` (the launcher adds the system folders) or with `--init-bt`. Clearing BlueZ's cache for the configured MAC happens whenever a MAC is set.
+- **MAC addresses** may be shorter than 12 hex digits (`1A2B` is `00:00:00:00:1A:2B`). Longer ones are rejected.
 - **Input:**
-  - Key releases don't delay presses. A quick tap (a press and release in the same frame) no longer holds back the next button by a frame.
-  - Without `/dev/input/js0`, the keyboard stands in for the gamepad in every build. The C# Release build then has no input at all.
-  - The error screen closes on a button press. C# also closes on a release or on the joystick's initial-state events, so it can vanish before it is read.
+  - Key releases don't delay presses. A quick tap (a press and release in the same frame) doesn't hold back the next button by a frame.
+  - Without `/dev/input/js0`, the keyboard stands in for the gamepad.
+  - The error screen closes on a button press.
 - **Config editor:**
-  - On a keyboard, Escape leaves the editor without also quitting the app. In C# it is both B and MENU.
+  - On a keyboard, Escape leaves the editor without also quitting the app.
   - Delete/Backspace act as X.
   - Saving writes to the `gauges.json` the app loaded, and shows "Save failed!" if it can't.
-  - "Config Saved!" shows for 2 seconds. C# counts it down by 0.016 s per frame, so it lasts longer when the frame rate is below 60.
-- `BleManager.ScanAsync`'s saved-device allow-list and `ReattachAsync` are not ported: nothing in the C# app calls them.
-
-Everything the device runs is ported, and so is the Avalonia designer (`gauge-designer`). Small helpers the Rust app has no use for (`AppLauncher`, `StorageProvider`, `DeviceInfo`) are not ported.
+  - "Config Saved!" shows for 2 seconds.
 
 The Bluetooth link builds and handles errors, but it hasn't run against a real ECU yet: this environment has no Bluetooth controller. Before relying on it, check it on the device with `gauge ble-monitor --init-bt`.

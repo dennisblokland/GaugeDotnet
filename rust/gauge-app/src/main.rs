@@ -31,7 +31,7 @@ gauge — GaugeDotnet renderer (Rust)
 
 USAGE:
   gauge app [--config gauges.json] [--fullscreen] [--demo] [--init-bt | --no-init-bt]
-      The on-device app (port of the C# GaugeDotnet): loads gauges.json (next
+      The on-device app: loads gauges.json (next
       to the executable by default, created if missing), connects to the ECU
       over Bluetooth behind a splash screen (or simulates in DemoMode / --demo),
       then shows the screens. D-pad left/right switches screens, R1 resets
@@ -274,7 +274,7 @@ fn cmd_bench(args: &Args) -> Result<(), String> {
 	let mut canvas = Canvas::new(w, h);
 	let frame_px = (w * h) as f64;
 
-	// Same protocol as bench/csharp: fixed 60 Hz steps, warm-up, then only the draw is timed.
+	// Fixed 60 Hz steps, warm-up, then only the draw is timed.
 	let mut run = |label: String, screen: &mut dyn FnMut(&mut Canvas, &Simulator, bool) -> usize| {
 		let mut sim = Simulator::new(0.0);
 		let mut since_data = f64::MAX;

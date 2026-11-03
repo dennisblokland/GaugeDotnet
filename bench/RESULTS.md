@@ -1,5 +1,7 @@
 # Full benchmark results
 
+> The C# figures are historical. The C# app and its benchmark were removed; they are in the git history up to commit `7405d83`. `bench/run.sh` now measures only the Rust renderer.
+
 All runs: one session, Intel Xeon @ 2.10 GHz (4 vCPU cloud VM), Linux x64, .NET 10.0.112 / SkiaSharp 3.119, Rust 1.97. Setup:
 - 640×480 CPU raster, simulated ECU data stepped at 60 Hz;
 - 300 warm-up frames, then 600 timed frames, timing only the draw call;

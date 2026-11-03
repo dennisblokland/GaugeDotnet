@@ -2,9 +2,8 @@
 # Cross-builds the device app (SDL window + Bluetooth) for the RG35XX (aarch64).
 #
 # Links against the arm64 libSDL2 from Ubuntu's archive (downloaded once into
-# target/sdl-arm64). At run time the binary uses the device's own libSDL2,
-# exactly like the C# app; libdbus is compiled in (ble-vendored), so nothing
-# else is needed beyond libc.
+# target/sdl-arm64). At run time the binary uses the device's own libSDL2;
+# libdbus is compiled in (ble-vendored), so nothing else is needed beyond libc.
 #
 # Needs: rustup target aarch64-unknown-linux-gnu, gcc-aarch64-linux-gnu, curl, dpkg-deb.
 # Without the cross gcc (or with USE_DOCKER=1), it runs itself in a
@@ -28,8 +27,8 @@ if [ "$USE_ZIG" != 1 ] && [ "${IN_DOCKER:-0}" != 1 ] && { [ "${USE_DOCKER:-0}" =
   command -v docker >/dev/null || { echo "Needs gcc-aarch64-linux-gnu or Docker"; exit 1; }
   echo "Building in Docker (rust:1-bookworm)..."
   mkdir -p target
-  # The fonts are embedded from ../src, so the whole repo is mounted (read-only);
-  # only target/ is writable. The cargo registry is kept in a named volume.
+  # The repo is mounted read-only; only target/ is writable. The cargo registry
+  # is kept in a named volume.
   docker run --rm \
     -v "$PWD/..":/repo:ro -v "$PWD/target":/repo/rust/target \
     -v gauge-cargo-registry:/usr/local/cargo/registry \

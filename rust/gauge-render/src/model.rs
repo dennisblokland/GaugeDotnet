@@ -1,6 +1,6 @@
-//! Custom gauge definition model, JSON-compatible with the C# `GaugeElement`
-//! hierarchy (`"$type"` discriminator, PascalCase properties) so files saved
-//! by the Avalonia designer load unchanged.
+//! Custom gauge definition model. The JSON uses a `"$type"` discriminator and
+//! PascalCase properties, so files saved by the retired C# designer and app
+//! load unchanged.
 
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};

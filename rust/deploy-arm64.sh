@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
-# Builds the Rust app for the RG35XX and copies it plus its launcher to the
-# device (like ../deploy-arm64.sh does for the C# app). It installs into its
-# own folder, so both versions can sit side by side.
+# Builds the app for the RG35XX and copies it plus its launcher to the device.
 #
 # The target OS is detected over ssh (or set TARGET=muos / TARGET=rocknix):
 #   REMOTE_HOST=<device ip> ./deploy-arm64.sh

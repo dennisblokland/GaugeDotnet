@@ -1,6 +1,6 @@
 #!/bin/bash
 # PORTMASTER: GaugeRust.zip, GaugeRust.sh
-# Launcher for the Rust port (`gauge app`); mirrors ../GaugeDotnet.sh.
+# Launcher for the device app (`gauge app`).
 # Runs on muOS (through PortMaster) and on ROCKNIX; the OS is detected below.
 
 export LANG=C
@@ -93,9 +93,8 @@ if [ "$PLATFORM" = rocknix ]; then
   rocknix_prepare "$GAMEDIR/gauges.json"
 fi
 
-# GaugeDotnet.sh holds the Mali GPU clock up for Skia's GL work. The Rust
-# renderer draws on the CPU, so it doesn't by default (GPU_FLOOR=1 on ROCKNIX,
-# which measured no gain: see bench/RESULTS.md).
+# The renderer draws on the CPU, so the GPU clock isn't held up by default
+# (GPU_FLOOR=1 on ROCKNIX, which measured no gain: see bench/RESULTS.md).
 
 # gauges.json is read from (and created in) $GAMEDIR, next to the binary.
 echo "[APP] starting $APP_PATH app --fullscreen $GAUGE_ARGS"

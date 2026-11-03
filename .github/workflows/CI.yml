@@ -1,5 +1,3 @@
-# This workflow will build a .NET project
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-net
 name: CI
 permissions:
   contents: read
@@ -15,19 +13,15 @@ jobs:
 
     runs-on: ubuntu-latest
 
+    defaults:
+      run:
+        working-directory: rust
+
     steps:
     - uses: actions/checkout@v4
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: 10.0.x
-    - name: Remove GitHub NuGet source
-      run: dotnet nuget remove source github-dennisblokland
-    - name: Add GitHub NuGet source
-      run: dotnet nuget add source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" --name github-dennisblokland --username ${{ github.repository_owner }} --password ${{ secrets.PAT_READ_PACKAGES }} --store-password-in-clear-text
-    - name: Restore dependencies
-      run: dotnet restore
-    - name: Build
-      run: dotnet build --no-restore
+    - name: Install system libraries
+      run: sudo apt-get update && sudo apt-get install -y libsdl2-dev libdbus-1-dev
     - name: Test
-      run: dotnet test --no-build --verbosity normal
+      run: cargo test --workspace --locked
+    - name: Build the device app with SDL and Bluetooth
+      run: cargo build --locked -p gauge-app --features sdl,ble

@@ -1,14 +1,12 @@
-# C# vs Rust renderer benchmark
+# Renderer benchmark
 
-Complete, current numbers are in [RESULTS.md](RESULTS.md).
+Complete numbers are in [RESULTS.md](RESULTS.md). The C# figures on this page and there are historical: the C# app and its benchmark were removed, and are in the git history up to commit `7405d83`.
 
-`./run.sh` renders every screen in [`rust/examples/gauges.json`](../rust/examples/gauges.json) with both renderers:
-- **C#:** the app's real, unmodified renderer sources (linked into [`csharp/`](csharp)) drawing through SkiaSharp 3.119.
-- **Rust:** `gauge bench` from [`rust/`](../rust) drawing through tiny-skia.
+`./run.sh` renders every screen in [`rust/examples/gauges.json`](../rust/examples/gauges.json) and `turboxs.json` with `gauge bench` from [`rust/`](../rust), drawing through tiny-skia.
 
-Both use a 640×480 CPU raster surface by default and the same simulated ECU data stepped at 60 Hz. Each screen gets 300 warm-up frames, then 600 frames where **only the draw call** is timed.
+It uses a 640×480 CPU raster surface and simulated ECU data stepped at 60 Hz. Each screen gets 300 warm-up frames, then 600 frames where **only the draw call** is timed.
 
-## Results
+## Results against the C# app
 
 Intel Xeon @ 2.10 GHz (cloud VM), Linux x64, .NET 10.0.12, Rust 1.97. Each figure is the median of 3 runs.
 
@@ -39,12 +37,12 @@ Intel Xeon @ 2.10 GHz (cloud VM), Linux x64, .NET 10.0.12, Rust 1.97. Each figur
   - **Trimmed sprites:** cached layers are cropped to their content, and opaque ones are copied row by row. Previously a full 640×480 mostly-transparent layer was blended per cache per frame.
   - **More caching:** lit segments (Bar, MinMax, Circular), segment-display digits (until the text changes), Histogram bars (until a sample arrives), and runs of static custom elements together with the background.
 - **Some of these caches are worst-cased by the benchmark.** It changes every value on every frame. With real ECU data (about 20 Hz against 60 fps) and the default 1 s Histogram interval, most frames hit the caches, so the device will do better than these numbers suggest.
-- **On the device, the C# app renders through Skia's GPU backend (GLES2).** `GaugeBench <config> [frames] [warmup] --gpu` measures that path. It opens an SDL window with a GLES2 context, as the app's `GaugeSDL` does, and flushes and waits for the GPU after every timed frame. `--png <dir>` saves each screen's last frame, read back from the surface, to check the GPU output against a CPU run. Device results are in [RESULTS.md](RESULTS.md#5-on-the-device-rg35xx). To run it there, publish with `dotnet publish bench/csharp/GaugeBench.csproj -c Release -r linux-arm64 --self-contained true` and copy it over along with an aarch64 `gauge` build.
+- **On the device, the C# app rendered through Skia's GPU backend (GLES2).** Device results for both are in [RESULTS.md](RESULTS.md#5-on-the-device-rg35xx).
 - Same machine, alternating runs; expect ±10 % noise between runs.
 
 ## Partial redraw and threads (custom gauges)
 
-The table above times full repaints, as the C# app does every frame. The Rust custom-gauge renderer also tracks damage and spreads work over cores; see [rust/README.md](../rust/README.md#performance). Showcase, desktop x86:
+The table above times full repaints, as the C# app did every frame. The custom-gauge renderer also tracks damage and spreads work over cores; see [rust/README.md](../rust/README.md#performance). Showcase, desktop x86:
 
 | Situation | 1 thread | 4 threads | Repainted |
 |---|---:|---:|---:|

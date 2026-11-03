@@ -1,52 +1,43 @@
 # GaugeDotnet — Agent Instructions
 
-Real-time automotive gauge display for the RG35XX handheld (ARM64 Linux). Connects via BLE to a MegaSquirt ECU, decodes CAN bus frames, and renders live gauges with SkiaSharp on SDL2 + OpenGL ES 2.0.
+Real-time automotive gauge display for the RG35XX handheld (ARM64 Linux). Connects via BLE to a Motorsport Electronics ECU, decodes CAN bus frames, and renders live gauges on the CPU with tiny-skia, shown through SDL2. All code is in the Cargo workspace in `rust/`. The original C# app was removed; it is in the git history up to `7405d83`.
 
-## Projects
+## Crates
 
-| Project | Purpose |
+| Crate | Purpose |
 |---------|---------|
-| `GaugeDotnet` | Main app — SDL2 window, gauge rendering, BLE connection |
-| `GaugeDotnet.Designer` | Avalonia 12 drag-and-drop gauge designer (desktop, the original) |
-| `rust/gauge-designer` | Rust (egui) gauge designer that previews with the device renderer — see `rust/README.md` |
-| `ME1_4NET` | CAN bus decoder library (MegaSquirt frames `ME1_1`–`ME1_8`) |
-| `ME1_4NET.Tests` | xUnit tests for CAN frame decoding |
-| `RG35XX.Core` | Platform abstractions (gamepad, storage interfaces) |
-| `RG35XX.Libraries` | Linux implementations (joystick, keyboard, storage) |
+| `gauge-app` | `gauge` binary: device app, PNG snapshots, benchmark, Bluetooth tools |
+| `gauge-render` | Library: canvas, fonts, custom element renderers, calculated channels, built-in gauges, `gauges.json` loading |
+| `gauge-designer` | Desktop gauge designer (egui) that previews with the device renderer — see `rust/README.md` |
+| `me-data` | CAN bus decoder (Motorsport Electronics frames `ME1_1`–`ME1_8`), `MeData`, data-source names |
+| `me-ble` | Bluetooth link to the ECU, on btleplug |
 
 ## Build & Test
 
 ```shell
-dotnet build              # Build all projects
-dotnet test               # Run xUnit tests
-dotnet run --project src/GaugeDotnet  # Run app (uses SimulatedMeDevice in DEBUG)
+cd rust
+cargo test                                         # Default members: everything but the designer
+cargo test --workspace                             # Also the designer
+cargo run --release --features sdl -- app --demo   # Run the app with simulated data
 ```
 
-Deploy to device: `REMOTE_HOST=<ip> ./deploy-arm64.sh` (publishes linux-arm64, copies to the device; muOS or ROCKNIX is detected over ssh). On muOS, the launcher `GaugeDotnet.sh` pins the GPU clock (`/sys/class/devfreq/gpu/min_freq`) during the run and restores it after. Both deploy scripts also upload the Ports artwork from `muos/`: on muOS to `/run/muos/storage/info/catalogue/External - Ports/` (box art, preview, description), on ROCKNIX to `gamelist.xml` and `images/`.
+Deploy to device: `REMOTE_HOST=<ip> ./rust/deploy-arm64.sh` (builds linux-arm64, copies to the device; muOS or ROCKNIX is detected over ssh). The deploy script also uploads the Ports artwork from `muos/`: on muOS to `/run/muos/storage/info/catalogue/External - Ports/` (box art, preview, description), on ROCKNIX to `gamelist.xml` and `images/`.
 
-ROCKNIX: see `rocknix/README.md`. The OS is detected at runtime (`PlatformInfo.IsRocknix`, `JoystickLayout::detect`, `OS_NAME` in the launchers), not forked. It has a different joystick numbering (`RocknixGamePad`, same table in `gauge-app/src/input.rs`), no muOS Bluetooth bring-up, and shared launcher code in `rocknix/launcher.sh`. Keep the two button tables in sync.
-
-## Setup
-
-`VaettirNet.Btleplug` is sourced from GitHub Packages. Set the `GITHUB_PACKAGES_PAT` environment variable to a GitHub PAT with `read:packages` scope before restoring. See [nuget.config](nuget.config).
+ROCKNIX: see `rocknix/README.md`. The OS is detected at runtime (`JoystickLayout::detect`, `OS_NAME` in the launcher), not forked. It has a different joystick numbering (table in `gauge-app/src/input.rs`), no muOS Bluetooth bring-up, and its launcher code in `rocknix/launcher.sh`.
 
 ## Conventions
 
-- **Framework:** .NET 10, central package management via [Directory.Packages.props](Directory.Packages.props)
-- **Nullable:** enabled in all projects
-- **Indentation:** tabs, size 4 (see [editorconfig](editorconfig))
-- **Private fields:** `_camelCase` prefix — enforced by editorconfig
-- **`var` usage:** prefer explicit types (`var` discouraged)
-- **Braces:** always use braces (suggestion level)
-- **`AllowUnsafeBlocks`** is enabled in GaugeDotnet (SDL2/OpenGL interop)
+- **Indentation:** tabs, max width 120 (see `rust/rustfmt.toml`)
+- **Compatibility:** `gauges.json` and custom gauge JSON keep the format the C# app used (`$type` discriminators, PascalCase properties, .NET number and date format strings), so existing files keep loading. Don't change it without a migration path.
+- **C# mentions in comments:** many Rust comments name the C# class a module came from, or explain a behaviour by comparing with it. The code they mention is in the git history.
 
 ## Architecture Notes
 
-- `GaugeSDL` — Creates SDL2 window with OpenGL ES 2.0, wraps with SkiaSharp `GRContext`/`SKSurface`
-- `BaseGauge`/`BarGauge` — Static cache pattern: inactive segments drawn once to bitmap, active segments redrawn per-frame
-- `MeDevice`/`SimulatedMeDevice` implement `IMeDevice` — `#if DEBUG` uses `SimulatedMeDevice` to bypass BLE
-- `CanDecoder` dispatches CAN frames by `Pid` to typed structs; `MEData` aggregates decoded values
-- Font files in `src/GaugeDotnet/fonts/` are copied to output at build time
+- `gauge-app/src/display.rs` — Creates the SDL2 window, streams frames into a texture, uploads only damaged rects
+- `gauge-render/src/gauges/*.rs` — Built-in gauges cache static content as trimmed `Sprite`s and redraw what moves
+- `gauge-app/src/feed.rs` — `Feed` supplies values from the ECU (`me-ble`) or `Simulator` (`sim.rs`), chosen by `DemoMode` / `--demo`
+- `me_data::decode` dispatches CAN frames by `Pid` to typed structs; `MeData` aggregates decoded values
+- Fonts in `gauge-render/fonts/` are embedded in the binary
 
 ## Custom Gauge System
 
@@ -54,7 +45,7 @@ Drag-and-drop gauge designer → JSON definition → runtime rendering on device
 
 ### Workflow
 
-1. `cd rust && cargo run --release -p gauge-designer` — opens the Rust designer (`dotnet run --project src/GaugeDotnet.Designer` opens the Avalonia one)
+1. `cd rust && cargo run --release -p gauge-designer` — opens the designer
 2. Add/arrange elements, bind data sources, tweak properties
 3. Save → `custom-gauge.json`
 4. Reference in `gauges.json`: `{ "Gauge": { "Type": "Custom" }, "CustomDefinitionFile": "custom-gauge.json" }`
@@ -75,20 +66,20 @@ Drag-and-drop gauge designer → JSON definition → runtime rendering on device
 | `LinearBarElement` | `linearbar` | Yes | Horizontal/vertical fill bar |
 | `WarningIndicatorElement` | `warning` | Yes | Threshold-triggered color change with label |
 | `ImageElement` | `image` | No | Custom image (backgrounds, logos, overlays) with opacity + rotation |
-| `GraphElement` | `graph` | Yes | Rolling time-series plot; buffer keyed by `Id` in `ElementRenderer._graphBuffers` |
+| `GraphElement` | `graph` | Yes | Rolling time-series plot; buffer keyed by `Id` in `ElementRenderer::graph_buffers` |
 | `LabelValueElement` | `labelvalue` | Yes | Compound label + large value display; optional background box; X/Y = center |
-| `PeakMarkerElement` | `peak` | Yes | Tick at rolling peak angle; state keyed by `Id` in `ElementRenderer._peakState`; `DecaySeconds=0` holds forever |
-| `GifElement` | `gif` | Yes | Multi-frame image; value maps `MinValue`→`MaxValue` to frame `0`→`N-1`. Frames decoded by `GifCache` (honours per-frame blending); exported via raw file copy (not PNG re-encode) to preserve frames |
-| `ClockElement` | `clock` | No | System time via `DateTime.Now`/`UtcNow`, formatted by `Format` (.NET format string); rendered by `TextRenderer.DrawClock`. Ticks live in the running app (per-frame redraw), static in the designer preview |
+| `PeakMarkerElement` | `peak` | Yes | Tick at rolling peak angle; state keyed by `Id` in `ElementRenderer::peak_state`; `DecaySeconds=0` holds forever |
+| `GifElement` | `gif` | Yes | Multi-frame image; value maps `MinValue`→`MaxValue` to frame `0`→`N-1`. Frames decoded in `images.rs` (honours per-frame blending); exported via raw file copy (not PNG re-encode) to preserve frames |
+| `ClockElement` | `clock` | No | System time, local or UTC, formatted by `Format` (.NET format string, see `format.rs`). Ticks live in the running app (per-frame redraw), static in the designer preview |
 
 `CustomGaugeDefinition` also supports:
 - `BackgroundImage` — path drawn behind all elements
 - `BackgroundImageMode` — `Stretch` (default) / `Fill` / `Fit` / `Center` / `Tile`
 - `BackgroundImageOpacity` — byte 0–255
-- `CalculatedChannels` — list of `CalculatedChannel` (`Name`, `Expression`); evaluated each frame by `ExpressionEvaluator` before drawing; names appear in all DataSource dropdowns
+- `CalculatedChannels` — list of `CalculatedChannel` (`Name`, `Expression`); evaluated each frame by `expression.rs` before drawing; names appear in all DataSource dropdowns
 
 All `GaugeElement` subclasses have:
-- `Opacity` (byte, 0–255) — renderer wraps `DrawElement` in `canvas.SaveLayer` when `< 255`
+- `Opacity` (byte, 0–255) — renderer wraps the element in `canvas.save_layer` when `< 255`
 - `UseVisibility` / `VisibilitySource` / `VisibleAbove` / `VisibleBelow` — element is skipped when the named source value is outside `[VisibleAbove, VisibleBelow]`
 
 `ArcElement` and `LinearBarElement` have `UseConditionalColor` + `WarnThreshold`/`WarnColor`/`DangerThreshold`/`DangerColor` for threshold-based color switching. `ArcElement` also has `AntiClockwise` (bool) to reverse sweep direction.
@@ -97,17 +88,16 @@ All `GaugeElement` subclasses have:
 
 ### Key Files
 
-- `Gauges/Custom/GaugeElement.cs` — Polymorphic element models (`[JsonDerivedType]`)
-- `Gauges/Custom/ElementRenderer.cs` — Core SkiaSharp draw methods (shared by app + designer)
-- `Gauges/Custom/CustomGauge.cs` — `BaseGauge` subclass, smoothing (lerp), source-gen JSON context
-- `Configuration/DataSourceMapper.cs` — Maps string names → `MEData` fields
-- `GaugeDotnet.Designer/Rendering/ElementRenderer.cs` — Designer wrapper (hit-test, selection highlights)
-- `GaugeDotnet.Designer/MainWindow.axaml(.cs)` — Full designer UI
-- `rust/gauge-designer/src/` — Rust designer: `app.rs` (UI), `geometry.rs` (bounds, hit test, resize, angle handles), `fields.rs` (one property-table line per element property), `package.rs` (save with `images/`)
+- `gauge-render/src/model.rs` — Element models (serde, `$type` discriminator)
+- `gauge-render/src/custom/renderer.rs` — `ElementRenderer`, core draw methods (shared by app + designer)
+- `gauge-render/src/custom/incremental.rs` — Damage tracking, tiles, threads
+- `gauge-render/src/custom/gauge.rs` — `CustomGauge`, smoothing (lerp)
+- `me-data/src/mapper.rs` — Maps string names → `MeData` fields
+- `gauge-designer/src/` — Designer: `app.rs` (UI), `geometry.rs` (bounds, hit test, resize, angle handles), `fields.rs` (one property-table line per element property), `package.rs` (save with `images/`)
 
 ### Smoothing
 
-`CustomGauge` lerps display values toward target at 10%/frame. Visual elements (arc, needle, bar) use smoothed values. Text/value/warning elements snap to target values.
+`CustomGauge` lerps display values toward target, frame-rate independent (the feel of 10 %/frame at 60 fps). Visual elements (arc, needle, bar) use smoothed values. Text/value/warning elements snap to target values.
 
 ### Needle Image Guide
 
@@ -126,19 +116,9 @@ When using `ImagePath` on a `NeedleElement`, the image is rotated around the ele
 
 ### Designer Keyboard Shortcuts
 
-Avalonia designer (the Rust designer has these plus more; see `rust/README.md`):
-
-| Key | Action |
-|-----|--------|
-| `Ctrl+Z` | Undo (snapshots: add, delete, duplicate, move, drag start) |
-| `Ctrl+Y` | Redo |
-| `Delete` | Delete selected element |
-| `Arrow keys` | Move selected element ±1 px (snapped if grid snap on) |
-| `Shift + Arrow keys` | Move selected element ±10 px (snapped if grid snap on) |
-| `G` | Toggle grid snap (10 px grid) |
-| `Shift+click` | Add/remove element from multi-selection (amber outline); drag/delete operates on all |
+See the key table in `rust/README.md`.
 
 ## Tests
 
-- xUnit with `[Fact]`, Arrange/Act/Assert pattern
-- Tests use raw byte array payloads to verify CAN frame decoding
+- `#[test]` unit tests next to the code, render tests in `gauge-render/tests/render.rs`
+- CAN frame decoding tests use raw byte array payloads

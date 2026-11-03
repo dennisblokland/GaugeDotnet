@@ -1,6 +1,6 @@
 #!/bin/bash
-# ROCKNIX side of the launchers, sourced by GaugeRust.sh and GaugeDotnet.sh and
-# deployed next to the app. Anything changed here is undone by rocknix_restore,
+# ROCKNIX side of the launcher, sourced by GaugeRust.sh and deployed next to
+# the app. Anything changed here is undone by rocknix_restore,
 # which runs however the launcher ends.
 #
 # Uses from the launcher: APP_NAME, GAMEDIR. Settings, usually from the app's

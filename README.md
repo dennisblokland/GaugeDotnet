@@ -1,100 +1,89 @@
 # GaugeDotnet
 
-Real-time automotive gauge display for the [RG35XX](https://anbernic.com) handheld (ARM64 Linux). Connects via BLE to a Motorsports Electronics ECU, decodes CAN bus frames, and renders live gauges with SkiaSharp on SDL2 + OpenGL ES 2.0.
+Real-time automotive gauge display for the [RG35XX](https://anbernic.com) handheld (ARM64 Linux, muOS or [ROCKNIX](rocknix/README.md)). Connects via BLE to a Motorsport Electronics ECU, decodes CAN bus frames, and renders live gauges on the CPU with [tiny-skia](https://github.com/RazrFalcon/tiny-skia), shown through SDL2.
 
-![.NET 10](https://img.shields.io/badge/.NET-10-512BD4) ![Platform](https://img.shields.io/badge/platform-linux--arm64-green) ![License](https://img.shields.io/badge/license-MIT-blue)
+The app was originally written in C#. Rust replaced it; the C# code is in the git history up to commit `7405d83`.
+
+![Rust](https://img.shields.io/badge/language-Rust-b7410e) ![Platform](https://img.shields.io/badge/platform-linux--arm64-green) ![License](https://img.shields.io/badge/license-MIT-blue)
 
 ## Features
 
-- Live gauge rendering at 60 fps via SDL2 + OpenGL ES 2.0
-- BLE connection to Motorsports Electronics ECU (CAN bus frames ME1_1–ME1_8)
+- Live gauge rendering at 60 fps on the device, repainting only what changed
+- BLE connection to Motorsport Electronics ECU (CAN bus frames ME1_1–ME1_8)
 - Multiple built-in gauge styles: circular, sweep, needle, TurboXs, bar, digital, histogram, min/max, grid
-- **Custom gauge designer** — drag-and-drop desktop app that exports JSON definitions for the device. The Rust designer (`rust/gauge-designer`) previews with the renderer the device runs, pixel for pixel; the original Avalonia designer still works
+- **Custom gauge designer** — drag-and-drop desktop app (`rust/gauge-designer`) that exports JSON definitions for the device and previews with the renderer the device runs, pixel for pixel
 - 17 custom element types: arcs, zone arcs, needles (with image support), text, value displays, label+value boxes, tick rings, bars, warning indicators, images, value-driven gifs, clocks, mini graphs, peak markers, and more
 - **Calculated channels** — define virtual data sources as math expressions (`Rpm / 1000`, `OilTemp - Iat`) evaluated each frame
 - **Conditional element visibility** — show/hide elements based on a data source value range
 - **Grid snap** in designer (G key toggle, 10 px grid); **multi-select** with Shift+click for group drag/delete; **drag corner handles** to resize the selected element
 - Arc elements support anti-clockwise fill direction
 - Smooth value interpolation (lerp) for fluid needle/arc/bar animation
-- Simulated device mode for desktop development (`SimulatedMeDevice` in DEBUG builds)
+- Simulated ECU data for desktop development (`gauge app --demo`, or `DemoMode` in `gauges.json`)
 
-## Projects
+## Crates
 
-| Project | Purpose |
+All code is in the Cargo workspace in [`rust/`](rust/README.md).
+
+| Crate | Purpose |
 |---------|---------|
-| `GaugeDotnet` | Main app — SDL2 window, gauge rendering, BLE connection |
-| `GaugeDotnet.Designer` | Avalonia 12 drag-and-drop gauge designer (desktop, the original) |
-| `ME1_4NET` | CAN bus decoder library (Motorsports Electronics frames ME1_1–ME1_8) |
-| `ME1_4NET.Tests` | xUnit tests for CAN frame decoding |
-| `RG35XX.Core` | Platform abstractions (gamepad, storage interfaces) |
-| `RG35XX.Libraries` | Linux implementations (joystick, keyboard, storage) |
-| `rust/` | Rust port of the renderer (custom + built-in gauges, tiny-skia, optional SDL2 window) and the Rust gauge designer — see [rust/README.md](rust/README.md) |
+| `gauge-app` | `gauge` binary: the device app, plus PNG snapshots, a benchmark and Bluetooth tools |
+| `gauge-render` | Library: canvas, fonts, custom element renderers, calculated channels, built-in gauges, `gauges.json` loading |
+| `gauge-designer` | Desktop gauge designer (egui) |
+| `me-data` | CAN bus decoder (Motorsport Electronics frames ME1_1–ME1_8), `MeData`, data-source names |
+| `me-ble` | Bluetooth link to the ECU, on btleplug |
 
 ## Prerequisites
 
-- [.NET 10 SDK](https://dotnet.microsoft.com/download)
-- SDL2 development libraries (`libsdl2-dev` on Debian/Ubuntu)
-- A GitHub PAT with `read:packages` scope (for the `VaettirNet.Btleplug` NuGet package)
-
-## Setup
-
-The `VaettirNet.Btleplug` BLE library is sourced from GitHub Packages. Set the PAT before restoring:
-
-```shell
-export GITHUB_PACKAGES_PAT=ghp_your_token_here
-dotnet restore
-```
-
-See [nuget.config](nuget.config) for the package source configuration.
+- [Rust](https://rustup.rs) 1.80 or newer
+- SDL2 development libraries for the window (`libsdl2-dev` on Debian/Ubuntu)
+- `libdbus-1-dev` for Bluetooth on the desktop
 
 ## Build & Run
 
 ```shell
-dotnet build                                    # Build all projects
-dotnet test                                     # Run xUnit tests
-dotnet run --project src/GaugeDotnet            # Run app (SimulatedMeDevice in DEBUG)
-dotnet run --project src/GaugeDotnet.Designer   # Open the Avalonia gauge designer
-(cd rust && cargo run --release -p gauge-designer)   # Open the Rust gauge designer
+cd rust
+cargo test                                            # Run tests
+cargo run --release --features sdl -- app --demo      # Run the app with simulated data
+cargo run --release -p gauge-designer                 # Open the gauge designer
 ```
 
 ### Deploy to Device
 
 ```shell
-REMOTE_HOST=<device ip> ./deploy-arm64.sh
+REMOTE_HOST=<device ip> ./rust/deploy-arm64.sh
 ```
 
-Publishes a self-contained linux-arm64 binary and copies it to the RG35XX. The target OS, muOS or [ROCKNIX](rocknix/README.md), is detected over ssh. It also uploads the artwork shown in the Ports list (box art, preview and description from [`muos/`](muos/README.md)).
+Builds the linux-arm64 binary and copies it to the RG35XX. The target OS, muOS or [ROCKNIX](rocknix/README.md), is detected over ssh. It also uploads the artwork shown in the Ports list (box art, preview and description from [`muos/`](muos/README.md)). See [rust/README.md](rust/README.md#building-and-deploying-to-the-rg35xx) for toolchain options.
 
-On muOS, the launcher, `GaugeDotnet.sh`, holds the Mali GPU at its top clock while the app runs and restores the previous floor on exit. The default `simple_ondemand` governor never raises the clock for the app, and frames take 20–40% longer at the bottom step (see `bench/RESULTS.md`).
+A `gauges.json` or custom gauge written for the C# app works as it is: copy it next to the binary (`/mnt/mmc/ports/GaugeRust` on muOS, `/storage/GaugeRust` on ROCKNIX). The deploy doesn't remove an existing C# install from the device.
 
 ## Architecture
 
 ```
 ┌─────────────────────────────────────────────┐
-│                  GameLoop                    │
-│  ┌──────────┐  ┌──────────┐  ┌───────────┐ │
-│  │ GaugeSDL │  │InputHandler│ │ FpsCounter│ │
-│  │ SDL2+GL  │  │ Gamepad+KB │ │           │ │
-│  └────┬─────┘  └───────────┘  └───────────┘ │
-│       │                                      │
-│  ┌────▼──────────────────────────────────┐   │
-│  │           BaseGauge / CustomGauge     │   │
-│  │  ┌─────────────────────────────────┐  │   │
-│  │  │      ElementRenderer (Skia)     │  │   │
-│  │  └─────────────────────────────────┘  │   │
-│  └───────────────────────────────────────┘   │
-│       │                                      │
-│  ┌────▼─────┐  ┌──────────────────────────┐ │
-│  │ IMeDevice│  │      CanDecoder          │ │
-│  │ BLE/Sim  │  │  ME1_1..ME1_8 → MEData  │ │
+│               gauge-app (app.rs)            │
+│  ┌──────────┐  ┌──────────┐  ┌───────────┐  │
+│  │ display  │  │  input   │  │  screens  │  │
+│  │ SDL2     │  │ js0 + KB │  │ FPS, etc. │  │
+│  └────▲─────┘  └──────────┘  └───────────┘  │
+│       │                                     │
+│  ┌────┴──────────────────────────────────┐  │
+│  │ gauge-render                          │  │
+│  │ built-in gauges / CustomGauge         │  │
+│  │ ElementRenderer (tiny-skia)           │  │
+│  └────▲──────────────────────────────────┘  │
+│       │                                     │
+│  ┌────┴─────┐  ┌──────────────────────────┐ │
+│  │  feed    │  │ me-data                  │ │
+│  │ BLE/Sim  │◄─┤ ME1_1..ME1_8 → MeData    │ │
 │  └──────────┘  └──────────────────────────┘ │
 └─────────────────────────────────────────────┘
 ```
 
-- **GaugeSDL** creates the SDL2 window with OpenGL ES 2.0 and wraps it with a SkiaSharp `GRContext`/`SKSurface`
-- **BaseGauge** subclasses use a static cache pattern: inactive segments drawn once to bitmap, active segments redrawn per-frame
-- **MeDevice** / **SimulatedMeDevice** implement `IMeDevice` — `#if DEBUG` uses the simulated device to bypass BLE
-- **CanDecoder** dispatches CAN frames by PID to typed structs; `MEData` aggregates all decoded values
+- **display** creates the SDL2 window and streams frames into a texture, uploading only the damaged rects
+- **Built-in gauges** cache static content as trimmed sprites and redraw only what moves; **CustomGauge** tracks damage per element
+- **feed** supplies values from the ECU (`me-ble`) or the simulator (`sim`), chosen by `DemoMode` / `--demo`
+- **me-data** decodes CAN frames by PID into typed structs; `MeData` aggregates all decoded values
 
 ## TurboXs Gauge
 
@@ -112,8 +101,8 @@ On muOS, the launcher, `GaugeDotnet.sh`, holds the Mali GPU at its top clock whi
   | `StatusText` | Second line in `Text` mode | `Stop` |
 
   Peak and Min start at the first reading. R1 resets them, as on the other gauges. `StatusMode` can also be changed in the on-device config editor.
-- **Old LCD look:** `"Lcd": true` imitates a backlit handheld LCD. The gauge renders at a third of the resolution with a faint pixel grid, black becomes a deep navy and white a slightly blue white, and moving parts leave a short trail. `LcdGhosting` sets how much of the previous frame lingers: 0 turns the trail off, and the maximum is 0.9 (default 0.2). Both can be changed in the on-device config editor. C# draws it in one GPU shader pass on the device and uses lookup tables on a CPU canvas, as Rust does. It costs about 0.4 ms per frame over the normal look in Rust and 2 ms in C# on a CPU canvas (see `bench/RESULTS.md`).
-- **Colours and fonts:** `ColorHex` is ignored, because the dial has a fixed white, grey and red palette. Text uses the bundled Aldrich and Saira Extra Condensed fonts (SIL OFL 1.1, licenses in `src/GaugeDotnet/fonts`), which are also available to custom gauges.
+- **Old LCD look:** `"Lcd": true` imitates a backlit handheld LCD. The gauge renders at a third of the resolution with a faint pixel grid, black becomes a deep navy and white a slightly blue white, and moving parts leave a short trail. `LcdGhosting` sets how much of the previous frame lingers: 0 turns the trail off, and the maximum is 0.9 (default 0.2). Both can be changed in the on-device config editor. It costs about 0.4 ms per frame over the normal look (see `bench/RESULTS.md`).
+- **Colours and fonts:** `ColorHex` is ignored, because the dial has a fixed white, grey and red palette. Text uses the bundled Aldrich and Saira Extra Condensed fonts (SIL OFL 1.1, licenses in `rust/gauge-render/fonts`), which are also available to custom gauges.
 
 ```json
 { "Gauge": { "Type": "TurboXs", "DataSource": "Map", "Title": "Boost Press.", "Unit": "Psi", "MinValue": -10, "MaxValue": 20, "Decimals": 1 } }
@@ -130,7 +119,7 @@ Design gauges on your desktop, deploy JSON to the device.
 
 ### Workflow
 
-1. Run the designer: `cd rust && cargo run --release -p gauge-designer` (or the Avalonia one: `dotnet run --project src/GaugeDotnet.Designer`). Both read and write the same JSON.
+1. Run the designer: `cd rust && cargo run --release -p gauge-designer`
 2. Add and arrange elements, bind data sources, tweak properties
 3. Save → `custom-gauge.json`
 4. Reference in your `gauges.json`:
@@ -187,10 +176,10 @@ Display values are interpolated toward the target at 10% per frame for fluid ani
 ## Tests
 
 ```shell
-dotnet test
+cd rust && cargo test
 ```
 
-xUnit tests verify CAN frame decoding against raw byte array payloads using the Arrange/Act/Assert pattern.
+Unit tests verify CAN frame decoding against raw byte array payloads. Render tests in `gauge-render/tests` check drawn output, including that incremental and threaded frames match a full render.
 
 ## License
 

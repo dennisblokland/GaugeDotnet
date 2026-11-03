@@ -1,4 +1,4 @@
-//! Rust port of the GaugeDotnet renderer.
+//! The GaugeDotnet renderer.
 //!
 //! * [`custom`] renders designer-built JSON gauges (`custom-gauge.json`) with
 //!   all 17 element types, calculated channels, visibility rules and smoothing.
