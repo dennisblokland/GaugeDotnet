@@ -17,7 +17,7 @@ With `ES_SYSTEM=0`, the deploy leaves out the home screen card.
 |---|---|
 | Binary, `gauges.json`, log, `rocknix-launcher.sh` | `/storage/GaugeRust` |
 | Launcher and Ports entry | `/storage/roms/ports/<App>.sh`, `gamelist.xml`, `images/` |
-| "Gauges" home screen card | `/storage/.config/emulationstation/es_systems_gauge.cfg`, `/storage/GaugeMenu` |
+| "Gauge" home screen card | `/storage/.config/emulationstation/es_systems_gauge.cfg`, `/storage/GaugeMenu` |
 | Direct launch from the card | `/storage/.config/emulationstation/scripts/{system,game}-selected/gauge-direct-launch.sh` |
 | The card's art | `/storage/roms/_userdata/theme-customizations/art-book-next/artwork/gauges.png` |
 
@@ -35,10 +35,12 @@ and run `systemctl start essway`.
 
 ## Using it
 
-- **Start:** press A on the **Gauges** card on the home screen, which starts the
+- **Start:** press A on the **Gauge** card on the home screen, which starts the
   app straight away. It is also listed under **Ports**.
 - **After quitting from the card:** ES is back on the card's one-item list; B returns to
   the home screen.
+- **Demo:** L1 + R1 switches to simulated data while there is no ECU connection, as the
+  hint on screen says. It lasts until the app quits.
 - **Quit:** MENU, also during "Connecting". If the app ever hangs, the system's
   hotkey (L1 + SELECT + START) ends it, by force after 5 seconds.
 - **Settings:** an optional `GaugeRust.env` next to the binary,
@@ -95,7 +97,7 @@ is on, so the floor is capped at `max_freq`. Changing the clock floor logs a
 
 **Home screen.** ES loads every `es_systems_*.cfg` from its config folder alongside
 the stock list. The theme is read-only, so the card's art goes in its customization
-folder (see Deploy), and "GAUGES" is the theme's text for a system with no logo.
+folder (see Deploy), and "GAUGE" is the theme's text for a system with no logo.
 `<theme>ports</theme>` would give a second card reading PORTS. A `..` in `<theme>` isn't
 an alternative: ES then drops the whole theme for that card. `card-art.py` draws the art.
 
@@ -104,7 +106,7 @@ opens its list. It does run event scripts, and it reports `game-selected` when t
 opens, so `es-direct-launch.sh` starts the app from there. ES also reports that event
 when the app ends and when games are reloaded with the list open, and it queues a
 launch per request. So the script only fires once after `system-selected` has reported
-the Gauges card, otherwise the app would restart repeatedly. The card holds one app
+the Gauge card, otherwise the app would restart repeatedly. The card holds one app
 for this to work.
 
 ## Logs

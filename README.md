@@ -18,7 +18,7 @@ The app was originally written in C#. Rust replaced it; the C# code is in the gi
 - **Grid snap** in designer (G key toggle, 10 px grid); **multi-select** with Shift+click for group drag/delete; **drag corner handles** to resize the selected element
 - Arc elements support anti-clockwise fill direction
 - Smooth value interpolation (lerp) for fluid needle/arc/bar animation
-- Simulated ECU data for desktop development (`gauge app --demo`, or `DemoMode` in `gauges.json`)
+- Simulated ECU data for desktop development (`gauge app --demo`, or `DemoMode` in `gauges.json`), or switch to it with L1 + R1 while waiting for the ECU (a hint on screen shows the combo)
 
 ## Crates
 

@@ -74,7 +74,7 @@ pub fn run(options: AppOptions) -> Result<(), String> {
 	let mut canvas = Canvas::new(WIDTH, HEIGHT);
 	let mut input = Input::new();
 
-	let feed = if demo {
+	let mut feed = if demo {
 		eprintln!("[app] DemoMode: simulated ECU, no Bluetooth");
 		Feed::simulated()
 	} else {
@@ -91,6 +91,10 @@ pub fn run(options: AppOptions) -> Result<(), String> {
 			eprintln!("[app] quit during startup");
 			return Ok(());
 		}
+		let waiting = feed.status().is_some();
+		if waiting && input.demo_combo() {
+			feed.switch_to_demo();
+		}
 		let (done, error) = feed.startup_state();
 		// Like SplashScreen.ShowUntil, the splash stays up at least 1.5 s,
 		// even when startup fails.
@@ -101,7 +105,8 @@ pub fn run(options: AppOptions) -> Result<(), String> {
 		if done && shown_long_enough {
 			break;
 		}
-		screens::draw_splash(&mut canvas, started.elapsed().as_secs_f64(), done, "Connecting");
+		let hint = (!done).then(|| input.demo_hint());
+		screens::draw_splash(&mut canvas, started.elapsed().as_secs_f64(), done, "Connecting", hint);
 		display.present_full(&canvas)?;
 		std::thread::sleep(Duration::from_millis(16));
 	}
@@ -161,6 +166,10 @@ struct GameLoop {
 	battery: BatteryOverlay,
 	last_update: Option<Instant>,
 	last_keep_alive: Option<Instant>,
+	/// The ECU link is down (refreshed with the data, not every frame).
+	offline: bool,
+	/// The bottom strip still shows the demo hint from the last frame.
+	hint_drawn: bool,
 }
 
 impl GameLoop {
@@ -184,6 +193,8 @@ impl GameLoop {
 			fps: FpsCounter::new(),
 			last_update: None,
 			last_keep_alive: None,
+			offline: false,
+			hint_drawn: false,
 		}
 	}
 
@@ -210,7 +221,8 @@ impl GameLoop {
 			self.fps = FpsCounter::new();
 			// The key that closed the editor is used up (on a keyboard, Escape
 			// is both B and MENU), so just show the gauges again.
-			self.render(display, canvas)?;
+			let hint = self.offline.then(|| input.demo_hint());
+			self.render(display, canvas, hint)?;
 			return Ok(true);
 		}
 		if input.key == GamepadKey::MENU_DOWN {
@@ -220,11 +232,26 @@ impl GameLoop {
 			self.editor = Some(ConfigEditor::new());
 			return Ok(true);
 		}
+		if self.offline && input.demo_combo() {
+			self.switch_to_demo();
+		}
 		self.handle_reset(input);
 		self.handle_navigation(input.key);
 		self.update_data();
-		self.render(display, canvas)?;
+		let hint = self.offline.then(|| input.demo_hint());
+		self.render(display, canvas, hint)?;
 		Ok(true)
+	}
+
+	/// Leaves a lost connection for simulated data. Peaks and history from the
+	/// ECU would otherwise mix with the simulated values.
+	fn switch_to_demo(&mut self) {
+		self.feed.switch_to_demo();
+		self.offline = false;
+		self.last_update = None;
+		for screen in &mut self.screens {
+			screen.reset_saved_state();
+		}
 	}
 
 	/// Rebuilds the screens if the editor changed the config (`HandleConfigEditor`).
@@ -267,7 +294,8 @@ impl GameLoop {
 		}
 		self.last_update = Some(now);
 		self.data = self.feed.tick();
-		if self.feed.status().is_none() {
+		self.offline = self.feed.status().is_some();
+		if !self.offline {
 			if let Some(screen) = self.screens.get_mut(self.current) {
 				let data = self.data;
 				screen.update(|name| data.read(name));
@@ -275,8 +303,9 @@ impl GameLoop {
 		}
 	}
 
-	fn render(&mut self, display: &mut Display, canvas: &mut Canvas) -> Result<(), String> {
-		let damage = match self.screens.get_mut(self.current) {
+	fn render(&mut self, display: &mut Display, canvas: &mut Canvas, hint: Option<&str>) -> Result<(), String> {
+		let hint_area_dirty = hint.is_some() || self.hint_drawn;
+		let mut damage = match self.screens.get_mut(self.current) {
 			Some(screen) => {
 				if self.shown != Some(self.current) {
 					screen.invalidate();
@@ -286,6 +315,9 @@ impl GameLoop {
 				// must be repainted under them too.
 				screen.add_damage(FpsCounter::AREA);
 				screen.add_damage(BatteryOverlay::AREA);
+				if hint_area_dirty {
+					screen.add_damage(screens::GAUGE_HINT_AREA);
+				}
 				let mut damage = screen.draw(canvas);
 				damage.rects.extend([FpsCounter::AREA, BatteryOverlay::AREA]);
 				damage
@@ -298,6 +330,13 @@ impl GameLoop {
 		self.fps.tick();
 		self.fps.draw(canvas);
 		self.battery.draw(canvas);
+		if hint_area_dirty {
+			damage.rects.push(screens::GAUGE_HINT_AREA);
+		}
+		if let Some(hint) = hint {
+			screens::draw_gauge_hint(canvas, hint);
+		}
+		self.hint_drawn = hint.is_some();
 		display.present(canvas, &damage)
 	}
 }
@@ -375,5 +414,43 @@ mod tests {
 
 		display.push_key(Keycode::Escape);
 		assert!(!game.step(&mut display, &mut canvas, &mut input).unwrap(), "MENU exits");
+
+		// Part of this test because SDL can only be initialised on one thread:
+		// as a second #[test] one of the two would always skip.
+		#[cfg(feature = "ble")]
+		demo_combo_replaces_a_link_that_is_down(&mut display, &mut canvas);
+	}
+
+	/// While the link is down, the hint is on screen and L1 + R1 swaps in the
+	/// simulator. The MAC is invalid, so no Bluetooth hardware is touched.
+	#[cfg(feature = "ble")]
+	fn demo_combo_replaces_a_link_that_is_down(display: &mut Display, canvas: &mut Canvas) {
+		let mut input = Input::new();
+		let link = me_ble::BleLink::start(me_ble::LinkOptions { mac: Some("not-a-mac".into()), ..Default::default() });
+		let config = AppConfig { screens: vec![screen(GaugeType::Digital)], ..AppConfig::default() };
+		let mut game = GameLoop::new(config, None, Feed::Ble(link));
+		let strip = |canvas: &Canvas| -> Vec<_> {
+			(444..480).flat_map(|y| (0..640).map(move |x| (x, y))).map(|(x, y)| canvas.pixel(x, y).unwrap()).collect()
+		};
+
+		game.step(display, canvas, &mut input).unwrap();
+		game.step(display, canvas, &mut input).unwrap();
+		assert!(game.offline);
+		assert!(strip(canvas).iter().any(|p| p.r > 200 && p.g > 200 && p.b > 200), "hint drawn");
+
+		// One shoulder button isn't the combo.
+		display.push_key_event(Keycode::Comma, true);
+		game.step(display, canvas, &mut input).unwrap();
+		assert!(matches!(game.feed, Feed::Ble(_)));
+
+		display.push_key_event(Keycode::Period, true);
+		game.step(display, canvas, &mut input).unwrap();
+		assert!(matches!(game.feed, Feed::Sim { .. }));
+		assert!(!game.offline);
+		// The hint is gone, its area repainted from the gauge.
+		let mut clean = Canvas::new(WIDTH, HEIGHT);
+		game.screens[0].invalidate();
+		game.screens[0].draw(&mut clean);
+		assert_eq!(strip(canvas), strip(&clean), "hint area repainted");
 	}
 }

@@ -95,4 +95,4 @@ elif [ -f "$ART_DIR/$ART_NAME.png" ]; then
   fi
 fi
 
-echo "Done. On the device: Ports -> GaugeRust, or the Gauges system on ROCKNIX (log: $BIN_DIR/GaugeRust.log)"
+echo "Done. On the device: Ports -> GaugeRust, or the Gauge system on ROCKNIX (log: $BIN_DIR/GaugeRust.log)"

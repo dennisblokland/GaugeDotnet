@@ -63,30 +63,35 @@ impl Display {
 	/// Injects a key press and release (tests drive the app with these).
 	#[cfg(test)]
 	pub fn push_key(&mut self, key: sdl2::keyboard::Keycode) {
+		self.push_key_event(key, true);
+		self.push_key_event(key, false);
+	}
+
+	/// Injects only a press or only a release, to hold keys across frames.
+	#[cfg(test)]
+	pub fn push_key_event(&mut self, key: sdl2::keyboard::Keycode, down: bool) {
 		use sdl2::event::Event;
 		let ev = self._sdl.event().expect("event subsystem");
-		for down in [true, false] {
-			let e = if down {
-				Event::KeyDown {
-					timestamp: 0,
-					window_id: 0,
-					keycode: Some(key),
-					scancode: None,
-					keymod: sdl2::keyboard::Mod::NOMOD,
-					repeat: false,
-				}
-			} else {
-				Event::KeyUp {
-					timestamp: 0,
-					window_id: 0,
-					keycode: Some(key),
-					scancode: None,
-					keymod: sdl2::keyboard::Mod::NOMOD,
-					repeat: false,
-				}
-			};
-			ev.push_event(e).expect("push key event");
-		}
+		let e = if down {
+			Event::KeyDown {
+				timestamp: 0,
+				window_id: 0,
+				keycode: Some(key),
+				scancode: None,
+				keymod: sdl2::keyboard::Mod::NOMOD,
+				repeat: false,
+			}
+		} else {
+			Event::KeyUp {
+				timestamp: 0,
+				window_id: 0,
+				keycode: Some(key),
+				scancode: None,
+				keymod: sdl2::keyboard::Mod::NOMOD,
+				repeat: false,
+			}
+		};
+		ev.push_event(e).expect("push key event");
 	}
 
 	pub fn set_title(&mut self, title: &str) {

@@ -22,6 +22,15 @@ impl Feed {
 		Feed::Sim { sim: Simulator::new(0.0), last: Instant::now() }
 	}
 
+	/// Swaps to simulated data. The old link stops on a thread of its own:
+	/// dropping it waits for any blocking Bluetooth call in progress (the
+	/// bring-up takes seconds), and the screen must not freeze for that.
+	pub fn switch_to_demo(&mut self) {
+		eprintln!("[app] switching to demo mode");
+		let old = std::mem::replace(self, Self::simulated());
+		std::thread::spawn(move || drop(old));
+	}
+
 	/// Latest values for this frame.
 	pub fn tick(&mut self) -> MeData {
 		match self {

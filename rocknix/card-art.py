@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Draws rocknix/gauges.png, the Gauges card's art for the home screen.
+"""Draws rocknix/gauges.png, the Gauge card's art for the home screen.
 
 The theme's cards are 454x1080 pixel art strips, slanted the same way, so this
 draws at 1/6 size without smoothing and cuts the same shape. ES puts the name

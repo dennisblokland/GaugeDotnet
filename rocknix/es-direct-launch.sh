@@ -6,7 +6,7 @@
 # ES also reports game-selected at other times: twice when the app ends and the
 # list comes back, and several times when games are reloaded with the list open.
 # It queues a launch per request, so those would restart the app over and over.
-# Hence this only fires from the home screen: having the Gauges card selected
+# Hence this only fires from the home screen: having the Gauge card selected
 # arms it, and the first game-selected uses that up.
 ARMED=/tmp/.gauge-card-selected
 

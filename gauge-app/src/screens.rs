@@ -19,8 +19,9 @@ fn centered(canvas: &mut Canvas, text: &str, y: f32, font: &str, size: f32, colo
 }
 
 /// One splash frame (`SplashScreen.Render`): title, sweeping progress bar
-/// while connecting, full bar plus "Ready" once done.
-pub fn draw_splash(canvas: &mut Canvas, t: f64, done: bool, status: &str) {
+/// while connecting, full bar plus "Ready" once done. `hint` is a line of
+/// small print under the status.
+pub fn draw_splash(canvas: &mut Canvas, t: f64, done: bool, status: &str, hint: Option<&str>) {
 	if let Some(r) = rect(0.0, 0.0, W, H) {
 		canvas.draw_rect_vertical_gradient(r, Rgba::rgb(0x10, 0x10, 0x14), Rgba::BLACK);
 	}
@@ -67,6 +68,25 @@ pub fn draw_splash(canvas: &mut Canvas, t: f64, done: bool, status: &str) {
 	let dots = ".".repeat(((t * 3.0) as usize) % 4);
 	let text = if done { "Ready".to_string() } else { format!("{status}{dots}") };
 	centered(canvas, &text, bar_y + 36.0, "Race Sport", 18.0, Rgba::rgb(0x99, 0x99, 0x99).with_alpha(a));
+	if let Some(hint) = hint {
+		centered(canvas, hint, bar_y + 72.0, "Race Sport", 16.0, Rgba::WHITE.with_alpha(a));
+	}
+}
+
+/// Area of the hint drawn by [`draw_gauge_hint`] (for damage tracking).
+pub const GAUGE_HINT_AREA: IRect = IRect { x0: 0, y0: 444, x1: 640, y1: 480 };
+
+/// A line of small print along the bottom, over the gauges.
+pub fn draw_gauge_hint(canvas: &mut Canvas, hint: &str) {
+	let area = GAUGE_HINT_AREA;
+	canvas.draw_rect_xywh(
+		area.x0 as f32,
+		area.y0 as f32,
+		area.width() as f32,
+		area.height() as f32,
+		&Paint::fill(Rgba::BLACK.with_alpha(0xC0)),
+	);
+	centered(canvas, hint, area.y1 as f32 - 11.0, "Race Sport", 16.0, Rgba::WHITE);
 }
 
 /// The error screen (`ErrorScreen`): red message lines and an exit hint.

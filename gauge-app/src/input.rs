@@ -205,6 +205,8 @@ impl JoystickReader {
 pub struct Input {
 	joystick: Option<JoystickReader>,
 	keyboard: VecDeque<GamepadKey>,
+	l1_held: bool,
+	r1_held: bool,
 	pub key: GamepadKey,
 	pub sdl_key: Option<Keycode>,
 	pub quit: bool,
@@ -215,6 +217,8 @@ impl Input {
 		Self {
 			joystick: JoystickReader::open("/dev/input/js0"),
 			keyboard: VecDeque::new(),
+			l1_held: false,
+			r1_held: false,
 			key: GamepadKey::NONE,
 			sdl_key: None,
 			quit: false,
@@ -260,6 +264,13 @@ impl Input {
 			};
 			let Some(key) = next else { break };
 			self.key = key;
+			match key {
+				GamepadKey::L1_DOWN => self.l1_held = true,
+				GamepadKey::L1_UP => self.l1_held = false,
+				GamepadKey::R1_DOWN => self.r1_held = true,
+				GamepadKey::R1_UP => self.r1_held = false,
+				_ => {}
+			}
 			if key.is_press() {
 				break;
 			}
@@ -276,6 +287,20 @@ impl Input {
 	/// Any button or key pressed this poll (for "press any button" screens).
 	pub fn any_pressed(&self) -> bool {
 		self.sdl_key.is_some() || self.key.is_press()
+	}
+
+	/// L1 and R1 are both down: switch to demo data while waiting for the ECU.
+	pub fn demo_combo(&self) -> bool {
+		self.l1_held && self.r1_held
+	}
+
+	/// On-screen hint for [`Self::demo_combo`], for whichever input is in use.
+	pub fn demo_hint(&self) -> &'static str {
+		if self.joystick.is_some() {
+			"Press L1 + R1 for demo mode"
+		} else {
+			"Press , + . for demo mode"
+		}
 	}
 }
 

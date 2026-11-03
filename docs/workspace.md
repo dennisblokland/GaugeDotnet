@@ -39,11 +39,20 @@ Relative paths inside a definition (images, needle images, GIFs) resolve against
 
 ![retro dash](retro-dash.png)
 
+`examples/tour-gauges.json` is a full set of screens for real driving and for demos, so its ranges suit a real engine rather than the simulator. It opens on `examples/track-dash.json` (shift bar, gear, speed, RPM and four engine tiles), then has one screen per built-in gauge except Grid, and ends on the retro dash:
+
+```shell
+cargo run --release --features sdl -- app --demo --config examples/tour-gauges.json        # simulated data
+cargo run --release --features sdl,ble -- app --config examples/tour-gauges.json           # real ECU
+```
+
+To use it on a device, copy `tour-gauges.json` over the device's `gauges.json`, and put `track-dash.json` and `retro.json` next to it.
+
 ### The device app
 
 `gauge app`:
 1. It loads `gauges.json` (by default the one next to the binary; `--config` picks another). If the file is missing, it writes a default, a Bar gauge for AFR, and only the first 10 screens are kept.
-2. It shows the splash screen while Bluetooth comes up and the ECU connects. In `DemoMode`, or with `--demo`, it uses simulated data instead.
+2. It shows the splash screen while Bluetooth comes up and the ECU connects. In `DemoMode`, or with `--demo`, it uses simulated data instead. While the app waits for the ECU, a hint on screen offers L1 + R1 to switch to simulated data (see Controls).
 3. It runs the screens. The FPS counter and the low-battery icon are drawn over them, and the OS is kept from sleeping (muOS: `idle_inhibit`; ROCKNIX: see [`../rocknix/README.md`](../rocknix/README.md)).
 4. When you quit, it plays the exit animation.
 
@@ -62,6 +71,9 @@ Controls (the gamepad is read from `/dev/input/js0`; without one, the keyboard i
 | R1 | `.` or `r` | reset the screen's peaks and history |
 | MENU | Esc | quit |
 | SELECT | Tab | open the config editor |
+| L1 + R1 | `,` + `.` | switch to simulated data while there is no ECU connection (on the splash screen, or after the link drops) |
+
+The switch to simulated data lasts until the app quits and isn't saved to `gauges.json`. It stops the Bluetooth link and clears the screens' peaks and history. On the error screen, any button still exits.
 
 **Config editor** has three pages:
 - **Screens:** the screen list. A edits the highlighted screen, the last row adds a screen (up to 10), and X deletes one (the last screen can't be deleted).

@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Sourced by the deploy scripts. Makes a launcher show up on ROCKNIX's home
-# screen: in the Ports list, and (unless ES_SYSTEM=0) as a "Gauges" system of
+# screen: in the Ports list, and (unless ES_SYSTEM=0) as a "Gauge" system of
 # its own that starts it directly. That card holds one app, so only the Rust
-# deploy adds it. Nothing the system ships is edited, and entries that already
-# exist are left alone.
+# deploy adds it. Nothing the system ships is edited, and gamelist entries that
+# already exist are left alone.
 #
 #   rocknix_install_menus NAME ART_DIR SSH_COMMAND...
 #
@@ -66,16 +66,16 @@ settings=/storage/.config/emulationstation/es_settings.cfg
 [ -f "$settings" ] || exit 0
 has() { grep -q "name=\"subset.$1\"" "$settings"; }
 if has distribution && ! grep -q 'name="subset.distribution" value="rocknix"' "$settings"; then
-  echo "Theme distribution setting isn't RockNIX: the Gauges card keeps the theme's art."
+  echo "Theme distribution setting isn't RockNIX: the Gauge card keeps the theme's art."
   exit 0
 fi
 if has system-view-artwork; then
   grep -q 'name="subset.system-view-artwork" value="custom"' "$settings" ||
-    echo "System Artwork isn't Custom: the Gauges card keeps the theme's art."
+    echo "System Artwork isn't Custom: the Gauge card keeps the theme's art."
   has distribution && exit 0
 fi
 if [ "$(curl -s -m 3 -o /dev/null -w '%{http_code}' http://localhost:1234/runningGame)" = 200 ]; then
-  echo "A game is running: deploy again later to turn on the Gauges card's art."
+  echo "A game is running: deploy again later to turn on the Gauge card's art."
   exit 0
 fi
 # ES writes this file when it exits, so it has to be stopped first.
@@ -111,14 +111,15 @@ rocknix_install_menus() {
     "${ssh[@]}" "mkdir -p '$MENU_DIR' && ln -sf '$PORTS_DIR/$name.sh' '$MENU_DIR/$name.sh'"
     local hook_dir="$(dirname "${BASH_SOURCE[0]}")"
     # -Pports makes runemu.sh treat it like any other port. The theme has no logo
-    # for this name, so it shows "GAUGES" as text. Using "ports" here would give
-    # a second card that reads PORTS.
-    "${ssh[@]}" "[ -f '$ES_SYSTEM_FILE' ] || cat > '$ES_SYSTEM_FILE'" <<EOF
+    # for this name, so it shows "GAUGE" as text. Using "ports" here would give
+    # a second card that reads PORTS. The file is ours alone, so each deploy
+    # replaces it: that's how a change here reaches a device that has it already.
+    "${ssh[@]}" "cat > '$ES_SYSTEM_FILE'" <<EOF
 <?xml version="1.0"?>
 <systemList>
 	<system>
 		<name>gauges</name>
-		<fullname>Gauges</fullname>
+		<fullname>Gauge</fullname>
 		<manufacturer>System</manufacturer>
 		<release>System</release>
 		<hardware>computer</hardware>

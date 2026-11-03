@@ -1,0 +1,77 @@
+{
+  "Width": 640,
+  "Height": 480,
+  "BackgroundColor": "#06080B",
+  "CalculatedChannels": [
+    { "Name": "RpmK", "Expression": "Rpm / 1000" }
+  ],
+  "Elements": [
+    { "$type": "clock", "Id": "clock", "Name": "Clock", "X": 320, "Y": 28, "Format": "HH:mm", "FontSize": 18, "Color": "#7F97A5" },
+
+    { "$type": "linearbar", "Id": "shiftbar", "Name": "Shift bar", "X": 16, "Y": 36, "Width": 608, "Height": 30,
+      "DataSource": "Rpm", "MinValue": 0, "MaxValue": 8000, "SegmentCount": 32, "SegmentGap": 4,
+      "FillColor": "#00E5FF", "TrackColor": "#10181E", "BorderColor": "#10181E", "BorderWidth": 0, "CornerRadius": 2,
+      "UseConditionalColor": true, "WarnThreshold": 5000, "WarnColor": "#FFB000", "DangerThreshold": 6300, "DangerColor": "#FF2D2D" },
+
+    { "$type": "text", "Id": "scale1", "Name": "Scale 1", "X": 92, "Y": 84, "Text": "1", "FontSize": 16, "Color": "#5C7280", "Font": "Barlow Condensed" },
+    { "$type": "text", "Id": "scale2", "Name": "Scale 2", "X": 168, "Y": 84, "Text": "2", "FontSize": 16, "Color": "#5C7280", "Font": "Barlow Condensed" },
+    { "$type": "text", "Id": "scale3", "Name": "Scale 3", "X": 244, "Y": 84, "Text": "3", "FontSize": 16, "Color": "#5C7280", "Font": "Barlow Condensed" },
+    { "$type": "text", "Id": "scale4", "Name": "Scale 4", "X": 320, "Y": 84, "Text": "4", "FontSize": 16, "Color": "#5C7280", "Font": "Barlow Condensed" },
+    { "$type": "text", "Id": "scale5", "Name": "Scale 5", "X": 396, "Y": 84, "Text": "5", "FontSize": 16, "Color": "#FFB000", "Font": "Barlow Condensed" },
+    { "$type": "text", "Id": "scale6", "Name": "Scale 6", "X": 472, "Y": 84, "Text": "6", "FontSize": 16, "Color": "#FFB000", "Font": "Barlow Condensed" },
+    { "$type": "text", "Id": "scale7", "Name": "Scale 7", "X": 548, "Y": 84, "Text": "7", "FontSize": 16, "Color": "#FF2D2D", "Font": "Barlow Condensed" },
+
+    { "$type": "rectangle", "Id": "speedpanel", "Name": "Speed panel", "X": 16, "Y": 92, "Width": 196, "Height": 200,
+      "FillColor": "#0C1217", "StrokeColor": "#1E2A33", "CornerRadius": 10 },
+    { "$type": "text", "Id": "speedlabel", "Name": "Speed label", "X": 114, "Y": 124, "Text": "KM/H", "FontSize": 18, "Color": "#7F97A5" },
+    { "$type": "value", "Id": "speed", "Name": "Speed", "X": 114, "Y": 214, "DataSource": "VehicleSpeed", "Format": "F0", "FontSize": 66, "Color": "#FFFFFF", "Font": "DSEG7 Classic" },
+    { "$type": "linearbar", "Id": "throttle", "Name": "Throttle", "X": 32, "Y": 250, "Width": 164, "Height": 12,
+      "DataSource": "ThrottlePosition", "MinValue": 0, "MaxValue": 100, "FillColor": "#39E67A", "TrackColor": "#14201A", "BorderColor": "#14201A", "BorderWidth": 0, "CornerRadius": 4 },
+    { "$type": "text", "Id": "throttlelabel", "Name": "Throttle label", "X": 114, "Y": 284, "Text": "THROTTLE", "FontSize": 15, "Color": "#7F97A5", "Font": "Barlow Condensed" },
+
+    { "$type": "rectangle", "Id": "gearpanel", "Name": "Gear panel", "X": 222, "Y": 92, "Width": 196, "Height": 200,
+      "FillColor": "#0C1217", "StrokeColor": "#FF8A00", "RectStrokeWidth": 2, "CornerRadius": 10 },
+    { "$type": "value", "Id": "gear", "Name": "Gear", "X": 320, "Y": 270, "DataSource": "GearPos", "Format": "F0", "FontSize": 122, "Color": "#FF8A00", "Font": "DSEG7 Classic" },
+    { "$type": "text", "Id": "gearlabel", "Name": "Gear label", "X": 320, "Y": 124, "Text": "GEAR", "FontSize": 18, "Color": "#7F97A5",
+      "UseVisibility": true, "VisibilitySource": "Rpm", "VisibleBelow": 6300 },
+    { "$type": "text", "Id": "shift", "Name": "Shift warning", "X": 320, "Y": 128, "Text": "SHIFT", "FontSize": 24, "Color": "#FF2D2D",
+      "UseVisibility": true, "VisibilitySource": "Rpm", "VisibleAbove": 6300 },
+
+    { "$type": "rectangle", "Id": "rpmpanel", "Name": "RPM panel", "X": 428, "Y": 92, "Width": 196, "Height": 200,
+      "FillColor": "#0C1217", "StrokeColor": "#1E2A33", "CornerRadius": 10 },
+    { "$type": "text", "Id": "rpmlabel", "Name": "RPM label", "X": 526, "Y": 124, "Text": "RPM X1000", "FontSize": 18, "Color": "#7F97A5" },
+    { "$type": "value", "Id": "rpm", "Name": "RPM", "X": 526, "Y": 214, "DataSource": "RpmK", "Format": "F1", "FontSize": 66, "Color": "#00E5FF", "Font": "DSEG7 Classic" },
+    { "$type": "graph", "Id": "rpmgraph", "Name": "RPM history", "X": 444, "Y": 232, "Width": 164, "Height": 54,
+      "DataSource": "Rpm", "MinValue": 0, "MaxValue": 8000, "HistoryDepth": 120, "LineColor": "#00E5FF", "FillColor": "#00E5FF", "FillOpacity": 36, "BackColor": "#0A1419" },
+
+    { "$type": "rectangle", "Id": "oilpanel", "Name": "Oil panel", "X": 16, "Y": 300, "Width": 145, "Height": 166,
+      "FillColor": "#0C1217", "StrokeColor": "#1E2A33", "CornerRadius": 10 },
+    { "$type": "text", "Id": "oillabel", "Name": "Oil label", "X": 88, "Y": 340, "Text": "OIL", "FontSize": 18, "Color": "#7F97A5" },
+    { "$type": "value", "Id": "oil", "Name": "Oil temp", "X": 88, "Y": 402, "DataSource": "OilTemp", "Format": "F0", "FontSize": 42, "Color": "#FFFFFF", "Font": "DSEG7 Classic" },
+    { "$type": "linearbar", "Id": "oilbar", "Name": "Oil bar", "X": 30, "Y": 426, "Width": 116, "Height": 14,
+      "DataSource": "OilTemp", "MinValue": 40, "MaxValue": 130, "SegmentCount": 12, "SegmentGap": 2, "FillColor": "#39E67A", "TrackColor": "#141B20", "BorderColor": "#141B20", "BorderWidth": 0,
+      "UseConditionalColor": true, "WarnThreshold": 110, "WarnColor": "#FFB000", "DangerThreshold": 120, "DangerColor": "#FF2D2D" },
+
+    { "$type": "rectangle", "Id": "cltpanel", "Name": "Coolant panel", "X": 171, "Y": 300, "Width": 145, "Height": 166,
+      "FillColor": "#0C1217", "StrokeColor": "#1E2A33", "CornerRadius": 10 },
+    { "$type": "text", "Id": "cltlabel", "Name": "Coolant label", "X": 243, "Y": 340, "Text": "WATER", "FontSize": 18, "Color": "#7F97A5" },
+    { "$type": "value", "Id": "clt", "Name": "Coolant temp", "X": 243, "Y": 402, "DataSource": "Clt", "Format": "F0", "FontSize": 42, "Color": "#FFFFFF", "Font": "DSEG7 Classic" },
+    { "$type": "linearbar", "Id": "cltbar", "Name": "Coolant bar", "X": 185, "Y": 426, "Width": 116, "Height": 14,
+      "DataSource": "Clt", "MinValue": 40, "MaxValue": 120, "SegmentCount": 12, "SegmentGap": 2, "FillColor": "#39E67A", "TrackColor": "#141B20", "BorderColor": "#141B20", "BorderWidth": 0,
+      "UseConditionalColor": true, "WarnThreshold": 100, "WarnColor": "#FFB000", "DangerThreshold": 108, "DangerColor": "#FF2D2D" },
+
+    { "$type": "rectangle", "Id": "afrpanel", "Name": "AFR panel", "X": 326, "Y": 300, "Width": 145, "Height": 166,
+      "FillColor": "#0C1217", "StrokeColor": "#1E2A33", "CornerRadius": 10 },
+    { "$type": "text", "Id": "afrlabel", "Name": "AFR label", "X": 398, "Y": 340, "Text": "AFR", "FontSize": 18, "Color": "#7F97A5" },
+    { "$type": "value", "Id": "afr", "Name": "AFR", "X": 398, "Y": 402, "DataSource": "AfrCurr1", "Format": "F1", "FontSize": 42, "Color": "#00FFC8", "Font": "DSEG7 Classic" },
+    { "$type": "linearbar", "Id": "afrbar", "Name": "AFR bar", "X": 340, "Y": 426, "Width": 116, "Height": 14,
+      "DataSource": "AfrCurr1", "MinValue": 10, "MaxValue": 20, "SegmentCount": 12, "SegmentGap": 2, "FillColor": "#00FFC8", "TrackColor": "#141B20", "BorderColor": "#141B20", "BorderWidth": 0 },
+
+    { "$type": "rectangle", "Id": "battpanel", "Name": "Battery panel", "X": 481, "Y": 300, "Width": 143, "Height": 166,
+      "FillColor": "#0C1217", "StrokeColor": "#1E2A33", "CornerRadius": 10 },
+    { "$type": "text", "Id": "battlabel", "Name": "Battery label", "X": 552, "Y": 340, "Text": "BATT", "FontSize": 18, "Color": "#7F97A5" },
+    { "$type": "value", "Id": "batt", "Name": "Battery", "X": 552, "Y": 402, "DataSource": "Vbat", "Format": "F1", "FontSize": 42, "Color": "#FFFFFF", "Font": "DSEG7 Classic" },
+    { "$type": "linearbar", "Id": "battbar", "Name": "Battery bar", "X": 494, "Y": 426, "Width": 116, "Height": 14,
+      "DataSource": "Vbat", "MinValue": 10, "MaxValue": 16, "SegmentCount": 12, "SegmentGap": 2, "FillColor": "#6FA8FF", "TrackColor": "#141B20", "BorderColor": "#141B20", "BorderWidth": 0 }
+  ]
+}

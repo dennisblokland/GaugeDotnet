@@ -1,0 +1,14 @@
+{
+  "Screens": [
+    { "Gauge": { "Type": "Custom" }, "CustomDefinitionFile": "track-dash.json" },
+    { "Gauge": { "Type": "Circular", "DataSource": "Rpm", "Title": "ENGINE", "Unit": "RPM", "MaxValue": 8000, "SegmentCount": 64, "ColorHex": "#00E5FF" } },
+    { "Gauge": { "Type": "Needle", "DataSource": "VehicleSpeed", "Title": "SPEED", "Unit": "KMH", "MaxValue": 200, "ColorHex": "#FF8A00" } },
+    { "Gauge": { "Type": "Sweep", "DataSource": "Map", "Title": "MANIFOLD", "Unit": "KPA", "MaxValue": 200, "ColorHex": "#FF33AA" } },
+    { "Gauge": { "Type": "TurboXs", "DataSource": "AfrCurr1", "Title": "AFR", "MinValue": 8, "MaxValue": 18, "InitialValue": 14.7, "Decimals": 2, "StatusMode": "Peak", "Lcd": true, "LcdGhosting": 0.2 } },
+    { "Gauge": { "Type": "Digital", "DataSource": "Egt1", "Title": "EXHAUST", "Unit": "C", "MinValue": 200, "MaxValue": 1000, "ColorHex": "#FF5A36" } },
+    { "Gauge": { "Type": "Bar", "DataSource": "ThrottlePosition", "Title": "THROTTLE", "Unit": "%", "MinValue": 0, "MaxValue": 100, "SegmentCount": 40, "ColorHex": "#39E67A" } },
+    { "Gauge": { "Type": "MinMax", "DataSource": "OilTemp", "Title": "OIL", "Unit": "C", "MinValue": 40, "MaxValue": 130, "ColorHex": "#FFB000" } },
+    { "Gauge": { "Type": "Histogram", "DataSource": "Clt", "Title": "COOLANT", "Unit": "C", "MinValue": 40, "MaxValue": 120, "IntervalMs": 100, "MaxDataPoints": 50, "ColorHex": "#6FA8FF" } },
+    { "Gauge": { "Type": "Custom" }, "CustomDefinitionFile": "retro.json" }
+  ]
+}
