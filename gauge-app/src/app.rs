@@ -425,7 +425,7 @@ mod tests {
 	/// simulator. The MAC is invalid, so no Bluetooth hardware is touched.
 	#[cfg(feature = "ble")]
 	fn demo_combo_replaces_a_link_that_is_down(display: &mut Display, canvas: &mut Canvas) {
-		let mut input = Input::new();
+		let mut input = Input::keyboard_only();
 		let link = me_ble::BleLink::start(me_ble::LinkOptions { mac: Some("not-a-mac".into()), ..Default::default() });
 		let config = AppConfig { screens: vec![screen(GaugeType::Digital)], ..AppConfig::default() };
 		let mut game = GameLoop::new(config, None, Feed::Ble(link));
