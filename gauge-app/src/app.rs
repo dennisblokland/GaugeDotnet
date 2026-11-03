@@ -329,7 +329,7 @@ mod tests {
 			return;
 		};
 		let mut canvas = Canvas::new(WIDTH, HEIGHT);
-		let mut input = Input::new();
+		let mut input = Input::keyboard_only();
 		let config = AppConfig {
 			screens: vec![screen(GaugeType::Needle), screen(GaugeType::MinMax), screen(GaugeType::Digital)],
 			simulate_battery_percent: Some(25),

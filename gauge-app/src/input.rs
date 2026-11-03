@@ -221,6 +221,15 @@ impl Input {
 		}
 	}
 
+	/// Keyboard only, whatever is plugged in: tests drive the app with keys,
+	/// which are ignored when the machine running them has a joystick.
+	#[cfg(test)]
+	pub fn keyboard_only() -> Self {
+		let mut input = Self::new();
+		input.joystick = None;
+		input
+	}
+
 	pub fn poll(&mut self, events: &mut sdl2::EventPump) {
 		self.sdl_key = None;
 		self.quit = false;
