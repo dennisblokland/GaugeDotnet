@@ -1,7 +1,7 @@
 [package]
 name = "gauge-app"
 version = "0.1.0"
-description = "GaugeDotnet runner: PNG snapshots and an SDL2 window driven by simulated ECU data"
+description = "GaugeRust runner: PNG snapshots and an SDL2 window driven by simulated ECU data"
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true

@@ -1,4 +1,4 @@
-# GaugeDotnet — Agent Instructions
+# GaugeRust — Agent Instructions
 
 Real-time automotive gauge display for the RG35XX handheld (ARM64 Linux). Connects via BLE to a Motorsport Electronics ECU, decodes CAN bus frames, and renders live gauges on the CPU with tiny-skia, shown through SDL2. The repo is a Cargo workspace. The original C# app was removed; it is in the git history up to `7405d83`.
 

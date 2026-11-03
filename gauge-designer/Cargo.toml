@@ -1,7 +1,7 @@
 [package]
 name = "gauge-designer"
 version = "0.1.0"
-description = "Desktop designer for GaugeDotnet custom gauges, previewing with the device renderer"
+description = "Desktop designer for GaugeRust custom gauges, previewing with the device renderer"
 edition.workspace = true
 license.workspace = true
 

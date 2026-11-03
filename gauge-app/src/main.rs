@@ -1,4 +1,4 @@
-//! `gauge`: renders GaugeDotnet gauge definitions with the Rust renderer.
+//! `gauge`: the GaugeRust device app and gauge renderer.
 
 #[cfg(feature = "sdl")]
 mod app;
@@ -27,7 +27,7 @@ use gauge_render::{Canvas, CustomGauge, CustomGaugeDefinition};
 use sim::Simulator;
 
 const USAGE: &str = "\
-gauge — GaugeDotnet renderer (Rust)
+gauge — GaugeRust device app and gauge renderer
 
 USAGE:
   gauge app [--config gauges.json] [--fullscreen] [--demo] [--init-bt | --no-init-bt]

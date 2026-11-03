@@ -1,4 +1,4 @@
-# GaugeDotnet
+# GaugeRust
 
 Real-time automotive gauge display for the [RG35XX](https://anbernic.com) handheld (ARM64 Linux, muOS or [ROCKNIX](rocknix/README.md)). Connects via BLE to a Motorsport Electronics ECU, decodes CAN bus frames, and renders live gauges on the CPU with [tiny-skia](https://github.com/RazrFalcon/tiny-skia), shown through SDL2.
 

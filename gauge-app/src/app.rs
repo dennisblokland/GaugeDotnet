@@ -70,7 +70,7 @@ pub fn run(options: AppOptions) -> Result<(), String> {
 	eprintln!("[app] loaded {} screen(s) from {}", config.screens.len(), config_path.display());
 	let demo = options.demo || config.demo_mode;
 
-	let mut display = Display::open("GaugeDotnet", WIDTH, HEIGHT, options.fullscreen)?;
+	let mut display = Display::open("GaugeRust", WIDTH, HEIGHT, options.fullscreen)?;
 	let mut canvas = Canvas::new(WIDTH, HEIGHT);
 	let mut input = Input::new();
 

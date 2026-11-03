@@ -26,7 +26,7 @@ pub fn draw_splash(canvas: &mut Canvas, t: f64, done: bool, status: &str) {
 	}
 	let a = ((t / 0.4).clamp(0.0, 1.0) * 255.0) as u8;
 	let race = typeface("Race Sport");
-	let title = "GaugeDotnet";
+	let title = "GaugeRust";
 	let title_w = race.measure(title, 64.0);
 	let title_y = 210.0;
 	let underline_w = title_w + 40.0;

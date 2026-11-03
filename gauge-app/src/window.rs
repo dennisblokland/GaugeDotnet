@@ -60,7 +60,7 @@ pub fn run(path: &Path, fullscreen: bool, mut feed: Feed) -> Result<(), String> 
 			.collect(),
 	};
 
-	let mut display = crate::display::Display::open("GaugeDotnet (Rust)", w, h, fullscreen)?;
+	let mut display = crate::display::Display::open("GaugeRust", w, h, fullscreen)?;
 	let mut canvas = Canvas::new(w, h);
 	let mut current = 0usize;
 	let mut shown = usize::MAX;
@@ -97,7 +97,7 @@ pub fn run(path: &Path, fullscreen: bool, mut feed: Feed) -> Result<(), String> 
 		if fps_since.elapsed() >= Duration::from_secs(1) {
 			let link = status.as_deref().map_or("live".to_string(), |s| s.replace('\n', " "));
 			let title =
-				format!("GaugeDotnet (Rust) — screen {}/{} — {frames} fps — {link}", current + 1, screens.len());
+				format!("GaugeRust — screen {}/{} — {frames} fps — {link}", current + 1, screens.len());
 			display.set_title(&title);
 			frames = 0;
 			fps_since = Instant::now();
