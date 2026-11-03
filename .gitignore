@@ -9,6 +9,5 @@
 publish/
 publish-arm64/
 
-graphify-out/manifest.json    # mtime-based, breaks after git clone
-graphify-out/cost.json        # local only
-graphify-out/cache/       
+# Generated knowledge graph; rebuild with /graphify
+graphify-out/
