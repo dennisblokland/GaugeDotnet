@@ -1,10 +1,10 @@
-# GaugeDotnet — Rust workspace
+# Workspace guide
 
 The app, its renderer and its designer. It loads `custom-gauge.json` definitions and the `gauges.json` screen list, and draws them on the CPU with [tiny-skia](https://github.com/RazrFalcon/tiny-skia). Frames can be shown in an SDL2 window or saved as PNG. It also has its own [gauge designer](#gauge-designer), which previews with this renderer.
 
 Rust replaced the original C# app, which is in the git history up to commit `7405d83`. JSON files written for it load unchanged. The format strings in those files are still .NET format strings (`F1`, `HH:mm`), handled by `format.rs`.
 
-![showcase](examples/showcase.png)
+![showcase](../examples/showcase.png)
 
 ## Layout
 
@@ -19,7 +19,6 @@ Rust replaced the original C# app, which is in the git history up to commit `740
 ## Build and run
 
 ```shell
-cd rust
 cargo test                                    # unit + render tests
 cargo run --release -- render examples/showcase.json -o out.png
 cargo run --release -- render examples/gauges.json -o screen.png     # one PNG per screen
@@ -38,7 +37,7 @@ Relative paths inside a definition (images, needle images, GIFs) resolve against
 
 `examples/retro.json` is an 80s digital dash: a segmented amber tach, cyan LCD bars for fuel pressure and coolant, and seven-segment readouts. Its segments come from `SegmentCount` on arcs and bars.
 
-![retro dash](../docs/retro-dash.png)
+![retro dash](retro-dash.png)
 
 ### The device app
 
@@ -87,7 +86,7 @@ SKIP_BUILD=1 ./deploy-arm64.sh   # upload the existing build only
 
 `build-arm64.sh` cross-compiles with `--features sdl,ble-vendored`. It needs the `aarch64-unknown-linux-gnu` rustup target, `gcc-aarch64-linux-gnu`, `curl` and `dpkg-deb`. On first use it fetches the arm64 `libSDL2` from Ubuntu's archive to link against. At run time the binary uses the device's own `libSDL2-2.0.so.0`, and libdbus is compiled in. So the only thing installed is a single 5 MB `gauge` binary.
 
-`REMOTE_HOST=<ip> ./deploy-arm64.sh` detects muOS or ROCKNIX over ssh (`TARGET=` overrides it). ROCKNIX paths are in [`../rocknix/README.md`](../rocknix/README.md). On muOS it copies the binary to `/mnt/mmc/ports/GaugeRust` and copies the launcher `GaugeRust.sh` to `/mnt/mmc/roms/ports`, so it shows up under Ports. `gauges.json` lives next to the binary. Copy over an existing one, or use `UPLOAD_CONFIG=1` to upload `./gauges.json`. The log is `GaugeRust.log` in the same folder. It also uploads the Ports-list artwork (`../muos/GaugeRust.png` and `.txt`) to muOS's `External - Ports` catalogue.
+`REMOTE_HOST=<ip> ./deploy-arm64.sh` detects muOS or ROCKNIX over ssh (`TARGET=` overrides it). ROCKNIX paths are in [`../rocknix/README.md`](../rocknix/README.md). On muOS it copies the binary to `/mnt/mmc/ports/GaugeRust` and copies the launcher `GaugeRust.sh` to `/mnt/mmc/roms/ports`, so it shows up under Ports. `gauges.json` lives next to the binary. Copy over an existing one, or use `UPLOAD_CONFIG=1` to upload `./gauges.json`. The log is `GaugeRust.log` in the same folder. It also uploads the Ports-list artwork (`muos/GaugeRust.png` and `.txt`) to muOS's `External - Ports` catalogue.
 
 **glibc:** muOS has **glibc 2.38** and ROCKNIX **2.44** (confirmed running a binary built for 2.36), and the binary needs no newer glibc than the one it was linked against. A host cross toolchain links against the host's glibc (Arch's is 2.4x), so the binary won't start on the device (`GLIBC_2.39' not found`). Ways to build for an older glibc:
 
@@ -141,11 +140,10 @@ CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc \
 
 ## Gauge designer
 
-![gauge designer](../docs/gauge-designer.png)
+![gauge designer](gauge-designer.png)
 
 `gauge-designer` edits custom gauge definitions. Its canvas is drawn by `gauge-render`, so at 100 % zoom what you see is what the RG35XX shows, pixel for pixel: blur, antialiasing, image sampling and round-rect corners included.
 ```shell
-cd rust
 cargo run --release -p gauge-designer                          # starts with the RPM dial
 cargo run --release -p gauge-designer -- my-gauge.json         # open a gauge
 cargo run --release -p gauge-designer -- --config gauges.json  # also open the screen list

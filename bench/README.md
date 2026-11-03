@@ -2,7 +2,7 @@
 
 Complete numbers are in [RESULTS.md](RESULTS.md). The C# figures on this page and there are historical: the C# app and its benchmark were removed, and are in the git history up to commit `7405d83`.
 
-`./run.sh` renders every screen in [`rust/examples/gauges.json`](../rust/examples/gauges.json) and `turboxs.json` with `gauge bench` from [`rust/`](../rust), drawing through tiny-skia.
+`./run.sh` renders every screen in [`examples/gauges.json`](../examples/gauges.json) and `turboxs.json` with `gauge bench`, drawing through tiny-skia.
 
 It uses a 640×480 CPU raster surface and simulated ECU data stepped at 60 Hz. Each screen gets 300 warm-up frames, then 600 frames where **only the draw call** is timed.
 
@@ -42,7 +42,7 @@ Intel Xeon @ 2.10 GHz (cloud VM), Linux x64, .NET 10.0.12, Rust 1.97. Each figur
 
 ## Partial redraw and threads (custom gauges)
 
-The table above times full repaints, as the C# app did every frame. The custom-gauge renderer also tracks damage and spreads work over cores; see [rust/README.md](../rust/README.md#performance). Showcase, desktop x86:
+The table above times full repaints, as the C# app did every frame. The custom-gauge renderer also tracks damage and spreads work over cores; see [docs/workspace.md](../docs/workspace.md#performance). Showcase, desktop x86:
 
 | Situation | 1 thread | 4 threads | Repainted |
 |---|---:|---:|---:|

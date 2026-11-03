@@ -15,7 +15,7 @@ REMOTE_HOST="${REMOTE_HOST:-192.168.0.234}"
 REMOTE_USER="${REMOTE_USER:-root}"
 REMOTE_PASS="${REMOTE_PASS:-root}"
 RUN_SCRIPT="${RUN_SCRIPT:-./GaugeRust.sh}"
-ART_DIR="${ART_DIR:-../muos}"
+ART_DIR="${ART_DIR:-muos}"
 # Set to 1 to also upload a gauges.json from this folder (otherwise the
 # device's existing one is kept, or a default is created on first run).
 UPLOAD_CONFIG="${UPLOAD_CONFIG:-0}"
@@ -31,7 +31,7 @@ else
 fi
 SSH_HOST=($SSH "$REMOTE_USER@$REMOTE_HOST")
 
-. ../rocknix/install-port.sh
+. rocknix/install-port.sh
 if [ "$TARGET" = auto ]; then
   TARGET=muos
   [ "$(rocknix_is_target "${SSH_HOST[@]}")" = rocknix ] && TARGET=rocknix
@@ -74,7 +74,7 @@ fi
 RUN_SCRIPT_NAME="$(basename "$RUN_SCRIPT")"
 echo "Uploading launcher to $SCRIPT_DIR/$RUN_SCRIPT_NAME..."
 upload "$RUN_SCRIPT" "$SCRIPT_DIR/$RUN_SCRIPT_NAME"
-[ "$TARGET" != rocknix ] || upload ../rocknix/launcher.sh "$BIN_DIR/rocknix-launcher.sh"
+[ "$TARGET" != rocknix ] || upload rocknix/launcher.sh "$BIN_DIR/rocknix-launcher.sh"
 "${SSH_HOST[@]}" "chmod +x '$BIN_DIR/gauge' '$SCRIPT_DIR/$RUN_SCRIPT_NAME'"
 
 ART_NAME="${RUN_SCRIPT_NAME%.sh}"

@@ -1,6 +1,6 @@
 # GaugeDotnet — Agent Instructions
 
-Real-time automotive gauge display for the RG35XX handheld (ARM64 Linux). Connects via BLE to a Motorsport Electronics ECU, decodes CAN bus frames, and renders live gauges on the CPU with tiny-skia, shown through SDL2. All code is in the Cargo workspace in `rust/`. The original C# app was removed; it is in the git history up to `7405d83`.
+Real-time automotive gauge display for the RG35XX handheld (ARM64 Linux). Connects via BLE to a Motorsport Electronics ECU, decodes CAN bus frames, and renders live gauges on the CPU with tiny-skia, shown through SDL2. The repo is a Cargo workspace. The original C# app was removed; it is in the git history up to `7405d83`.
 
 ## Crates
 
@@ -8,26 +8,25 @@ Real-time automotive gauge display for the RG35XX handheld (ARM64 Linux). Connec
 |---------|---------|
 | `gauge-app` | `gauge` binary: device app, PNG snapshots, benchmark, Bluetooth tools |
 | `gauge-render` | Library: canvas, fonts, custom element renderers, calculated channels, built-in gauges, `gauges.json` loading |
-| `gauge-designer` | Desktop gauge designer (egui) that previews with the device renderer — see `rust/README.md` |
+| `gauge-designer` | Desktop gauge designer (egui) that previews with the device renderer — see `docs/workspace.md` |
 | `me-data` | CAN bus decoder (Motorsport Electronics frames `ME1_1`–`ME1_8`), `MeData`, data-source names |
 | `me-ble` | Bluetooth link to the ECU, on btleplug |
 
 ## Build & Test
 
 ```shell
-cd rust
 cargo test                                         # Default members: everything but the designer
 cargo test --workspace                             # Also the designer
 cargo run --release --features sdl -- app --demo   # Run the app with simulated data
 ```
 
-Deploy to device: `REMOTE_HOST=<ip> ./rust/deploy-arm64.sh` (builds linux-arm64, copies to the device; muOS or ROCKNIX is detected over ssh). The deploy script also uploads the Ports artwork from `muos/`: on muOS to `/run/muos/storage/info/catalogue/External - Ports/` (box art, preview, description), on ROCKNIX to `gamelist.xml` and `images/`.
+Deploy to device: `REMOTE_HOST=<ip> ./deploy-arm64.sh` (builds linux-arm64, copies to the device; muOS or ROCKNIX is detected over ssh). The deploy script also uploads the Ports artwork from `muos/`: on muOS to `/run/muos/storage/info/catalogue/External - Ports/` (box art, preview, description), on ROCKNIX to `gamelist.xml` and `images/`.
 
 ROCKNIX: see `rocknix/README.md`. The OS is detected at runtime (`JoystickLayout::detect`, `OS_NAME` in the launcher), not forked. It has a different joystick numbering (table in `gauge-app/src/input.rs`), no muOS Bluetooth bring-up, and its launcher code in `rocknix/launcher.sh`.
 
 ## Conventions
 
-- **Indentation:** tabs, max width 120 (see `rust/rustfmt.toml`)
+- **Indentation:** tabs, max width 120 (see `rustfmt.toml`)
 - **Compatibility:** `gauges.json` and custom gauge JSON keep the format the C# app used (`$type` discriminators, PascalCase properties, .NET number and date format strings), so existing files keep loading. Don't change it without a migration path.
 - **C# mentions in comments:** many Rust comments name the C# class a module came from, or explain a behaviour by comparing with it. The code they mention is in the git history.
 
@@ -45,7 +44,7 @@ Drag-and-drop gauge designer → JSON definition → runtime rendering on device
 
 ### Workflow
 
-1. `cd rust && cargo run --release -p gauge-designer` — opens the designer
+1. `cargo run --release -p gauge-designer` — opens the designer
 2. Add/arrange elements, bind data sources, tweak properties
 3. Save → `custom-gauge.json`
 4. Reference in `gauges.json`: `{ "Gauge": { "Type": "Custom" }, "CustomDefinitionFile": "custom-gauge.json" }`
@@ -84,7 +83,7 @@ All `GaugeElement` subclasses have:
 
 `ArcElement` and `LinearBarElement` have `UseConditionalColor` + `WarnThreshold`/`WarnColor`/`DangerThreshold`/`DangerColor` for threshold-based color switching. `ArcElement` also has `AntiClockwise` (bool) to reverse sweep direction.
 
-`ArcElement` and `LinearBarElement` have `SegmentCount` (0 = continuous) and `SegmentGap` (px; along the arc for arcs): the track and fill split into that many segments, and a segment lights once the value reaches its end, like an LCD or VFD bar. `rust/examples/retro.json` uses them for an 80s digital dash.
+`ArcElement` and `LinearBarElement` have `SegmentCount` (0 = continuous) and `SegmentGap` (px; along the arc for arcs): the track and fill split into that many segments, and a segment lights once the value reaches its end, like an LCD or VFD bar. `examples/retro.json` uses them for an 80s digital dash.
 
 ### Key Files
 
@@ -116,7 +115,7 @@ When using `ImagePath` on a `NeedleElement`, the image is rotated around the ele
 
 ### Designer Keyboard Shortcuts
 
-See the key table in `rust/README.md`.
+See the key table in `docs/workspace.md`.
 
 ## Tests
 

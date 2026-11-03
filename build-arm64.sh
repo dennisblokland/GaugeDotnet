@@ -30,9 +30,9 @@ if [ "$USE_ZIG" != 1 ] && [ "${IN_DOCKER:-0}" != 1 ] && { [ "${USE_DOCKER:-0}" =
   # The repo is mounted read-only; only target/ is writable. The cargo registry
   # is kept in a named volume.
   docker run --rm \
-    -v "$PWD/..":/repo:ro -v "$PWD/target":/repo/rust/target \
+    -v "$PWD":/repo:ro -v "$PWD/target":/repo/target \
     -v gauge-cargo-registry:/usr/local/cargo/registry \
-    -e IN_DOCKER=1 -w /repo/rust rust:1-bookworm bash -c '
+    -e IN_DOCKER=1 -w /repo rust:1-bookworm bash -c '
       set -e
       apt-get update -qq && apt-get install -y -qq gcc-aarch64-linux-gnu libc6-dev-arm64-cross curl >/dev/null
       rustup target add aarch64-unknown-linux-gnu >/dev/null 2>&1

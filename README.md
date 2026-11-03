@@ -11,7 +11,7 @@ The app was originally written in C#. Rust replaced it; the C# code is in the gi
 - Live gauge rendering at 60 fps on the device, repainting only what changed
 - BLE connection to Motorsport Electronics ECU (CAN bus frames ME1_1–ME1_8)
 - Multiple built-in gauge styles: circular, sweep, needle, TurboXs, bar, digital, histogram, min/max, grid
-- **Custom gauge designer** — drag-and-drop desktop app (`rust/gauge-designer`) that exports JSON definitions for the device and previews with the renderer the device runs, pixel for pixel
+- **Custom gauge designer** — drag-and-drop desktop app (`gauge-designer`) that exports JSON definitions for the device and previews with the renderer the device runs, pixel for pixel
 - 17 custom element types: arcs, zone arcs, needles (with image support), text, value displays, label+value boxes, tick rings, bars, warning indicators, images, value-driven gifs, clocks, mini graphs, peak markers, and more
 - **Calculated channels** — define virtual data sources as math expressions (`Rpm / 1000`, `OilTemp - Iat`) evaluated each frame
 - **Conditional element visibility** — show/hide elements based on a data source value range
@@ -22,7 +22,7 @@ The app was originally written in C#. Rust replaced it; the C# code is in the gi
 
 ## Crates
 
-All code is in the Cargo workspace in [`rust/`](rust/README.md).
+The repo is a Cargo workspace. [docs/workspace.md](docs/workspace.md) is the full guide.
 
 | Crate | Purpose |
 |---------|---------|
@@ -41,7 +41,6 @@ All code is in the Cargo workspace in [`rust/`](rust/README.md).
 ## Build & Run
 
 ```shell
-cd rust
 cargo test                                            # Run tests
 cargo run --release --features sdl -- app --demo      # Run the app with simulated data
 cargo run --release -p gauge-designer                 # Open the gauge designer
@@ -50,10 +49,10 @@ cargo run --release -p gauge-designer                 # Open the gauge designer
 ### Deploy to Device
 
 ```shell
-REMOTE_HOST=<device ip> ./rust/deploy-arm64.sh
+REMOTE_HOST=<device ip> ./deploy-arm64.sh
 ```
 
-Builds the linux-arm64 binary and copies it to the RG35XX. The target OS, muOS or [ROCKNIX](rocknix/README.md), is detected over ssh. It also uploads the artwork shown in the Ports list (box art, preview and description from [`muos/`](muos/README.md)). See [rust/README.md](rust/README.md#building-and-deploying-to-the-rg35xx) for toolchain options.
+Builds the linux-arm64 binary and copies it to the RG35XX. The target OS, muOS or [ROCKNIX](rocknix/README.md), is detected over ssh. It also uploads the artwork shown in the Ports list (box art, preview and description from [`muos/`](muos/README.md)). See [docs/workspace.md](docs/workspace.md#building-and-deploying-to-the-rg35xx) for toolchain options.
 
 A `gauges.json` or custom gauge written for the C# app works as it is: copy it next to the binary (`/mnt/mmc/ports/GaugeRust` on muOS, `/storage/GaugeRust` on ROCKNIX). The deploy doesn't remove an existing C# install from the device.
 
@@ -102,7 +101,7 @@ A `gauges.json` or custom gauge written for the C# app works as it is: copy it n
 
   Peak and Min start at the first reading. R1 resets them, as on the other gauges. `StatusMode` can also be changed in the on-device config editor.
 - **Old LCD look:** `"Lcd": true` imitates a backlit handheld LCD. The gauge renders at a third of the resolution with a faint pixel grid, black becomes a deep navy and white a slightly blue white, and moving parts leave a short trail. `LcdGhosting` sets how much of the previous frame lingers: 0 turns the trail off, and the maximum is 0.9 (default 0.2). Both can be changed in the on-device config editor. It costs about 0.4 ms per frame over the normal look (see `bench/RESULTS.md`).
-- **Colours and fonts:** `ColorHex` is ignored, because the dial has a fixed white, grey and red palette. Text uses the bundled Aldrich and Saira Extra Condensed fonts (SIL OFL 1.1, licenses in `rust/gauge-render/fonts`), which are also available to custom gauges.
+- **Colours and fonts:** `ColorHex` is ignored, because the dial has a fixed white, grey and red palette. Text uses the bundled Aldrich and Saira Extra Condensed fonts (SIL OFL 1.1, licenses in `gauge-render/fonts`), which are also available to custom gauges.
 
 ```json
 { "Gauge": { "Type": "TurboXs", "DataSource": "Map", "Title": "Boost Press.", "Unit": "Psi", "MinValue": -10, "MaxValue": 20, "Decimals": 1 } }
@@ -119,7 +118,7 @@ Design gauges on your desktop, deploy JSON to the device.
 
 ### Workflow
 
-1. Run the designer: `cd rust && cargo run --release -p gauge-designer`
+1. Run the designer: `cargo run --release -p gauge-designer`
 2. Add and arrange elements, bind data sources, tweak properties
 3. Save → `custom-gauge.json`
 4. Reference in your `gauges.json`:
@@ -176,7 +175,7 @@ Display values are interpolated toward the target at 10% per frame for fluid ani
 ## Tests
 
 ```shell
-cd rust && cargo test
+cargo test
 ```
 
 Unit tests verify CAN frame decoding against raw byte array payloads. Render tests in `gauge-render/tests` check drawn output, including that incremental and threaded frames match a full render.

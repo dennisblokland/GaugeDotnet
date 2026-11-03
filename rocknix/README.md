@@ -7,7 +7,7 @@ there is one build and one launcher.
 ## Deploy
 
 ```bash
-REMOTE_HOST=<device ip> ./rust/deploy-arm64.sh
+REMOTE_HOST=<device ip> ./deploy-arm64.sh
 ```
 
 The target is detected over ssh; `TARGET=rocknix` or `TARGET=muos` overrides it.

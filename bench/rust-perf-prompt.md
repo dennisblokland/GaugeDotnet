@@ -6,7 +6,7 @@ Paste this into a new Claude Code session in `/home/dennis/GaugeDotnet`.
 
 ---
 
-The Rust renderer (`rust/gauge-render`, tiny-skia 0.11) is 3–15× faster than the C# app on a desktop, but on the RG35XX it loses most of that lead, and on the Histogram gauge it's slower than C#. Find out why and make the slowest screens faster on the device, without changing what they draw.
+The Rust renderer (`gauge-render`, tiny-skia 0.11) is 3–15× faster than the C# app on a desktop, but on the RG35XX it loses most of that lead, and on the Histogram gauge it's slower than C#. Find out why and make the slowest screens faster on the device, without changing what they draw.
 
 ## Measured on the device (ms/frame)
 
@@ -43,15 +43,15 @@ Histogram isn't an outlier in that ratio (4.0 → 37.0 ms). It's simply the heav
 
 ## How to measure
 
-- **Desktop:** `cd rust && cargo run --release -- bench examples/gauges.json --frames 600 --warmup 300`. Add `--threads 1` and `--full` for the worst case.
-- **Device build:** `rust/build-arm64.sh`. It falls back to a `rust:1-bookworm` Docker container when `aarch64-linux-gnu-gcc` is missing, and puts the binary at `rust/target/aarch64-unknown-linux-gnu/release/gauge`. For bench-only builds, a headless build without `sdl,ble-vendored` is enough.
-- **Device bench:** copy the binary plus `rust/examples/*.json` to `/mnt/mmc/ports/GaugeBench/`. Run `./gauge bench examples/gauges.json --frames 600 --warmup 300`. During long runs, keep muOS from idling: run `echo 1 > /opt/muos/config/system/idle_inhibit` every second in a background loop. Otherwise the screen saver drops the CPU to 480 MHz mid-run. Log `scaling_cur_freq` before each run.
+- **Desktop:** `cargo run --release -- bench examples/gauges.json --frames 600 --warmup 300`. Add `--threads 1` and `--full` for the worst case.
+- **Device build:** `build-arm64.sh`. It falls back to a `rust:1-bookworm` Docker container when `aarch64-linux-gnu-gcc` is missing, and puts the binary at `target/aarch64-unknown-linux-gnu/release/gauge`. For bench-only builds, a headless build without `sdl,ble-vendored` is enough.
+- **Device bench:** copy the binary plus `examples/*.json` to `/mnt/mmc/ports/GaugeBench/`. Run `./gauge bench examples/gauges.json --frames 600 --warmup 300`. During long runs, keep muOS from idling: run `echo 1 > /opt/muos/config/system/idle_inhibit` every second in a background loop. Otherwise the screen saver drops the CPU to 480 MHz mid-run. Log `scaling_cur_freq` before each run.
 - **Profiling on the device:** check whether `perf` exists on the device. If not, use a statically built `perf`, or instrument with timers around each drawing stage. Comparing the same stages under `qemu-aarch64` won't give real timings; use it only to check correctness.
 
 ## Constraints
 
 - Output must stay identical to what it is now. `cargo test` has render tests, and the aarch64 headless build was previously checked to match the x86 output pixel for pixel. Re-check that after any SIMD or codegen change, for example with `gauge render ... -o` on both machines and a diff of the PNGs.
 - Don't change the device's clocks or governors from the bench.
-- When done, update `bench/RESULTS.md` section 5 and the Performance section of `rust/README.md` with before and after numbers measured on the device. Also update README.md and AGENTS.md if behaviour or build flags change.
+- When done, update `bench/RESULTS.md` section 5 and the Performance section of `docs/workspace.md` with before and after numbers measured on the device. Also update README.md and AGENTS.md if behaviour or build flags change.
 
 Report which hypothesis held, the device numbers before and after for every screen, and anything you tried that didn't help.

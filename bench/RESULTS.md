@@ -43,7 +43,7 @@ C# redraws everything each frame, so Rust is shown with `--full`.
 
 Damage tracking and threads apply to custom gauges only. The built-in gauges always repaint the full frame, but they get faster as data arrives less often because their caches (lit segments, digits, Histogram bars) hit more. Sweep stays around 1.2–1.5 ms because its glowing arc isn't cached.
 
-## 3. TurboXs (`rust/examples/turboxs.json`)
+## 3. TurboXs (`examples/turboxs.json`)
 
 Measured in a later session on a different VM (Intel Xeon @ 2.80 GHz, 4 vCPU, .NET 10.0.12, Rust 1.97), so compare these rows with each other, not with sections 1–2. New data every frame, full repaint, Rust on 1 thread; each figure is the median of 3 runs.
 

@@ -8,7 +8,6 @@ launcher; muOS matches them to `GaugeRust.sh` by name. On
 The image is a real render from the renderer:
 
 ```bash
-cd rust
 cargo run --release -- builtin turboxs -o /tmp/t.png --value 85 --peak 110 --max 120 --title BOOST --unit KPA
 ```
 
