@@ -123,16 +123,14 @@ impl DeployTarget {
 /// Images a saved definition references inside its `images/` folder.
 pub fn packaged_images(def: &gauge_render::CustomGaugeDefinition, json: &Path) -> Vec<PathBuf> {
 	let dir = json.parent().unwrap_or(Path::new("."));
-	let mut paths: Vec<&str> = def.background_image.as_deref().into_iter().collect();
-	for e in &def.elements {
-		match e {
-			gauge_render::Element::Needle(n) => paths.extend(n.image_path.as_deref()),
-			gauge_render::Element::Image(i) => paths.push(&i.image_path),
-			gauge_render::Element::Gif(g) => paths.push(&g.image_path),
-			_ => {}
-		}
-	}
-	paths.into_iter().filter(|p| p.starts_with("images/")).map(|p| dir.join(p)).filter(|p| p.is_file()).collect()
+	def.background_image
+		.as_deref()
+		.into_iter()
+		.chain(def.elements.iter().filter_map(|e| e.image_path()))
+		.filter(|p| p.starts_with("images/"))
+		.map(|p| dir.join(p))
+		.filter(|p| p.is_file())
+		.collect()
 }
 
 fn which(program: &str) -> bool {

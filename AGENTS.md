@@ -28,6 +28,8 @@ ROCKNIX: see `rocknix/README.md`. The OS is detected at runtime (`JoystickLayout
 
 - **Indentation:** tabs, max width 120 (see `rustfmt.toml`)
 - **Compatibility:** `gauges.json` and custom gauge JSON keep the format the C# app used (`$type` discriminators, PascalCase properties, .NET number and date format strings), so existing files keep loading. Don't change it without a migration path.
+- **Channel names:** compare them with `gauge_render::eq_ignore_case` (Unicode, so `Öltemp` matches `ÖLTEMP`), not `eq_ignore_ascii_case`. Calculated channels can have non-ASCII names; only the ECU's own names in `me-data` are ASCII.
+- **Image paths:** use `Element::image_path` / `image_path_mut` rather than matching on element types.
 - **C# mentions in comments:** many Rust comments name the C# class a module came from, or explain a behaviour by comparing with it. The code they mention is in the git history.
 
 ## Architecture Notes

@@ -117,7 +117,7 @@ fn field_widget(ui: &mut Ui, field: &Field, obj: &mut Map<String, Value>, ctx: &
 		Kind::Source => {
 			let current = str_of(obj, key);
 			let mut picked = current.clone();
-			let known = current.is_empty() || ctx.sources.iter().any(|s| s.eq_ignore_ascii_case(&current));
+			let known = current.is_empty() || ctx.sources.iter().any(|s| gauge_render::eq_ignore_case(s, &current));
 			let shown = if current.is_empty() {
 				"(none)".to_string()
 			} else if known {

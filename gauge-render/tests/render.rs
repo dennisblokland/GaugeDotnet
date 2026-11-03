@@ -173,9 +173,10 @@ fn cached_static_runs_match_uncached_render() {
 	}
 }
 
-/// Asserts two frames match, allowing at most one anti-aliasing sample of
-/// difference (tiny-skia samples 4x4, so 1/16 ≈ 16 levels) on a few edge
-/// pixels: tiles clip paths at different places than a full-frame render.
+/// Asserts two frames match. Up to 3 levels anywhere is allowed: compositing
+/// cached sprites rounds differently. A few edge pixels may be off by two
+/// anti-aliasing samples (tiny-skia samples 4x4, so 2/16 ≈ 32 levels): a tile
+/// boundary chops long edges, and the chopped edge's slope rounds differently.
 fn assert_frames_match(a: &Canvas, b: &Canvas, what: &str) {
 	let diffs: Vec<i32> = a
 		.pixmap()
@@ -186,7 +187,7 @@ fn assert_frames_match(a: &Canvas, b: &Canvas, what: &str) {
 		.filter(|&d| d > 3)
 		.collect();
 	let worst = diffs.iter().copied().max().unwrap_or(0);
-	assert!(worst <= 17 && diffs.len() <= 40, "{what}: {} pixels differ, worst by {worst}", diffs.len());
+	assert!(worst <= 33 && diffs.len() <= 40, "{what}: {} pixels differ, worst by {worst}", diffs.len());
 }
 
 #[test]
@@ -235,6 +236,70 @@ fn incremental_and_threaded_renders_match_full_render() {
 	// Small same-colour arc/bar moves only repaint the changed strips.
 	assert!(damages[3] < 640 * 480 / 3, "small rpm move repainted {} px", damages[3]);
 	assert!(damages[2] < damages[6], "an AFR-only change is smaller than an everything change");
+}
+
+/// Differences from tiling and sprite caching must stay small and must not
+/// build up, however long the gauge runs on partial repaints.
+#[test]
+fn incremental_frames_stay_close_to_full_renders_over_a_long_run() {
+	use gauge_render::FrameState;
+
+	for file in ["showcase.json", "retro.json"] {
+		let def = CustomGaugeDefinition::load(examples_dir().join(file)).unwrap();
+		let time = chrono::NaiveDate::from_ymd_opt(2026, 1, 1).unwrap().and_hms_opt(9, 30, 0);
+		let (mut full, mut inc) = (ElementRenderer::new(), ElementRenderer::new());
+		full.fixed_time = time;
+		inc.fixed_time = time;
+		let mut state = FrameState::new();
+		let (mut a, mut b) = (Canvas::new(640, 480), Canvas::new(640, 480));
+		let mut seed = 0x1234_5678u32;
+		let mut next = move || {
+			seed ^= seed << 13;
+			seed ^= seed >> 17;
+			seed ^= seed << 5;
+			(seed % 10_000) as f32 / 10_000.0
+		};
+		let mut rpm = 3000.0;
+		for n in 0..80 {
+			rpm = if n % 25 == 0 { next() * 8000.0 } else { (rpm + (next() - 0.5) * 60.0).clamp(0.0, 8000.0) };
+			let v = values(&[
+				("Rpm", rpm),
+				("AfrCurr1", 10.0 + next() * 8.0),
+				("OilTemp", 60.0 + next() * 70.0),
+				("Clt", 85.0),
+				("BoostCtrlDuty", 40.0),
+				("VehicleSpeed", next() * 200.0),
+				("FuelPressure", 380.0),
+			]);
+			full.render(&mut a, &def, &v, Some(&v));
+			inc.render_incremental(&mut b, &def, &v, Some(&v), &mut state);
+			assert_frames_match(&a, &b, &format!("{file}, frame {n}"));
+		}
+	}
+}
+
+#[test]
+fn a_screen_that_fails_to_load_keeps_its_place_and_shows_why() {
+	let config = AppConfig::from_json(
+		r#"{ "Screens": [
+			{ "Gauge": { "Type": "Bar" } },
+			{ "Gauge": { "Type": "Custom" }, "CustomDefinitionFile": "/does/not/exist.json" },
+			{ "Gauge": { "Type": "Bar" } }
+		] }"#,
+	)
+	.unwrap();
+	let mut screens = gauges::build_screens(&config, 640, 480, None);
+	assert_eq!(screens.len(), 3, "screen numbers must keep matching the config");
+	assert!(screens[0].is_ok() && screens[2].is_ok());
+	let message = screens.remove(1).err().expect("the missing definition is reported");
+
+	let mut screen = Screen::Failed(message);
+	screen.update(|_| Some(1.0));
+	screen.reset_saved_state();
+	let mut canvas = Canvas::new(640, 480);
+	assert_eq!(screen.draw(&mut canvas).area(), 640 * 480);
+	let red = canvas.pixmap().data().chunks_exact(4).filter(|p| p[0] > 200 && p[1] < 60 && p[2] < 60).count();
+	assert!(red > 100, "the heading is drawn in red, got {red} red pixels");
 }
 
 #[test]

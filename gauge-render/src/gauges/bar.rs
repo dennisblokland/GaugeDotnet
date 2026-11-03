@@ -4,7 +4,9 @@ use crate::canvas::Sprite;
 
 use crate::canvas::{rect, Blur, Canvas, Paint};
 use crate::color::Rgba;
-use crate::gauges::{draw_background, render_static, Gauge, GaugeBase, GaugeConfig, SegmentDisplay, SHADOW_BLUR};
+use crate::gauges::{
+	draw_background, render_static, segment_rect, Gauge, GaugeBase, GaugeConfig, SegmentDisplay, SHADOW_BLUR,
+};
 use crate::text::{typeface, TextAlign};
 
 const X: f32 = 70.0;
@@ -56,8 +58,7 @@ impl BarGauge {
 	}
 
 	fn segment_rect(&self, i: usize) -> Option<tiny_skia::Rect> {
-		let seg_x = X + i as f32 * self.segment_width;
-		rect(seg_x + 2.0, Y, seg_x + self.segment_width - 2.0, Y + HEIGHT)
+		segment_rect(X, Y, HEIGHT, self.segment_width, i)
 	}
 
 	fn update_static(&mut self) {

@@ -544,9 +544,54 @@ impl Element {
 	}
 }
 
+impl Element {
+	/// The image this element draws, for the kinds that can have one.
+	pub fn image_path(&self) -> Option<&str> {
+		match self {
+			Element::Needle(n) => n.image_path.as_deref(),
+			Element::Image(i) => Some(i.image_path.as_str()),
+			Element::Gif(g) => Some(g.image_path.as_str()),
+			_ => None,
+		}
+		.filter(|p| !p.is_empty())
+	}
+
+	/// Mutable access to the path [`image_path`](Self::image_path) returns.
+	pub fn image_path_mut(&mut self) -> Option<&mut String> {
+		match self {
+			Element::Needle(n) => n.image_path.as_mut(),
+			Element::Image(i) => Some(&mut i.image_path),
+			Element::Gif(g) => Some(&mut g.image_path),
+			_ => None,
+		}
+		.filter(|p| !p.is_empty())
+	}
+}
+
 #[cfg(test)]
 mod tests {
 	use super::*;
+
+	#[test]
+	fn image_paths_cover_every_element_that_has_one() {
+		let def = CustomGaugeDefinition::from_json(
+			r##"{ "Elements": [ { "$type": "needle", "ImagePath": "n.png" }, { "$type": "image", "ImagePath": "i.png" },
+				{ "$type": "gif", "ImagePath": "g.gif" }, { "$type": "needle" }, { "$type": "image" }, { "$type": "arc" } ] }"##,
+		)
+		.unwrap();
+		let mut elements = def.elements;
+		let read: Vec<_> = elements.iter().map(|e| e.image_path().map(str::to_string)).collect();
+		let read: Vec<_> = read.iter().map(|p| p.as_deref()).collect();
+		assert_eq!(read, [Some("n.png"), Some("i.png"), Some("g.gif"), None, None, None]);
+		for e in &mut elements {
+			if let Some(p) = e.image_path_mut() {
+				p.insert_str(0, "x/");
+			}
+		}
+		assert_eq!(elements[0].image_path(), Some("x/n.png"));
+		assert_eq!(elements[2].image_path(), Some("x/g.gif"));
+		assert!(elements[3].image_path_mut().is_none() && elements[5].image_path_mut().is_none());
+	}
 
 	#[test]
 	fn parses_designer_json() {

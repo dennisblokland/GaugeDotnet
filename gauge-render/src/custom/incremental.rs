@@ -11,8 +11,11 @@
 //!    pasted into the frame. Large rects are split into horizontal bands,
 //!    and all tiles are shared out over worker threads.
 //!
-//! The result matches a full render because each tile replays the complete
-//! draw list for its area.
+//! The result stays close to a full render because each tile replays the
+//! complete draw list for its area. It isn't byte-identical: compositing cached
+//! sprites rounds some pixels differently by 1 level, and a few pixels on long
+//! edges cut by a tile boundary move by up to two anti-aliasing samples (see
+//! `flatten_device`). Those are redrawn with the next repaint, so nothing builds up.
 
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Mutex;

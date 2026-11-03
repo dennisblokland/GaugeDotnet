@@ -1,6 +1,7 @@
 //! The validation panel: things that load fine but go wrong on the device.
 
 use gauge_render::color::Rgba;
+use gauge_render::eq_ignore_case;
 use gauge_render::format::{format_datetime, DateTimeKind};
 use gauge_render::images::resolve;
 use gauge_render::model::*;
@@ -34,7 +35,7 @@ pub fn validate(def: &CustomGaugeDefinition) -> Vec<Issue> {
 	let mut out = Vec::new();
 	let channels: Vec<&str> =
 		def.calculated_channels.iter().map(|c| c.name.as_str()).filter(|n| !n.is_empty()).collect();
-	let is_channel = |name: &str| channels.iter().any(|c| c.eq_ignore_ascii_case(name));
+	let is_channel = |name: &str| channels.iter().any(|c| eq_ignore_case(c, name));
 	let base_dir = def.base_directory.as_deref();
 	let mut push = |severity, element: Option<&str>, message: String| {
 		out.push(Issue { severity, element: element.map(str::to_string), message })
@@ -120,7 +121,7 @@ pub fn validate(def: &CustomGaugeDefinition) -> Vec<Issue> {
 			if ch.name.is_empty() { format!("Calculated channel {}", i + 1) } else { format!("Channel '{}'", ch.name) };
 		if ch.name.is_empty() {
 			push(Severity::Warning, None, format!("{label}: has no name"));
-		} else if def.calculated_channels[..i].iter().any(|c| c.name.eq_ignore_ascii_case(&ch.name)) {
+		} else if def.calculated_channels[..i].iter().any(|c| eq_ignore_case(&c.name, &ch.name)) {
 			push(Severity::Warning, None, format!("{label}: defined twice"));
 		} else if is_known_source(&ch.name) {
 			push(Severity::Warning, None, format!("{label}: has the name of an ECU channel"));
@@ -129,7 +130,7 @@ pub fn validate(def: &CustomGaugeDefinition) -> Vec<Issue> {
 			push(Severity::Error, None, format!("{label}: {e} (evaluates to 0)"));
 		}
 		for name in gauge_render::expression::identifiers(&ch.expression) {
-			if name.eq_ignore_ascii_case(&ch.name) {
+			if eq_ignore_case(&name, &ch.name) {
 				push(Severity::Warning, None, format!("{label}: refers to itself"));
 			} else if !is_known_source(&name) && !is_channel(&name) {
 				push(Severity::Warning, None, format!("{label}: unknown name '{name}' (reads 0)"));
@@ -399,5 +400,19 @@ mod tests {
 	fn a_clean_template_has_no_errors_or_warnings() {
 		let issues = validate(&crate::templates::rpm_dial());
 		assert!(issues.iter().all(|i| i.severity == Severity::Info), "{issues:?}");
+	}
+
+	#[test]
+	fn channel_names_ignore_unicode_case() {
+		let def = CustomGaugeDefinition::from_json(
+			r##"{ "Elements": [ { "$type": "arc", "DataSource": "öl" } ],
+				"CalculatedChannels": [ { "Name": "Öl", "Expression": "öl + 1" }, { "Name": "öl", "Expression": "2" } ] }"##,
+		)
+		.unwrap();
+		let messages: Vec<String> = validate(&def).into_iter().map(|i| i.message).collect();
+		let has = |text: &str| messages.iter().any(|m| m.contains(text));
+		assert!(has("refers to itself"), "{messages:?}");
+		assert!(has("defined twice"), "{messages:?}");
+		assert!(!messages.iter().any(|m| m.contains("unknown")), "{messages:?}");
 	}
 }

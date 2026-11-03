@@ -9,11 +9,10 @@ use gauge_render::images::resolve;
 use gauge_render::model::*;
 
 /// An image property of the definition.
+#[derive(Clone, Copy)]
 enum Slot {
 	Background,
-	Needle(usize),
-	Image(usize),
-	Gif(usize),
+	Element(usize),
 }
 
 fn slots(def: &CustomGaugeDefinition) -> Vec<(Slot, String)> {
@@ -22,36 +21,19 @@ fn slots(def: &CustomGaugeDefinition) -> Vec<(Slot, String)> {
 		out.push((Slot::Background, p.to_string()));
 	}
 	for (i, element) in def.elements.iter().enumerate() {
-		match element {
-			Element::Needle(n) => {
-				if let Some(p) = n.image_path.as_deref().filter(|p| !p.is_empty()) {
-					out.push((Slot::Needle(i), p.to_string()));
-				}
-			}
-			Element::Image(img) if !img.image_path.is_empty() => out.push((Slot::Image(i), img.image_path.clone())),
-			Element::Gif(g) if !g.image_path.is_empty() => out.push((Slot::Gif(i), g.image_path.clone())),
-			_ => {}
+		if let Some(p) = element.image_path() {
+			out.push((Slot::Element(i), p.to_string()));
 		}
 	}
 	out
 }
 
-fn set_slot(def: &mut CustomGaugeDefinition, slot: &Slot, path: String) {
-	match *slot {
+fn set_slot(def: &mut CustomGaugeDefinition, slot: Slot, path: String) {
+	match slot {
 		Slot::Background => def.background_image = Some(path),
-		Slot::Needle(i) => {
-			if let Some(Element::Needle(n)) = def.elements.get_mut(i) {
-				n.image_path = Some(path);
-			}
-		}
-		Slot::Image(i) => {
-			if let Some(Element::Image(img)) = def.elements.get_mut(i) {
-				img.image_path = path;
-			}
-		}
-		Slot::Gif(i) => {
-			if let Some(Element::Gif(g)) = def.elements.get_mut(i) {
-				g.image_path = path;
+		Slot::Element(i) => {
+			if let Some(p) = def.elements.get_mut(i).and_then(Element::image_path_mut) {
+				*p = path;
 			}
 		}
 	}
@@ -84,7 +66,8 @@ pub fn save(def: &CustomGaugeDefinition, json_path: &Path) -> Result<Saved, Stri
 				continue;
 			}
 		};
-		let (name, data) = if matches!(slot, Slot::Gif(_)) {
+		let animated = matches!(slot, Slot::Element(i) if matches!(def.elements[i], Element::Gif(_)));
+		let (name, data) = if animated {
 			let ext = source.extension().and_then(|e| e.to_str()).filter(|e| !e.is_empty()).unwrap_or("gif");
 			(format!("image_{index}.{ext}"), bytes)
 		} else {
@@ -106,7 +89,7 @@ pub fn save(def: &CustomGaugeDefinition, json_path: &Path) -> Result<Saved, Stri
 		let dest = images_dir.join(&name);
 		std::fs::write(&dest, data).map_err(|e| format!("{}: {e}", dest.display()))?;
 		// Forward slashes, so the path works on the device whatever OS saved it.
-		set_slot(&mut export, &slot, format!("images/{name}"));
+		set_slot(&mut export, slot, format!("images/{name}"));
 	}
 
 	write_atomic(json_path, export.to_json().as_bytes())?;

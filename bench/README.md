@@ -51,7 +51,7 @@ The table above times full repaints, as the C# app did every frame. The custom-g
 | Values gliding, 20 Hz data (`--data-hz 20`) | 1.36 ms | 1.03 ms | 25 % |
 | Values settled (only the graph scrolls) | 0.09 ms | 0.08 ms | 3 % |
 
-The full-repaint figure is above the 1.86 ms in the main table. Making tiled and partial frames match a full render exactly costs extra work: curves are flattened up front, every changed element gets a bounds pass, and glow padding is wider. The partial-redraw and multicore paths more than repay that.
+The full-repaint figure is above the 1.86 ms in the main table. Keeping tiled and partial frames this close to a full render costs extra work: curves are flattened up front, every changed element gets a bounds pass, and glow padding is wider. The partial-redraw and multicore paths more than repay that.
 
 ## Where the Rust time goes now
 

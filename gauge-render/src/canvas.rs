@@ -162,10 +162,11 @@ fn integer_translation(ts: &Transform) -> Option<(i32, i32)> {
 const FLATTEN_TOLERANCE: f32 = 0.05;
 
 /// Transforms `path` to device space and replaces curves with line segments
-/// (Wang's formula). Rasterising lines is invariant to how tiny-skia clips a
-/// path at the canvas edge, whereas clipped curves are re-split and land on
-/// slightly different samples. Flattening up front therefore makes a tile of
-/// a frame render exactly like the same area of a full-frame render.
+/// (Wang's formula). tiny-skia re-splits curves it clips at the canvas edge, so
+/// they land on different samples from one tile to the next; flattening up
+/// front removes that. It can't make tiles exact: a line crossing the canvas
+/// edge is chopped there, and the chopped edge's rounded slope can move a few
+/// of its pixels by an anti-aliasing sample or two.
 fn flatten_device(path: &Path, ts: Transform) -> Option<Path> {
 	use tiny_skia::PathSegment;
 	let path = path.clone().transform(ts)?;

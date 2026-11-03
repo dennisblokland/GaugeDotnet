@@ -204,11 +204,11 @@ Everything is rasterised on the CPU. Glows are the expensive part, so:
 Custom gauges also redraw incrementally, using several cores (`ElementRenderer::render_incremental`, which `CustomGauge::draw` uses):
 - **Damage tracking:** each dynamic element is fingerprinted every frame (its value, or its clock text, peak or graph history). Only regions touched by changed elements are repainted, and their rects are returned so the window uploads just those to the texture. A moving arc or bar fill only damages the wedge or strip between its old and new value.
 - **Tiles:** each damaged rect is re-rendered from the full draw list into a small tile canvas and pasted in. Large rects are split into bands, and all tiles are shared out over up to 4 threads (`CustomGauge::set_threads`).
-- **Exact by construction:**
+- **Close to a full render, by construction:**
   - Paths are flattened to line segments in device space, so tiles clip them consistently.
   - Arcs are built from fixed 15° segments, so a growing arc leaves its old pixels unchanged.
   - Blur grids are aligned to frame coordinates.
-  - Tests check that incremental and threaded frames match a full render.
+  - Tests compare incremental and threaded frames with a full render. They aren't byte-identical: cached sprites round some pixels differently by 1 level, and up to 40 pixels on long edges cut by a tile boundary can be off by up to two anti-aliasing samples (about 32 levels). A long-run test checks this doesn't build up.
 
 `bench examples/showcase.json` (19 elements covering 15 of the 17 element types, with glows), desktop x86 core:
 

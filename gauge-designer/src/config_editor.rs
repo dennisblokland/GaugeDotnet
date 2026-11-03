@@ -178,7 +178,10 @@ impl ConfigEditor {
 						Screen::Custom(g) => {
 							let ranges = custom_ranges(g.definition());
 							g.update_from(|name| {
-								ranges.iter().find(|r| r.0.eq_ignore_ascii_case(name)).map(|r| r.1 + (r.2 - r.1) * t)
+								ranges
+									.iter()
+									.find(|r| gauge_render::eq_ignore_case(&r.0, name))
+									.map(|r| r.1 + (r.2 - r.1) * t)
 							});
 							g.snap_to_targets();
 						}
@@ -502,7 +505,7 @@ fn custom_ranges(def: &gauge_render::CustomGaugeDefinition) -> Vec<(String, f32,
 	for e in &def.elements {
 		let b = e.base();
 		if let Some(s) = b.source() {
-			match out.iter_mut().find(|r| r.0.eq_ignore_ascii_case(s)) {
+			match out.iter_mut().find(|r| gauge_render::eq_ignore_case(&r.0, s)) {
 				Some(r) => (r.1, r.2) = (r.1.min(b.min_value), r.2.max(b.max_value)),
 				None => out.push((s.to_string(), b.min_value, b.max_value)),
 			}
@@ -541,5 +544,15 @@ mod tests {
 	fn relative_paths_use_forward_slashes() {
 		assert_eq!(relative_to(Path::new("/a/b/custom/x.json"), Some(Path::new("/a/b"))), "custom/x.json");
 		assert_eq!(relative_to(Path::new("/c/x.json"), Some(Path::new("/a/b"))), "/c/x.json");
+	}
+
+	#[test]
+	fn custom_ranges_merge_names_ignoring_unicode_case() {
+		let def = gauge_render::CustomGaugeDefinition::from_json(
+			r##"{ "Elements": [ { "$type": "arc", "DataSource": "Öltemp", "MaxValue": 10 },
+				{ "$type": "arc", "DataSource": "öltemp", "MinValue": -5, "MaxValue": 3 } ] }"##,
+		)
+		.unwrap();
+		assert_eq!(custom_ranges(&def), [("Öltemp".to_string(), -5.0, 10.0)]);
 	}
 }

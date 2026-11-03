@@ -120,7 +120,10 @@ pub trait Gauge {
 
 /// One configured screen: a built-in gauge bound to a data source, or a custom gauge.
 pub enum Screen {
-	Builtin { gauge: Box<dyn Gauge>, data_source: String },
+	Builtin {
+		gauge: Box<dyn Gauge>,
+		data_source: String,
+	},
 	Grid(Box<GridGauge>),
 	Custom(Box<CustomGauge>),
 	/// A screen whose custom definition couldn't be loaded. It keeps its
@@ -184,6 +187,12 @@ impl Screen {
 			Screen::Custom(_) | Screen::Failed(_) => {}
 		}
 	}
+}
+
+/// Segment `i` of a horizontal segmented bar at (`x`, `y`), with a 2 px gap on each side.
+pub(crate) fn segment_rect(x: f32, y: f32, height: f32, segment_width: f32, i: usize) -> Option<tiny_skia::Rect> {
+	let seg_x = x + i as f32 * segment_width;
+	crate::canvas::rect(seg_x + 2.0, y, seg_x + segment_width - 2.0, y + height)
 }
 
 /// The placeholder for a [`Screen::Failed`]: the reason in red on black.

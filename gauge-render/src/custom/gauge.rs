@@ -24,13 +24,12 @@ pub struct CustomGauge {
 
 impl CustomGauge {
 	pub fn new(definition: CustomGaugeDefinition) -> Self {
-		let channel_names: Vec<String> =
-			definition.calculated_channels.iter().map(|c| c.name.to_ascii_lowercase()).collect();
+		let channel_names: Vec<&str> = definition.calculated_channels.iter().map(|c| c.name.as_str()).collect();
 		let mut sources: Vec<String> = Vec::new();
 		let mut add = |name: &str| {
 			if !name.is_empty()
-				&& !channel_names.contains(&name.to_ascii_lowercase())
-				&& !sources.iter().any(|s| s.eq_ignore_ascii_case(name))
+				&& !channel_names.iter().any(|c| crate::eq_ignore_case(c, name))
+				&& !sources.iter().any(|s| crate::eq_ignore_case(s, name))
 			{
 				sources.push(name.to_string());
 			}
@@ -87,7 +86,7 @@ impl CustomGauge {
 	pub fn set_value(&mut self, source: &str, value: f32) {
 		if let Some(v) = self.targets.get_mut(source) {
 			*v = value;
-		} else if let Some((_, v)) = self.targets.iter_mut().find(|(k, _)| k.eq_ignore_ascii_case(source)) {
+		} else if let Some((_, v)) = self.targets.iter_mut().find(|(k, _)| crate::eq_ignore_case(k, source)) {
 			*v = value;
 		}
 	}
@@ -148,5 +147,32 @@ impl CustomGauge {
 	/// Worker threads used for large repaints (default: cores, max 4).
 	pub fn set_threads(&mut self, threads: usize) {
 		self.frame.threads = threads.max(1);
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	fn gauge(json: &str) -> CustomGauge {
+		CustomGauge::new(CustomGaugeDefinition::from_json(json).unwrap())
+	}
+
+	#[test]
+	fn set_value_matches_names_ignoring_unicode_case() {
+		let mut g = gauge(r##"{ "Elements": [ { "$type": "arc", "DataSource": "Öltemp" } ] }"##);
+		g.set_value("öLTEMP", 5.0);
+		assert_eq!(g.targets["Öltemp"], 5.0);
+	}
+
+	#[test]
+	fn tracked_sources_ignore_unicode_case() {
+		let g = gauge(
+			r##"{ "Elements": [ { "$type": "arc", "DataSource": "Öltemp" }, { "$type": "arc", "DataSource": "öltemp" },
+				{ "$type": "arc", "DataSource": "öl" } ],
+				"CalculatedChannels": [ { "Name": "Öl", "Expression": "2" } ] }"##,
+		);
+		let sources: Vec<&str> = g.data_sources().collect();
+		assert_eq!(sources, ["Öltemp"], "one input, and the calculated channel isn't one");
 	}
 }

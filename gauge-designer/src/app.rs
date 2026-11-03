@@ -1959,21 +1959,9 @@ fn bar(ui: &mut Ui, fraction: f32) {
 
 /// Makes relative image paths absolute, for pasting or inserting elsewhere.
 fn absolutize_images(elements: &mut [Element], dir: &Path) {
-	let fix = |p: &mut String| {
-		if !p.is_empty() && Path::new(p.as_str()).is_relative() {
+	for p in elements.iter_mut().filter_map(Element::image_path_mut) {
+		if Path::new(p.as_str()).is_relative() {
 			*p = dir.join(&*p).display().to_string();
-		}
-	};
-	for e in elements {
-		match e {
-			Element::Needle(n) => {
-				if let Some(p) = n.image_path.as_mut() {
-					fix(p);
-				}
-			}
-			Element::Image(i) => fix(&mut i.image_path),
-			Element::Gif(g) => fix(&mut g.image_path),
-			_ => {}
 		}
 	}
 }

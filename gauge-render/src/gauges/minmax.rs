@@ -7,7 +7,9 @@ use crate::canvas::Sprite;
 use crate::canvas::{rect, Blur, Canvas, Paint};
 use crate::color::Rgba;
 use crate::format::format_number;
-use crate::gauges::{draw_background, render_static, Gauge, GaugeBase, GaugeConfig, SegmentDisplay, SHADOW_BLUR};
+use crate::gauges::{
+	draw_background, render_static, segment_rect, Gauge, GaugeBase, GaugeConfig, SegmentDisplay, SHADOW_BLUR,
+};
 use crate::text::{typeface, TextAlign};
 
 const BAR_X: f32 = 70.0;
@@ -68,8 +70,7 @@ impl MinMaxGauge {
 	}
 
 	fn segment_rect(&self, i: usize) -> Option<tiny_skia::Rect> {
-		let seg_x = BAR_X + i as f32 * self.segment_width;
-		rect(seg_x + 2.0, BAR_Y, seg_x + self.segment_width - 2.0, BAR_Y + BAR_HEIGHT)
+		segment_rect(BAR_X, BAR_Y, BAR_HEIGHT, self.segment_width, i)
 	}
 
 	fn update_static(&mut self) {

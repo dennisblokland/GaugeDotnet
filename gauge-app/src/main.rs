@@ -151,7 +151,7 @@ pub fn is_app_config(json: &str) -> bool {
 
 fn reader<'a>(sim: &'a Simulator, sets: &'a [(String, f32)]) -> impl FnMut(&str) -> Option<f32> + 'a {
 	move |name: &str| {
-		sets.iter().find(|(k, _)| k.eq_ignore_ascii_case(name)).map(|(_, v)| *v).or_else(|| sim.read(name))
+		sets.iter().find(|(k, _)| gauge_render::eq_ignore_case(k, name)).map(|(_, v)| *v).or_else(|| sim.read(name))
 	}
 }
 
@@ -509,5 +509,16 @@ fn main() -> ExitCode {
 			eprintln!("error: {e}");
 			ExitCode::FAILURE
 		}
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	#[test]
+	fn set_values_match_names_ignoring_unicode_case() {
+		let (sim, sets) = (Simulator::new(0.0), vec![("ÖLTEMP".to_string(), 5.0)]);
+		assert_eq!(reader(&sim, &sets)("öltemp"), Some(5.0));
 	}
 }

@@ -419,13 +419,14 @@ impl Document {
 	/// the elements bound to each: element sources, visibility sources and
 	/// calculated-channel inputs. Calculated channels themselves are computed.
 	pub fn bound_sources(&self) -> Vec<(String, f32, f32)> {
-		let is_channel = |name: &str| self.def.calculated_channels.iter().any(|c| c.name.eq_ignore_ascii_case(name));
+		let is_channel =
+			|name: &str| self.def.calculated_channels.iter().any(|c| gauge_render::eq_ignore_case(&c.name, name));
 		let mut out: Vec<(String, f32, f32)> = Vec::new();
 		let mut add = |name: &str, min: f32, max: f32| {
 			if name.is_empty() || is_channel(name) {
 				return;
 			}
-			if let Some(entry) = out.iter_mut().find(|(n, _, _)| n.eq_ignore_ascii_case(name)) {
+			if let Some(entry) = out.iter_mut().find(|(n, _, _)| gauge_render::eq_ignore_case(n, name)) {
 				entry.1 = entry.1.min(min);
 				entry.2 = entry.2.max(max);
 			} else {
@@ -604,5 +605,18 @@ mod tests {
 		doc.def.elements.push(Element::LinearBar(bar));
 		let names: Vec<_> = doc.bound_sources().into_iter().map(|s| s.0).collect();
 		assert_eq!(names, ["Rpm", "Map", "Baro"]);
+	}
+
+	#[test]
+	fn bound_sources_ignore_unicode_case() {
+		let def = CustomGaugeDefinition::from_json(
+			r##"{ "Elements": [ { "$type": "arc", "DataSource": "Öltemp" }, { "$type": "arc", "DataSource": "öltemp" },
+				{ "$type": "arc", "DataSource": "öl" } ],
+				"CalculatedChannels": [ { "Name": "Öl", "Expression": "2" } ] }"##,
+		)
+		.unwrap();
+		let sources = Document::new(def).bound_sources();
+		let names: Vec<&str> = sources.iter().map(|s| s.0.as_str()).collect();
+		assert_eq!(names, ["Öltemp"]);
 	}
 }
