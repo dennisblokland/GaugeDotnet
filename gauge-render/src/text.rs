@@ -125,24 +125,12 @@ struct FontSet {
 fn fonts() -> &'static FontSet {
 	static FONTS: OnceLock<FontSet> = OnceLock::new();
 	FONTS.get_or_init(|| FontSet {
-		barlow: Typeface::load(
-			"Barlow Condensed",
-			include_bytes!("../fonts/BarlowCondensed-Regular.ttf"),
-		),
+		barlow: Typeface::load("Barlow Condensed", include_bytes!("../fonts/BarlowCondensed-Regular.ttf")),
 		race_sport: Typeface::load("Race Sport", include_bytes!("../fonts/Race Sport.ttf")),
-		dseg7: Typeface::load(
-			"DSEG7 Classic",
-			include_bytes!("../fonts/DSEG7Classic-Regular.ttf"),
-		),
-		dseg14: Typeface::load(
-			"DSEG14 Classic",
-			include_bytes!("../fonts/DSEG14Classic-Regular.ttf"),
-		),
+		dseg7: Typeface::load("DSEG7 Classic", include_bytes!("../fonts/DSEG7Classic-Regular.ttf")),
+		dseg14: Typeface::load("DSEG14 Classic", include_bytes!("../fonts/DSEG14Classic-Regular.ttf")),
 		aldrich: Typeface::load("Aldrich", include_bytes!("../fonts/Aldrich-Regular.ttf")),
-		saira_xc: Typeface::load(
-			"Saira Extra Condensed",
-			include_bytes!("../fonts/SairaExtraCondensed-SemiBold.ttf"),
-		),
+		saira_xc: Typeface::load("Saira Extra Condensed", include_bytes!("../fonts/SairaExtraCondensed-SemiBold.ttf")),
 	})
 }
 

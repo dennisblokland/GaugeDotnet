@@ -221,7 +221,11 @@ fn draw_styled_text(
 		None => 0.0,
 	};
 	let cell = |ch: char, buf: &mut [u8; 4]| {
-		if digit_cell > 0.0 && ch.is_ascii_digit() { digit_cell } else { advance(ch, buf) }
+		if digit_cell > 0.0 && ch.is_ascii_digit() {
+			digit_cell
+		} else {
+			advance(ch, buf)
+		}
 	};
 	let measure = |t: &str, buf: &mut [u8; 4]| {
 		style.spacing * (t.chars().count().max(1) - 1) as f32 + t.chars().map(|ch| cell(ch, buf)).sum::<f32>()
@@ -343,7 +347,17 @@ impl TurboXsGauge {
 			let held = if held.is_nan() { self.base.value } else { held };
 			let text = crate::format::format_number(held, &format!("F{}", self.decimals));
 			let font = typeface("Aldrich");
-			draw_styled_text(canvas, &text, RIGHT_EDGE, 246.0, TextAlign::Right, font, &STATUS_STYLE, STATUS_COLOR, Some(&self.readout_template));
+			draw_styled_text(
+				canvas,
+				&text,
+				RIGHT_EDGE,
+				246.0,
+				TextAlign::Right,
+				font,
+				&STATUS_STYLE,
+				STATUS_COLOR,
+				Some(&self.readout_template),
+			);
 		}
 		canvas.restore();
 	}
@@ -484,17 +498,47 @@ impl TurboXsGauge {
 			// Status block: the label, plus the fixed text and its dot in Text mode.
 			// Peak and Min values change, so `draw` adds them each frame.
 			if mode != StatusMode::None {
-				draw_styled_text(c, &label, RIGHT_EDGE, 222.0, TextAlign::Right, font, &STATUS_STYLE, STATUS_COLOR, None);
+				draw_styled_text(
+					c,
+					&label,
+					RIGHT_EDGE,
+					222.0,
+					TextAlign::Right,
+					font,
+					&STATUS_STYLE,
+					STATUS_COLOR,
+					None,
+				);
 			}
 			if mode == StatusMode::Text {
 				let style = TextStyle { max_width: STATUS_MAX_WIDTH - 22.0, ..STATUS_STYLE };
-				draw_styled_text(c, &text, RIGHT_EDGE - 22.0, 246.0, TextAlign::Right, font, &style, STATUS_COLOR, None);
+				draw_styled_text(
+					c,
+					&text,
+					RIGHT_EDGE - 22.0,
+					246.0,
+					TextAlign::Right,
+					font,
+					&style,
+					STATUS_COLOR,
+					None,
+				);
 				c.draw_circle(RIGHT_EDGE - 7.0, 238.0, 6.0, &Paint::fill(STATUS_DOT_COLOR));
 			}
 
 			// Unit below the readout.
 			let unit_style = TextStyle { size: 44.0, max_width: UNIT_MAX_WIDTH, ..title_style };
-			draw_styled_text(c, &base.unit, RIGHT_EDGE - 4.0, 452.0, TextAlign::Right, font, &unit_style, TEXT_COLOR, None);
+			draw_styled_text(
+				c,
+				&base.unit,
+				RIGHT_EDGE - 4.0,
+				452.0,
+				TextAlign::Right,
+				font,
+				&unit_style,
+				TEXT_COLOR,
+				None,
+			);
 		}));
 		self.base.static_cache_valid = true;
 	}

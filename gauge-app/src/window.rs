@@ -96,8 +96,7 @@ pub fn run(path: &Path, fullscreen: bool, mut feed: Feed) -> Result<(), String> 
 		frames += 1;
 		if fps_since.elapsed() >= Duration::from_secs(1) {
 			let link = status.as_deref().map_or("live".to_string(), |s| s.replace('\n', " "));
-			let title =
-				format!("GaugeRust — screen {}/{} — {frames} fps — {link}", current + 1, screens.len());
+			let title = format!("GaugeRust — screen {}/{} — {frames} fps — {link}", current + 1, screens.len());
 			display.set_title(&title);
 			frames = 0;
 			fps_since = Instant::now();
