@@ -2,7 +2,8 @@
 
 Box art, preview and description for the two launchers in muOS's Ports list
 (`External - Ports` catalogue). The deploy scripts upload them next to the
-launchers; muOS matches them to `GaugeDotnet.sh` / `GaugeRust.sh` by name.
+launchers; muOS matches them to `GaugeDotnet.sh` / `GaugeRust.sh` by name. On
+[ROCKNIX](../rocknix/README.md) the same image and description go into `gamelist.xml`.
 
 Both launchers use the same image, a real render from the Rust renderer:
 

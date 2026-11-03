@@ -115,17 +115,51 @@ pub struct FpsCounter {
 	since: Instant,
 	frames: u32,
 	text: String,
+	last_tick: Instant,
+	log_since: Instant,
+	log_frames: u32,
+	log_worst: Duration,
 }
 
 impl FpsCounter {
 	/// Area the counter draws into (for damage tracking).
 	pub const AREA: IRect = IRect { x0: 0, y0: 0, x1: 160, y1: 34 };
 
+	/// How often the rate and the slowest frame go to the log, the only way
+	/// to see stutter after a drive.
+	const LOG_INTERVAL: Duration = Duration::from_secs(30);
+
 	pub fn new() -> Self {
-		Self { since: Instant::now(), frames: 0, text: "FPS: 0.00".into() }
+		let now = Instant::now();
+		Self {
+			since: now,
+			frames: 0,
+			text: "FPS: 0.00".into(),
+			last_tick: now,
+			log_since: now,
+			log_frames: 0,
+			log_worst: Duration::ZERO,
+		}
 	}
 
 	pub fn tick(&mut self) {
+		let now = Instant::now();
+		self.log_worst = self.log_worst.max(now - self.last_tick);
+		self.last_tick = now;
+		self.log_frames += 1;
+		let logged = now - self.log_since;
+		if logged >= Self::LOG_INTERVAL {
+			eprintln!(
+				"[fps] {:.2} avg over {:.0} s, slowest frame {:.1} ms",
+				self.log_frames as f64 / logged.as_secs_f64(),
+				logged.as_secs_f64(),
+				self.log_worst.as_secs_f64() * 1000.0
+			);
+			self.log_since = now;
+			self.log_frames = 0;
+			self.log_worst = Duration::ZERO;
+		}
+
 		self.frames += 1;
 		let elapsed = self.since.elapsed().as_secs_f64();
 		if elapsed >= 1.0 {
@@ -220,7 +254,8 @@ fn read_system_battery() -> Option<i32> {
 }
 
 /// Keeps MuOS from dimming or sleeping while gauges are shown
-/// (`ScreenKeepAlive.Poke`); a no-op elsewhere.
+/// (`ScreenKeepAlive.Poke`). ROCKNIX has no such file: its launcher holds a
+/// logind idle lock and SDL holds a Wayland idle inhibitor for the window.
 pub fn poke_keep_alive() {
 	const DIR: &str = "/opt/muos/config/system";
 	if Path::new(DIR).is_dir() {

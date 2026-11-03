@@ -1,5 +1,6 @@
 using SkiaSharp;
 using SDL2;
+using RG35XX.Libraries;
 
 namespace GaugeDotnet.Rendering
 {
@@ -33,7 +34,9 @@ namespace GaugeDotnet.Rendering
                 SDL.SDL_WINDOWPOS_CENTERED, SDL.SDL_WINDOWPOS_CENTERED,
                 screenWidth, screenHeight,
                 SDL.SDL_WindowFlags.SDL_WINDOW_OPENGL
-              | SDL.SDL_WindowFlags.SDL_WINDOW_SHOWN);
+              | SDL.SDL_WindowFlags.SDL_WINDOW_SHOWN
+              // Under sway a plain window would share the screen with EmulationStation.
+              | (PlatformInfo.IsRocknix ? SDL.SDL_WindowFlags.SDL_WINDOW_FULLSCREEN : 0));
 
             if (_window == IntPtr.Zero)
             {

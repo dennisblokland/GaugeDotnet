@@ -68,7 +68,7 @@ Relative paths inside a definition (images, needle images, GIFs) resolve against
 `gauge app` is the port of the C# `Program` and `GameLoop`:
 1. It loads `gauges.json` (by default the one next to the binary; `--config` picks another). If the file is missing, it writes the same default as the C# app, a Bar gauge for AFR, and only the first 10 screens are kept.
 2. It shows the splash screen while Bluetooth comes up and the ECU connects. In `DemoMode`, or with `--demo`, it uses simulated data instead.
-3. It runs the screens. The FPS counter and the low-battery icon are drawn over them, and MuOS is kept from sleeping.
+3. It runs the screens. The FPS counter and the low-battery icon are drawn over them, and the OS is kept from sleeping (muOS: `idle_inhibit`; ROCKNIX: see [`../rocknix/README.md`](../rocknix/README.md)).
 4. When you quit, it plays the exit animation.
 
 If the connection fails, the error screen stays up until any button is pressed.
@@ -106,13 +106,13 @@ SKIP_BUILD=1 ./deploy-arm64.sh   # upload the existing build only
 
 **Without a cross toolchain:** when `aarch64-linux-gnu-gcc` isn't installed, or with `USE_DOCKER=1`, `build-arm64.sh` runs itself in a `rust:1-bookworm` container, so Docker is the only requirement. That build targets glibc 2.36. The cargo registry is cached in the `gauge-cargo-registry` Docker volume.
 
-**Login:** `deploy-arm64.sh` uses `sshpass` with `REMOTE_PASS` when `sshpass` is installed. Otherwise it uses plain `ssh` and `scp`, which need your key on the device: run `ssh-copy-id root@<host>` once.
+**Login:** `deploy-arm64.sh` uses your SSH key if the device accepts it, then `sshpass` with `REMOTE_PASS` when `sshpass` is installed, then plain `ssh`. To set up a key, run `ssh-copy-id root@<host>` once.
 
 `build-arm64.sh` cross-compiles with `--features sdl,ble-vendored`. It needs the `aarch64-unknown-linux-gnu` rustup target, `gcc-aarch64-linux-gnu`, `curl` and `dpkg-deb`. On first use it fetches the arm64 `libSDL2` from Ubuntu's archive to link against. At run time the binary uses the device's own `libSDL2-2.0.so.0`, as the C# app does, and libdbus is compiled in. So the only thing installed is a single 5 MB `gauge` binary.
 
-`deploy-arm64.sh` copies the binary to `/mnt/mmc/ports/GaugeRust`, separate from the C# app, and copies the launcher `GaugeRust.sh` to `/mnt/mmc/roms/ports`, so it shows up under Ports. `gauges.json` lives next to the binary. Copy over the C# one, or use `UPLOAD_CONFIG=1` to upload `./gauges.json`. The log is `GaugeRust.log` in the same folder. It also uploads the Ports-list artwork (`../muos/GaugeRust.png` and `.txt`) to muOS's `External - Ports` catalogue.
+`REMOTE_HOST=<ip> ./deploy-arm64.sh` detects muOS or ROCKNIX over ssh (`TARGET=` overrides it). ROCKNIX paths are in [`../rocknix/README.md`](../rocknix/README.md). On muOS it copies the binary to `/mnt/mmc/ports/GaugeRust`, separate from the C# app, and copies the launcher `GaugeRust.sh` to `/mnt/mmc/roms/ports`, so it shows up under Ports. `gauges.json` lives next to the binary. Copy over the C# one, or use `UPLOAD_CONFIG=1` to upload `./gauges.json`. The log is `GaugeRust.log` in the same folder. It also uploads the Ports-list artwork (`../muos/GaugeRust.png` and `.txt`) to muOS's `External - Ports` catalogue.
 
-**glibc:** the device (muOS) has **glibc 2.38**, and the binary needs no newer glibc than the one it was linked against. A host cross toolchain links against the host's glibc (Arch's is 2.4x), so the binary won't start on the device (`GLIBC_2.39' not found`). Ways to build for an older glibc:
+**glibc:** muOS has **glibc 2.38** and ROCKNIX **2.44** (confirmed running a binary built for 2.36), and the binary needs no newer glibc than the one it was linked against. A host cross toolchain links against the host's glibc (Arch's is 2.4x), so the binary won't start on the device (`GLIBC_2.39' not found`). Ways to build for an older glibc:
 
 - **zig (no Docker):** install `zig` and `cargo-zigbuild` (Arch: `pacman -S zig cargo-zigbuild`, or `cargo install cargo-zigbuild`). `build-arm64.sh` then uses `cargo zigbuild` automatically and targets glibc 2.36 (`GLIBC=2.38` to change it, `USE_ZIG=0` to skip it). The output path is the same.
 - **Docker:** `USE_DOCKER=1 ./build-arm64.sh` (glibc 2.36, see above).

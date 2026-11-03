@@ -128,6 +128,35 @@ ms/frame. A run before the GPU mode existed gave the same picture for the old re
   - Histogram's remaining cost is blending 50 overlapping glows, which can't be merged without changing the rounding. The bench uses `"IntervalMs": 0`, so the bars are rebuilt every frame. With the default of 1000 ms (the editor allows 100 ms at least), they're rebuilt at most a few times per second.
   - The custom renderer spawns its scoped threads every frame, which costs about 3 % on the device.
 
+## 6. On the device, ROCKNIX
+
+Same RG35XX-SP on ROCKNIX 20261101 (kernel 7.2.0), with the Mali-G31 on Panfrost and the CPU at up to 1416 MHz (`ondemand` governor). Rust only, measured 2026-11-02; C# wasn't benchmarked here. Same protocol as section 5: 300 warm-up frames, then 600 timed frames, 4 threads. Each figure is the average of two runs of `gauge bench`, compared with "Rust, after" in section 5.
+
+| Screen | muOS | ROCKNIX | Difference |
+|---|---:|---:|---:|
+| Custom (showcase.json) | 4.5 | 4.35 | −3 % |
+| Circular | 7.6 | 8.05 | +6 % |
+| Needle | 2.6 | 2.79 | +7 % |
+| Sweep | 5.3 | 5.64 | +6 % |
+| Bar | 2.9 | 3.11 | +7 % |
+| Digital | 3.2 | 3.43 | +7 % |
+| MinMax | 4.5 | 4.82 | +7 % |
+| Histogram | 9.4 | 10.10 | +7 % |
+| Grid | 3.0 | 3.19 | +6 % |
+
+ms/frame. TurboXs wasn't run on ROCKNIX.
+
+- **The built-in screens are 6–7 % slower.** That matches the lower CPU limit (1512 MHz is 6.8 % above 1416 MHz), though nothing here isolates the clock as the cause. Custom's −3 % is within the ±10 % noise. The muOS and ROCKNIX figures come from different days.
+- **The app holds 60 FPS.** Every screen draws well inside the 16.7 ms frame budget, and the app logged 60 FPS in `--demo` at 640×480 fullscreen.
+- **Pinning the GPU clock gains nothing for Rust.** Same config, about 100 s each, from the app's `[fps]` log:
+
+  | | GPU clock | FPS per 30 s | Slowest frame per 30 s | New `ccu_helper` kernel warnings |
+  |---|---:|---:|---:|---:|
+  | `GPU_FLOOR=0` | 420 MHz (every sample) | 59.99, 60.01, 60.00 | 39.3, 24.1, 23.5 ms | 0 |
+  | `GPU_FLOOR=1` | 600 MHz | 60.01, 60.01, 59.99 | 35.3, 23.4, 23.1 ms | 1 |
+
+  So it's off by default on ROCKNIX. This result doesn't carry over to C#, which draws through the GPU (section 5). C# has the same `GPU_FLOOR` setting there, and its effect on C# frame rate hasn't been compared.
+
 ## Caveats
 
 - **CPU only, except section 5.** On the device, the C# app renders through Skia's GPU backend (GLES2), which the VMs can't run. Section 5 measures that with `GaugeBench --gpu` on the device.
