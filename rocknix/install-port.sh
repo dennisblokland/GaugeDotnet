@@ -14,6 +14,8 @@ PORTS_DIR=/storage/roms/ports
 # ES loads every es_systems_*.cfg from its config folder next to the stock list.
 ES_SYSTEM_FILE=/storage/.config/emulationstation/es_systems_gauge.cfg
 MENU_DIR=/storage/GaugeMenu
+# Where the theme looks for custom art once its distribution is set to RockNIX.
+ES_CARD_ART=/storage/roms/_userdata/theme-customizations/art-book-next/artwork/gauges.png
 # ES runs what's in scripts/<event>/ when that event happens.
 ES_SCRIPTS=/storage/.config/emulationstation/scripts
 
@@ -53,6 +55,44 @@ fi
 EOF
 }
 
+# The theme's "System Artwork: Custom" option uses a custom image where one exists
+# and its own art otherwise, so with only gauges.png there, no other card changes.
+rocknix_install_card_art() { # art-file ssh-command...
+  local art="$1"
+  shift
+  "$@" "mkdir -p '$(dirname "$ES_CARD_ART")' && cat > '$ES_CARD_ART'" < "$art"
+  "$@" "bash -s" <<'REMOTE'
+settings=/storage/.config/emulationstation/es_settings.cfg
+[ -f "$settings" ] || exit 0
+has() { grep -q "name=\"subset.$1\"" "$settings"; }
+if has distribution && ! grep -q 'name="subset.distribution" value="rocknix"' "$settings"; then
+  echo "Theme distribution setting isn't RockNIX: the Gauges card keeps the theme's art."
+  exit 0
+fi
+if has system-view-artwork; then
+  grep -q 'name="subset.system-view-artwork" value="custom"' "$settings" ||
+    echo "System Artwork isn't Custom: the Gauges card keeps the theme's art."
+  has distribution && exit 0
+fi
+if [ "$(curl -s -m 3 -o /dev/null -w '%{http_code}' http://localhost:1234/runningGame)" = 200 ]; then
+  echo "A game is running: deploy again later to turn on the Gauges card's art."
+  exit 0
+fi
+# ES writes this file when it exits, so it has to be stopped first.
+systemctl stop essway
+sleep 2
+has distribution ||
+  sed -i 's#</config>#\t<string name="subset.distribution" value="rocknix" />\n</config>#' "$settings"
+has system-view-artwork ||
+  sed -i 's#</config>#\t<string name="subset.system-view-artwork" value="custom" />\n</config>#' "$settings"
+systemctl start essway
+for i in $(seq 1 30); do
+  curl -s -m 2 -o /dev/null http://localhost:1234/systems && break
+  sleep 1
+done
+REMOTE
+}
+
 rocknix_install_menus() {
   local name="$1" art_dir="$2"
   shift 2
@@ -69,9 +109,10 @@ rocknix_install_menus() {
   if [ "${ES_SYSTEM:-1}" = 1 ]; then
     dirs+=("$MENU_DIR")
     "${ssh[@]}" "mkdir -p '$MENU_DIR' && ln -sf '$PORTS_DIR/$name.sh' '$MENU_DIR/$name.sh'"
-    # -Pports makes runemu.sh treat it like any other port. The theme name has
-    # no artwork of its own: the theme then shows "GAUGES" as text. Using
-    # "ports" here would give a second card that reads PORTS.
+    local hook_dir="$(dirname "${BASH_SOURCE[0]}")"
+    # -Pports makes runemu.sh treat it like any other port. The theme has no logo
+    # for this name, so it shows "GAUGES" as text. Using "ports" here would give
+    # a second card that reads PORTS.
     "${ssh[@]}" "[ -f '$ES_SYSTEM_FILE' ] || cat > '$ES_SYSTEM_FILE'" <<EOF
 <?xml version="1.0"?>
 <systemList>
@@ -93,7 +134,7 @@ EOF
 
   if [ "${ES_SYSTEM:-1}" = 1 ]; then
     # Selecting the card then starts the app instead of stopping at its list.
-    local hook_dir="$(dirname "${BASH_SOURCE[0]}")" event
+    local event
     for event in system-selected game-selected; do
       "${ssh[@]}" "mkdir -p '$ES_SCRIPTS/$event' && cat > '$ES_SCRIPTS/$event/gauge-direct-launch.sh' && chmod +x '$ES_SCRIPTS/$event/gauge-direct-launch.sh'" \
         < "$hook_dir/es-direct-launch.sh"
@@ -107,6 +148,8 @@ EOF
     fi
     rocknix_gamelist_add "$dir" "$name" "$title" "$desc" "${ssh[@]}"
   done
+
+  [ "${ES_SYSTEM:-1}" != 1 ] || rocknix_install_card_art "$hook_dir/gauges.png" "${ssh[@]}"
 
   # Makes a running ES see all of this; harmless if ES is down. ES drops a
   # launch request that arrives while this runs, so give it a moment.

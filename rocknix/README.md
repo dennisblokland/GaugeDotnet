@@ -20,12 +20,19 @@ With `ES_SYSTEM=0`, the Rust deploy leaves out the home screen card.
 | Launcher and Ports entry | `/storage/roms/ports/<App>.sh`, `gamelist.xml`, `images/` |
 | "Gauges" home screen card | `/storage/.config/emulationstation/es_systems_gauge.cfg`, `/storage/GaugeMenu` |
 | Direct launch from the card | `/storage/.config/emulationstation/scripts/{system,game}-selected/gauge-direct-launch.sh` |
+| The card's art | `/storage/roms/_userdata/theme-customizations/art-book-next/artwork/gauges.png` |
 
 All of it is under `/storage`, which survives OS updates. Nothing the system ships
-is edited.
+is edited. The Rust deploy also sets two theme options in ES's settings the first time,
+restarting ES to do so: **Distribution: RockNIX** and **System Artwork: Custom**. Other
+cards keep their art, because the theme uses a custom image only where one exists. If
+either option is already set to something else, the deploy leaves it and says so, and
+the card keeps the theme's generic art.
 
-To remove it, delete those paths and the entries in `/storage/roms/ports/gamelist.xml`,
-then restart ES with `systemctl restart essway`.
+To remove it, delete those paths and the entries in `/storage/roms/ports/gamelist.xml`.
+Then run `systemctl stop essway`, delete the `subset.distribution` and
+`subset.system-view-artwork` lines from `/storage/.config/emulationstation/es_settings.cfg`,
+and run `systemctl start essway`.
 
 ## Using it
 
@@ -88,9 +95,10 @@ is on, so the floor is capped at `max_freq`. Changing the clock floor logs a
 [`bench/RESULTS.md`](../bench/RESULTS.md).
 
 **Home screen.** ES loads every `es_systems_*.cfg` from its config folder alongside
-the stock list. The theme is read-only and takes custom logos only through a global
-switch that affects every system, so the card shows "GAUGES" as text over the theme's
-fallback art. `<theme>ports</theme>` would give a second card reading PORTS.
+the stock list. The theme is read-only, so the card's art goes in its customization
+folder (see Deploy), and "GAUGES" is the theme's text for a system with no logo.
+`<theme>ports</theme>` would give a second card reading PORTS. A `..` in `<theme>` isn't
+an alternative: ES then drops the whole theme for that card. `card-art.py` draws the art.
 
 ES has no setting for starting something straight from the home screen; a card always
 opens its list. It does run event scripts, and it reports `game-selected` when the list
