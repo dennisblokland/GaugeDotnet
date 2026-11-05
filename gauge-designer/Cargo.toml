@@ -13,7 +13,7 @@ path = "src/main.rs"
 gauge-render = { path = "../gauge-render" }
 me-data = { path = "../me-data" }
 # glow (OpenGL) instead of the default wgpu: fewer dependencies, runs on llvmpipe too.
-eframe = { version = "0.36", default-features = false, features = ["accesskit", "default_fonts", "glow", "wayland", "x11"] }
+eframe = { version = "0.37", default-features = false, features = ["accesskit", "default_fonts", "glow", "wayland", "x11"] }
 # Only to switch on winit's default features (dlopen'd Wayland, client-side decorations), which eframe's `default` would.
 winit = "0.30"
 rfd = "0.17"
